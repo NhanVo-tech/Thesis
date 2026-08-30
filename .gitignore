@@ -53,6 +53,9 @@ venv/
 # Node
 node_modules/
 
+# Local workspace (kept locally, not in repo)
+thesis253_workspace/
+
 # Logs / temp
 *.log
 *.tmp
