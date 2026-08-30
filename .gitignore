@@ -20,7 +20,6 @@ DW3_QM33_SDK_1.1.1/SDK/Tools/GUI/
 
 # SDK / firmware build output
 DW3_QM33_SDK_1.1.1/SDK/Firmware/**/BuildOutput/
-*.a
 *.o
 *.out
 *.axf
