@@ -1,0 +1,137 @@
+\ProvidesPackage{qorvo}[2021/03/18]
+\usepackage{lastpage}
+\usepackage{colortbl}
+\usepackage[nodayofweek]{datetime}
+
+% Date formats.
+\newdateformat{footdate}{\monthname[\THEMONTH] \THEYEAR}
+\newdateformat{yeardate}{\THEYEAR}
+
+% Define page geometry.
+\geometry{hmargin=1.6cm,top=3.6cm,bottom=3.2cm,footskip=2.1cm,
+  headheight=1.7cm,headsep=0.6cm,marginpar=1cm}
+%\geometry{showframe}
+
+% Define colors.
+\definecolor{qblue}{rgb}{0.00,0.62,0.88}
+\definecolor{qsensitive}{rgb}{0.96,0.76,0.26}
+\definecolor{qgray}{rgb}{0.35,0.35,0.35}
+\definecolor{qlgray}{rgb}{0.91,0.91,0.91}
+% Use gray for all the document (sigh).
+\newcommand{\defaultcolor}{\color{qgray}}
+\defaultcolor
+% Hyperlinks.
+\hypersetup{linkcolor=qblue,filecolor=qblue,urlcolor=qblue}
+
+% Use Sans-serif font (sigh).
+\renewcommand{\familydefault}{\sfdefault}
+
+% Headers.
+\assignpagestyle{\chapter}{normal}
+\titleformat{\chapter}{\huge\bfseries}%
+	    {\color{qblue}\thechapter}{0.5em}{\color{qblue}}{\defaultcolor}
+\titleformat{\section}{\Large\bfseries}%
+	    {\color{qblue}\thesection}{0.5em}{\color{qblue}}{\defaultcolor}
+\titleformat{\subsection}{\large\bfseries}%
+	    {\color{qgray}\thesubsection}{0.5em}{\color{qgray}}{\defaultcolor}
+\titleformat{\subsubsection}{\bfseries}%
+	    {\color{qgray}\thesubsubsection}{0.5em}{\color{qgray}}{\defaultcolor}
+\titleformat{\paragraph}{\bfseries}%
+	    {\color{qgray}\theparagraph}{0.5em}{\color{qgray}}{\defaultcolor}
+\titleformat{\subparagraph}{\bfseries}%
+	    {\color{qgray}\thesubparagraph}{0.5em}{\color{qgray}}{\defaultcolor}
+% Number up to header level 5.
+\setcounter{secnumdepth}{5}
+
+% Define the document type.
+\newcommand{\qorvodoctype}[1]{%
+  \gdef\qorvo@doctype{#1}%
+}
+\newcommand{\qorvodoctype@aux}[1]{%
+  \write\@auxout{%
+    \unexpanded{\gdef\qorvo@doctype{#1}}%
+  }
+}
+\newcommand{\theqorvodoctype}{
+  \ifcsname qorvo@doctype\endcsname
+    \qorvo@doctype%
+  \else
+    MANUAL%
+  \fi
+}
+
+% Used for the blue bullet.
+\usepackage{tikz}
+\usetikzlibrary{shapes.misc}
+\tikzstyle{qorvodocbullet} = [fill=qblue, rounded rectangle, text=white, minimum width=5cm, minimum height=0.66cm]
+
+% Common page style.
+\renewcommand{\headrule}{}
+\fancyhead[L]{%
+  \raisebox{\dimexpr 0.5\headheight - 0.5\height}{\theqorvodoctype: \@title}}
+\fancyhead[R]{%
+  \includegraphics[pagebox=artbox,height=0.9cm]{qorvo_logo.pdf}\\
+  \makebox[3.9cm][c]{Classification | \textcolor{qsensitive}{SENSITIVE}}%
+}
+\fancyfoot[L]{%
+  \scriptsize\footdate\today{} | Subject to change without notice
+}
+\fancyfoot[R]{%
+  \scriptsize\py@release\ | \href{http://www.qorvo.com/}{www.qorvo.com}
+}
+\renewcommand{\footrulewidth}{1pt}
+\renewcommand{\footrule}{%
+  \centering{}%
+  © \yeardate\today{} Qorvo US, Inc.\\
+  Qorvo® Confidential \& Proprietary Information\\
+  \textcolor{qblue}{\rule{\headwidth}{\footrulewidth}}}
+
+% Page style for title page.
+\fancypagestyle{title}{
+  \fancyhead[L]{%
+    \raisebox{\dimexpr 0.5\headheight - 0.5\height}{\begin{tikzpicture}
+      \node[qorvodocbullet] (box) {\theqorvodoctype};
+    \end{tikzpicture}}}
+  \fancyfoot[C]{}
+}
+
+% Page style for plain pages (contents).
+\fancypagestyle{plain}{
+  \fancyfoot[C]{\scriptsize\thepage{}}
+}
+
+% Page style for normal pages.
+\fancypagestyle{normal}{
+  \fancyfoot[C]{{\scriptsize\thepage{} of \pageref*{LastPage}}}
+}
+
+% The title page.
+\renewcommand{\maketitle}{%
+  \let\qorvorestorepageanchorsetting\relax
+  \ifHy@pageanchor\def\qorvorestorepageanchorsetting{\Hy@pageanchortrue}\fi
+  \hypersetup{pageanchor=false}% avoid duplicate destination warnings
+  \begin{titlepage}%
+    \thispagestyle{title}
+    \vspace*{2.8cm}
+    {\Huge \@title \par}
+    \vspace*{1cm}
+    \def\and{\\}
+    \@author \par
+    \py@release
+    \begingroup % for PDF information dictionary
+     \def\endgraf{ }\def\and{\& }%
+     \pdfstringdefDisableCommands{\def\\{, }}% overwrite hyperref setup
+     \hypersetup{pdfauthor={\@author}, pdftitle={\@title}}%
+    \endgroup
+  \end{titlepage}
+  \clearpage
+  \if@openright\cleardoublepage\else\clearpage\fi
+  \qorvorestorepageanchorsetting
+  \let\qorvodoctype\qorvodoctype@aux
+}
+
+% For sphinx generated documents.
+\renewcommand{\sphinxmaketitle}{\maketitle}
+\protected\def\sphinxstyletheadfamily{\cellcolor{qlgray}\bfseries}
+
+\endinput

@@ -1,0 +1,557 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Qorvo US, Inc.
+ *
+ * SPDX-License-Identifier: LicenseRef-QORVO-1
+ */
+
+#pragma once
+
+#include "quwbs/msg.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*
+ * This file is generated automatically, edit with care.
+ */
+
+/**
+ * enum quwbs_fbs_status - FiRa UCI Std v2.0.0.9r0, 8.5 Status Code.
+ */
+enum quwbs_fbs_status {
+	/**
+	 * @QUWBS_FBS_STATUS_OK: Success.
+	 */
+	QUWBS_FBS_STATUS_OK = 0,
+	/**
+	 * @QUWBS_FBS_STATUS_REJECTED: Operation is not supported in the current state.
+	 */
+	QUWBS_FBS_STATUS_REJECTED,
+	/**
+	 * @QUWBS_FBS_STATUS_FAILED: Intended operation is failed to complete..
+	 */
+	QUWBS_FBS_STATUS_FAILED,
+	/**
+	 * @QUWBS_FBS_STATUS_SYNTAX_ERROR: UCI packet structure is not per spec..
+	 */
+	QUWBS_FBS_STATUS_SYNTAX_ERROR,
+	/**
+	 * @QUWBS_FBS_STATUS_INVALID_PARAM: Config ID is not correct, and it is not present in UWBS..
+	 */
+	QUWBS_FBS_STATUS_INVALID_PARAM,
+	/**
+	 * @QUWBS_FBS_STATUS_INVALID_RANGE: Config ID is correct, and value is not in proper range.
+	 */
+	QUWBS_FBS_STATUS_INVALID_RANGE,
+	/**
+	 * @QUWBS_FBS_STATUS_INVALID_MESSAGE_SIZE: UCI packet payload size is not as per spec..
+	 */
+	QUWBS_FBS_STATUS_INVALID_MESSAGE_SIZE,
+	/**
+	 * @QUWBS_FBS_STATUS_UNKNOWN_GID: UCI Group ID is not per spec..
+	 */
+	QUWBS_FBS_STATUS_UNKNOWN_GID,
+	/**
+	 * @QUWBS_FBS_STATUS_UNKNOWN_OID: UCI Opcode ID is not per spec..
+	 */
+	QUWBS_FBS_STATUS_UNKNOWN_OID,
+	/**
+	 * @QUWBS_FBS_STATUS_READ_ONLY: Config ID is read-only..
+	 */
+	QUWBS_FBS_STATUS_READ_ONLY,
+	/**
+	 * @QUWBS_FBS_STATUS_UCI_MESSAGE_RETRY: UWBS request retransmission from Host.
+	 */
+	QUWBS_FBS_STATUS_UCI_MESSAGE_RETRY,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_SESSION_NOT_EXIST: Session is not existing or not created.
+	 */
+	QUWBS_FBS_STATUS_ERROR_SESSION_NOT_EXIST = 17,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_SESSION_DUPLICATE: Session is already created/exist.
+	 */
+	QUWBS_FBS_STATUS_ERROR_SESSION_DUPLICATE,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_INVALID_PHASE_PARTICIPATION: Invalid phase binding parameters..
+	 */
+	QUWBS_FBS_STATUS_ERROR_INVALID_PHASE_PARTICIPATION,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_SESSION_ACTIVE: Session is active..
+	 */
+	QUWBS_FBS_STATUS_ERROR_SESSION_ACTIVE,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_MAX_SESSION_EXCEDEED: Max. number of sessions already created..
+	 */
+	QUWBS_FBS_STATUS_ERROR_MAX_SESSION_EXCEDEED,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_SESSION_NOT_CONFIGURED: Session is not configured with required app configurations.
+	 */
+	QUWBS_FBS_STATUS_ERROR_SESSION_NOT_CONFIGURED,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_ACTIVE_SESSIONS_ONGOING: Sessions are actively running in UWBS..
+	 */
+	QUWBS_FBS_STATUS_ERROR_ACTIVE_SESSIONS_ONGOING,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_MULTICAST_LIST_FULL: Indicates when multicast list is full during one to many ranging.
+	 */
+	QUWBS_FBS_STATUS_ERROR_MULTICAST_LIST_FULL,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_UWB_INITIATION_TIME_TOO_OLD: The current UWBS time has gone past the configured UWB_INITIATION_TIME..
+	 */
+	QUWBS_FBS_STATUS_ERROR_UWB_INITIATION_TIME_TOO_OLD = 26,
+	/**
+	 * @QUWBS_FBS_STATUS_OK_NEGATIVE_DISTANCE_REPORT: Success, a negative distance was measured, distance is the absolute value of the measurement..
+	 */
+	QUWBS_FBS_STATUS_OK_NEGATIVE_DISTANCE_REPORT,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_SUCCESS: Ranging info are valid..
+	 */
+	QUWBS_FBS_STATUS_RANGING_SUCCESS = 0,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_TX_FAILED: Failed to transmit UWB packet..
+	 */
+	QUWBS_FBS_STATUS_RANGING_TX_FAILED = 32,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_TIMEOUT: No UWB packet detected by the receiver..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_TIMEOUT,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_PHY_DEC_FAILED: UWB packet channel decoding error..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_PHY_DEC_FAILED,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_PHY_TOA_FAILED: Failed to detect time of arrival of the UWB packet from CIR samples..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_PHY_TOA_FAILED,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_PHY_STS_FAILED: UWB packet STS segment mismatch..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_PHY_STS_FAILED,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_MAC_DEC_FAILED: MAC CRC or syntax error..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_MAC_DEC_FAILED,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_MAC_IE_DEC_FAILED: IE syntax error..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_MAC_IE_DEC_FAILED,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_RX_MAC_IE_MISSING: Expected IE missing in the packet..
+	 */
+	QUWBS_FBS_STATUS_RANGING_RX_MAC_IE_MISSING,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_ROUND_INDEX_NOT_ACTIVATED: Configured DL-TDoA ranging round could not be activated..
+	 */
+	QUWBS_FBS_STATUS_ERROR_ROUND_INDEX_NOT_ACTIVATED,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_NUMBER_OF_ACTIVE_RANGING_ROUNDS_EXCEEDED: Number of active ranging rounds exceeds the maximum number of ranging rounds supported..
+	 */
+	QUWBS_FBS_STATUS_ERROR_NUMBER_OF_ACTIVE_RANGING_ROUNDS_EXCEEDED,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_ROUND_INDEX_NOT_SET_AS_INITIATOR: The role for the configured ranging round index is not Initiator and therefore RDM list cannot be set..
+	 */
+	QUWBS_FBS_STATUS_ERROR_ROUND_INDEX_NOT_SET_AS_INITIATOR = 42,
+	/**
+	 * @QUWBS_FBS_STATUS_ERROR_DL_TDOA_DEVICE_ADDRESS_NOT_MATCHING_IN_REPLY_TIME_LIST: Received DL-TDoA Reply Time List does not contain the Initiator Reply Time associated to the MAC address in RDM List (can happen only in DS-TWR)..
+	 */
+	QUWBS_FBS_STATUS_ERROR_DL_TDOA_DEVICE_ADDRESS_NOT_MATCHING_IN_REPLY_TIME_LIST,
+	/**
+	 * @QUWBS_FBS_STATUS_REJECTED_NO_REFERENCE_NO_RESPONDER: Anchor is not allowed to acting as an initiator only and not being a reference. (Vendor specific QORVO).
+	 */
+	QUWBS_FBS_STATUS_REJECTED_NO_REFERENCE_NO_RESPONDER = 254,
+	/**
+	 * @QUWBS_FBS_STATUS_RANGING_INTERNAL_ERROR: Implementation specific error..
+	 */
+	QUWBS_FBS_STATUS_RANGING_INTERNAL_ERROR,
+};
+
+/**
+ * enum quwbs_fbs_session_state - Session state.
+ */
+enum quwbs_fbs_session_state {
+	/**
+	 * @QUWBS_FBS_SESSION_STATE_INIT: Initial state, session is not ready.
+	 */
+	QUWBS_FBS_SESSION_STATE_INIT = 0,
+	/**
+	 * @QUWBS_FBS_SESSION_STATE_DEINIT: Session does not exist.
+	 */
+	QUWBS_FBS_SESSION_STATE_DEINIT = 1,
+	/**
+	 * @QUWBS_FBS_SESSION_STATE_ACTIVE: Session is currently active.
+	 */
+	QUWBS_FBS_SESSION_STATE_ACTIVE = 2,
+	/**
+	 * @QUWBS_FBS_SESSION_STATE_IDLE: Session is ready to start, but not currently active.
+	 */
+	QUWBS_FBS_SESSION_STATE_IDLE = 3,
+};
+
+/**
+ * enum quwbs_fbs_reason_code - Reason for session state change For more details see FiRa Consortium UCI Generic Technical Specification v2_0_0_IPR_Review section 7.2 UWB Session Initiation, Table 18.
+ */
+enum quwbs_fbs_reason_code {
+	/**
+	 * @QUWBS_FBS_REASON_CODE_SUCCESS: no error detected..
+	 */
+	QUWBS_FBS_REASON_CODE_SUCCESS = 0,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_STATE_CHANGE_WITH_SESSION_MANAGEMENT_COMMANDS: Change requested using session management command.
+	 */
+	QUWBS_FBS_REASON_CODE_STATE_CHANGE_WITH_SESSION_MANAGEMENT_COMMANDS = 0,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_MAX_RANGING_ROUND_RETRY_COUNT_REACHED: Stopped due to maximum attempts reached with no response.
+	 */
+	QUWBS_FBS_REASON_CODE_MAX_RANGING_ROUND_RETRY_COUNT_REACHED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_MAX_NUMBER_OF_MEASUREMENTS_REACHED: Stopped due to maximum number of measurements reached.
+	 */
+	QUWBS_FBS_REASON_CODE_MAX_NUMBER_OF_MEASUREMENTS_REACHED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_SESSION_SUSPENDED_DUE_TO_INBAND_SIGNAL: Session is still active but suspended due to in-band signaling.
+	 */
+	QUWBS_FBS_REASON_CODE_SESSION_SUSPENDED_DUE_TO_INBAND_SIGNAL,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_SESSION_RESUMED_DUE_TO_INBAND_SIGNAL: Session is resumed due to in-band signaling.
+	 */
+	QUWBS_FBS_REASON_CODE_SESSION_RESUMED_DUE_TO_INBAND_SIGNAL,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_SESSION_STOPPED_DUE_TO_INBAND_SIGNAL: Stopped due to in-band signaling from the controller.
+	 */
+	QUWBS_FBS_REASON_CODE_SESSION_STOPPED_DUE_TO_INBAND_SIGNAL,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_UL_TDOA_RANDOM_WINDOW: OWR UL-TDoA random window is larger than Tx interval.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_UL_TDOA_RANDOM_WINDOW = 29,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_MIN_FRAMES_PER_RR_NOT_SUPPORTED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_MIN_FRAMES_PER_RR_NOT_SUPPORTED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INTER_FRAME_INTERVAL_NOT_SUPPORTED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INTER_FRAME_INTERVAL_NOT_SUPPORTED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_SLOT_LENGTH_NOT_SUPPORTED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_SLOT_LENGTH_NOT_SUPPORTED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INSUFFICIENT_SLOTS_PER_RR: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INSUFFICIENT_SLOTS_PER_RR,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_MAC_ADDRESS_MODE_NOT_SUPPORTED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_MAC_ADDRESS_MODE_NOT_SUPPORTED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_RANGING_DURATION: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_RANGING_DURATION,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_STS_CONFIG: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_STS_CONFIG,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_RFRAME_CONFIG: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_RFRAME_CONFIG,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_HUS_NOT_ENOUGH_SLOTS: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_HUS_NOT_ENOUGH_SLOTS,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_HUS_CFP_PHASE_TOO_SHORT: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_HUS_CFP_PHASE_TOO_SHORT,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_HUS_CAP_PHASE_TOO_SHORT: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_HUS_CAP_PHASE_TOO_SHORT,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_HUS_OTHERS: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_HUS_OTHERS,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_STATUS_SESSION_KEY_NOT_FOUND: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_STATUS_SESSION_KEY_NOT_FOUND,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_STATUS_SUB_SESSION_KEY_NOT_FOUND: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_STATUS_SUB_SESSION_KEY_NOT_FOUND,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_PREAMBLE_CODE_INDEX: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_PREAMBLE_CODE_INDEX,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_SFD_ID: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_SFD_ID,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_PSDU_DATA_RATE: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_PSDU_DATA_RATE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_PHR_DATA_RATE: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_PHR_DATA_RATE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_PREAMBLE_DURATION: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_PREAMBLE_DURATION,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_STS_LENGTH: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_STS_LENGTH,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_NUM_OF_STS_SEGMENTS: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_NUM_OF_STS_SEGMENTS,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_NUM_OF_CONTROLEES: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_NUM_OF_CONTROLEES,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_MAX_RANGING_REPLY_TIME_EXCEEDED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_MAX_RANGING_REPLY_TIME_EXCEEDED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_DST_ADDRESS_LIST: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_DST_ADDRESS_LIST,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_OR_NOT_FOUND_SUB_SESSION_ID: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_OR_NOT_FOUND_SUB_SESSION_ID,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_RESULT_REPORT_CONFIG: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_RESULT_REPORT_CONFIG,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_RANGING_ROUND_CONTROL_CONFIG: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_RANGING_ROUND_CONTROL_CONFIG,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_RANGING_ROUND_USAGE: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_RANGING_ROUND_USAGE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_MULTI_NODE_MODE: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_MULTI_NODE_MODE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_RDS_FETCH_FAILURE: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_RDS_FETCH_FAILURE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_DOES_NOT_EXIST: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_DOES_NOT_EXIST,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_RANGING_DURATION_MISMATCH: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_RANGING_DURATION_MISMATCH,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_INVALID_OFFSET_TIME: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_INVALID_OFFSET_TIME,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_LOST: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_REF_UWB_SESSION_LOST,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_DT_ANCHOR_RANGING_ROUNDS_NOT_CONFIGURED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_DT_ANCHOR_RANGING_ROUNDS_NOT_CONFIGURED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_DT_TAG_RANGING_ROUNDS_NOT_CONFIGURED: TODO to be filled.
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_DT_TAG_RANGING_ROUNDS_NOT_CONFIGURED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_UWB_INITIATION_TIME_EXPIRED: Requested UWB initiation time is in the past..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_UWB_INITIATION_TIME_EXPIRED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_AOSP_ERROR_INVALID_CHANNEL_WITH_AOA: The channel requested is not available for AoA..
+	 */
+	QUWBS_FBS_REASON_CODE_AOSP_ERROR_INVALID_CHANNEL_WITH_AOA = 128,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_AOSP_ERROR_STOPPED_DUE_TO_OTHER_SESSION_CONFLICT: UWB stopped caused by other session conflict..
+	 */
+	QUWBS_FBS_REASON_CODE_AOSP_ERROR_STOPPED_DUE_TO_OTHER_SESSION_CONFLICT,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_AOSP_REGULATION_UWB_OFF: UWB has been disabled (eg country code change leads to UWB unsupported)..
+	 */
+	QUWBS_FBS_REASON_CODE_AOSP_REGULATION_UWB_OFF,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_MAX_STS_REACHED: Maximum STS value is reached..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_MAX_STS_REACHED = 242,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_RADAR_MEASUREMENT_TIME_REACHED: Requested measuremment time has passed..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_RADAR_MEASUREMENT_TIME_REACHED,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_DEVICE_ROLE: Invalid combination of Device Type and Device Role in TWR..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_DEVICE_ROLE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_NOMEM: Not enough memory to start the session..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_NOMEM,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_DRIVER_DOWN: The driver has not been started correctly..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_DRIVER_DOWN = 247,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_PROXIMITY_RANGE: Incorrect value for proximity config or AoA bound config parameters..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_PROXIMITY_RANGE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_FRAME_INTERVAL: Incorrect value for inter-frame interval parameter (OWR for AoA)..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_FRAME_INTERVAL,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_CAP_SIZE_RANGE: Incorrect value for CAP size range parameter (Contention-Based TWR)..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_CAP_SIZE_RANGE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_SCHEDULE_MODE: Requested schedule mode is not supported..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_SCHEDULE_MODE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_INVALID_PRF_MODE: Requested PRF mode is not supported..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_INVALID_PRF_MODE,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_START_CONFIG: Invalid configuration for CCC session..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_START_CONFIG = 254,
+	/**
+	 * @QUWBS_FBS_REASON_CODE_ERROR_RDS_BUSY: Device or resource is busy..
+	 */
+	QUWBS_FBS_REASON_CODE_ERROR_RDS_BUSY,
+};
+
+/**
+ * enum quwbs_fbs_session_type - Type of Fira Based Session session. For more details in "7.2 UWB Session Initiation" section of FiRa Std FiRa UCI Generic Technical Specification v2.0.0_0.9r9.
+ */
+enum quwbs_fbs_session_type {
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_RANGING_NO_IN_BAND_DATA: Ranging session (no in-band data). Exist in Std V1..
+	 */
+	QUWBS_FBS_SESSION_TYPE_RANGING_NO_IN_BAND_DATA = 0,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_RANGING_AND_IN_BAND_DATA: Ranging and in-band data session..
+	 */
+	QUWBS_FBS_SESSION_TYPE_RANGING_AND_IN_BAND_DATA,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_DATA_TRANSFER: Data transfer session..
+	 */
+	QUWBS_FBS_SESSION_TYPE_DATA_TRANSFER,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_RANGING_ONLY_PHASE: Ranging-only phase..
+	 */
+	QUWBS_FBS_SESSION_TYPE_RANGING_ONLY_PHASE,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_IN_BAND_DATA_PHASE: In-band data phase..
+	 */
+	QUWBS_FBS_SESSION_TYPE_IN_BAND_DATA_PHASE,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_RANGING_WITH_DATA_PHASE: Ranging-with-data phase..
+	 */
+	QUWBS_FBS_SESSION_TYPE_RANGING_WITH_DATA_PHASE,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_HUS_PRIMARY: HUS primary session..
+	 */
+	QUWBS_FBS_SESSION_TYPE_HUS_PRIMARY = 159,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_VENDOR_CCC: Vendor Specific value used for CCC..
+	 */
+	QUWBS_FBS_SESSION_TYPE_VENDOR_CCC = 160,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_VENDOR_RADAR: Vendor Specific value used for Radar..
+	 */
+	QUWBS_FBS_SESSION_TYPE_VENDOR_RADAR,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_VENDOR_ACWG: Vendor session type value for ACWG declared in the Google Android source code. There is no standard reference available..
+	 */
+	QUWBS_FBS_SESSION_TYPE_VENDOR_ACWG,
+	/**
+	 * @QUWBS_FBS_SESSION_TYPE_DEVICE_TEST_MODE: Device Test Mode..
+	 */
+	QUWBS_FBS_SESSION_TYPE_DEVICE_TEST_MODE = 208,
+};
+
+/**
+ * enum quwbs_fbs_device_type - Device type.
+ */
+enum quwbs_fbs_device_type {
+	/**
+	 * @QUWBS_FBS_DEVICE_TYPE_CONTROLEE: The device is a controlee.
+	 */
+	QUWBS_FBS_DEVICE_TYPE_CONTROLEE = 0,
+	/**
+	 * @QUWBS_FBS_DEVICE_TYPE_CONTROLLER: The device is a controller.
+	 */
+	QUWBS_FBS_DEVICE_TYPE_CONTROLLER = 1,
+	/**
+	 * @QUWBS_FBS_DEVICE_TYPE_UNDEFINED: The device type is undefined.
+	 */
+	QUWBS_FBS_DEVICE_TYPE_UNDEFINED = 255,
+};
+
+/**
+ * enum quwbs_fbs_device_role - Role played by a device. For more details in "8.6 Device Capability Parameters" section of FiRa Std FiRa UCI Generic Technical Specification v2.0.0_IPR_Review..
+ */
+enum quwbs_fbs_device_role {
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_RESPONDER: The device acts as a responder.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_RESPONDER = 0,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_INITIATOR: The device acts as an initiator.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_INITIATOR,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_UT_SYNC_ANCHOR: The device acts as an Uplink TDoA Synchronization Anchor..
+	 */
+	QUWBS_FBS_DEVICE_ROLE_UT_SYNC_ANCHOR,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_UT_ANCHOR: The device acts as an Uplink TDoA Anchor..
+	 */
+	QUWBS_FBS_DEVICE_ROLE_UT_ANCHOR,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_UT_TAG: The device acts as an Uplink TDoA Tag..
+	 */
+	QUWBS_FBS_DEVICE_ROLE_UT_TAG,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_ADVERTISER: The device acts as an advertiser.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_ADVERTISER,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_OBSERVER: The device acts as an observer.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_OBSERVER,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_DT_ANCHOR: The device acts as an OWR DL-TDoA anchor.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_DT_ANCHOR,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_DT_TAG: The device acts as an OWR DL-TDoA tag.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_DT_TAG,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_MAX: Maximum value..
+	 */
+	QUWBS_FBS_DEVICE_ROLE_MAX = 8,
+	/**
+	 * @QUWBS_FBS_DEVICE_ROLE_UNDEFINED: The device role is undefined.
+	 */
+	QUWBS_FBS_DEVICE_ROLE_UNDEFINED = 255,
+};
+
+#ifdef __cplusplus
+}
+#endif

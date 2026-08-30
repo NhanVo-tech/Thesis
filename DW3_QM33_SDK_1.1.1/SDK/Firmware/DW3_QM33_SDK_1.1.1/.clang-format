@@ -1,0 +1,62 @@
+Language: Cpp
+
+# Use 4 spaces to indent
+IndentWidth: 4
+TabWidth : 4
+# IndentAccessModifiers to false to use `AccessModifierOffset`
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+# No limits to the line column
+ColumnLimit: 0
+# Align consecutive macros in the same level
+AlignConsecutiveMacros: AcrossEmptyLines
+
+# Disable writing short functions on one line
+AllowShortFunctionsOnASingleLine: false
+# Disable the break after return type of a function
+AlwaysBreakAfterReturnType: None
+# Set of rules for break before braces
+BreakBeforeBraces: Custom
+
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: false
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+  SplitEmptyFunction: false
+
+# Keep maximum 2 empty lines
+MaxEmptyLinesToKeep: 2
+# Align * of the pointer to the variable name
+PointerAlignment: Right
+UseTab: Never
+# Don't change include order
+SortIncludes: Never
+
+# FOR FUTURE USE
+# Set the system include as first
+# IncludeCategories:
+#       # System include
+#       - Regex:           '<[[:alnum:].]+>'
+#         Priority:        0
+#       # Project include
+#       - Regex:           '"*.h"'
+#         Priority:        1
+# Make system include and project group include in seperate groups
+# IncludeBlocks: Regroup
+BreakBeforeBinaryOperators: All
+AlignConsecutiveAssignments: None
+IndentCaseLabels: true
+AlignAfterOpenBracket: BlockIndent
+KeepEmptyLinesAtTheStartOfBlocks: false
+ContinuationIndentWidth: 4
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false

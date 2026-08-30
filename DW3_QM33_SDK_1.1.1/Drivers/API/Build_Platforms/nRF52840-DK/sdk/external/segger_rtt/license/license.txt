@@ -1,0 +1,28 @@
+qani
+Set-Location "C:\DATN\SmartCarAccess\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\Projects\FreeRTOS\QANI\nRF52840DK"   
+$env:PYTHONPATH="C:\DATN\SmartCarAccess\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\Projects\Common\scripts"
+& "C:\Users\Legion\AppData\Local\Programs\Python\Python38\python.exe" .\CreateTarget.py -build Debug
+Set-Location "C:\DATN\SmartCarAccess\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\BuildOutput\QANI\FreeRTOS\nRF52840DK\Debug"
+mingw32-make -j
+
+
+
+helloworld
+Set-Location "C:\Users\Legion\Downloads\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\Projects\FreeRTOS\HelloWorld\nRF52840DK"
+$env:PYTHONPATH="C:\Users\Legion\Downloads\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\Projects\Common\scripts"
+& "C:\Users\Legion\AppData\Local\Programs\Python\Python38\python.exe" .\CreateTarget.py -build Debug
+Set-Location "C:\Users\Legion\Downloads\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\BuildOutput\HelloWorld\FreeRTOS\nRF52840DK\Debug"
+mingw32-make -j
+
+loink@glamo.com.vn
+
+uci
+Set-Location "C:\DATN\SmartCarAccess\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\Projects\FreeRTOS\UCI\nRF52840DK" 
+$env:PYTHONPATH="C:\DATN\SmartCarAccess\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\Projects\Common\scripts"
+& "C:\Users\Legion\AppData\Local\Programs\Python\Python38\python.exe" .\CreateTarget.py -build Debug
+Set-Location "C:\DATN\SmartCarAccess\DW3_QM33_SDK_1.1.1\SDK\Firmware\DW3_QM33_SDK_1.1.1\BuildOutput\UCI\FreeRTOS\nRF52840DK\Debug"
+mingw32-make -j
+
+
+android app
+python run_fira_twr.py -p COM7 --mac 00:00 --dest-mac 20:B6 -t -1

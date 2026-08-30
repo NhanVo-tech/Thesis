@@ -1,0 +1,7 @@
+# Run with `make -f Recipes <command>`.
+#
+# You can get help with `make -f Recipes help`.
+
+ROOT_DIR=$(shell git rev-parse --show-toplevel)
+
+include $(ROOT_DIR)/tools/Recipes.mk

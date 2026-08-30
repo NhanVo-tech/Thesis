@@ -1,0 +1,40 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Qorvo US, Inc.
+ *
+ * SPDX-License-Identifier: LicenseRef-Qorvo-2
+ */
+
+/*
+ * {{ generated }}
+ */
+
+#pragma once
+
+#include "l1_config_types.h"
+#include "l1_config_internal.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+{% import "macros.h.j2" as macros -%}
+{% set root_struct = find_type(model.root) -%}
+
+/* Current L1 config layout version. */
+#define L1_CONFIG_VERSION {{model.version}}
+
+{# /* Generate config parameters structure. */ #}
+{% set root_struct_name = model.root + "_params" %}
+{{ macros.type_decl(root_struct_name, root_struct) -}}
+
+/* Number of root key sectionss, i.e. first parts of keys, before first itemization. */
+#define NB_ROOT_KEY_SECTIONS {{get_nb_root_key_sections()}}
+
+{# /* Generate IS_PARAM macros. */ #}
+{% for name, param in root_struct.fields.items() %}
+{{- macros.render_is_param_macros(name, param) -}}
+{% endfor -%}
+
+#ifdef __cplusplus
+}
+#endif

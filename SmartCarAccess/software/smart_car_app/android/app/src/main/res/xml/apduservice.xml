@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/desc_smartcar_hce"
+    android:requireDeviceUnlock="false"
+    android:apduServiceBanner="@drawable/hce_service_banner">
+
+    <!-- Provisioning AID group: CCC AID A0 00 00 08 09 43 43 43 44 4B 46 76 31 -->
+    <aid-group
+        android:category="other"
+        android:description="@string/desc_smartcar_group">
+        <aid-filter android:name="A000000809434343444B467631" />
+    </aid-group>
+</host-apdu-service>

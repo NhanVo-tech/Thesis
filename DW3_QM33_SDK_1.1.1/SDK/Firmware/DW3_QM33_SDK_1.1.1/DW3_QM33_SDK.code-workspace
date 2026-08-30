@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"C_Cpp.autoAddFileAssociations": false,
+		"files.associations": {
+			"*.h": "c",
+			"*.c": "c"
+		},
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.cpptools",
+			"marus25.cortex-debug",
+			"rioj7.command-variable",
+			"ms-python.python",
+		],
+	}
+}

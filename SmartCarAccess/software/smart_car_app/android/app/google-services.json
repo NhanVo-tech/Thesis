@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "290214261998",
+    "project_id": "smart-car-access-2",
+    "storage_bucket": "smart-car-access-2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:290214261998:android:6dfbe990be7bf574e22fff",
+        "android_client_info": {
+          "package_name": "com.example.smart_car_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIljkh0xWJjMzNHsU4z0q1xYNJ3G-GOx0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

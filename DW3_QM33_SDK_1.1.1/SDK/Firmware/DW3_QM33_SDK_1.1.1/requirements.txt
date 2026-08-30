@@ -1,0 +1,6 @@
+pip>=23.0.0
+poetry==1.7.1
+poethepoet==0.24.4
+pyyaml
+
+-e Projects/Common/scripts/

@@ -1,0 +1,12 @@
+[project]
+name = "DW3_QM33_SDK-scripts"
+version = "0.0.0"
+dependencies = []
+requires-python = ">=3.8"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["CreateTargetCommon", "CreateTargetCommon__dev"]

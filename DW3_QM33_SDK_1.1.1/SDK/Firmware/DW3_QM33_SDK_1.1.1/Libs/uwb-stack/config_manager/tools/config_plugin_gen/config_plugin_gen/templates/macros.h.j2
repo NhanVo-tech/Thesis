@@ -1,0 +1,756 @@
+{#
+ # Copyright (c) 2024 Qorvo US, Inc
+ #
+ # All rights reserved.
+ #
+ # NOTICE: All information contained herein is, and remains the property of Qorvo, Inc. and its
+ # suppliers, if any. The intellectual and technical concepts herein are proprietary to Qorvo, Inc.
+ # and its suppliers, and may be covered by patents, patent applications, and are protected by trade
+ # secret and/or copyright law. Dissemination of this information or reproduction of this material
+ # is strictly forbidden unless prior written permission is obtained from Qorvo, Inc.
+-#}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Declaration of types (enum, struct, bitfields, etc.) ---------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{%- macro enum_value_name(enum_name, value_name) -%}
+{{enum_name.upper()}}_{{value_name.upper()}}
+{%- endmacro -%}
+
+{% macro enum_decl(name, enum) %}
+{% set summary = enum.summary.strip('\n') %}
+/**
+ * enum {{name}} - {{summary}}.
+{% for value_name, value in enum.values.items() %}
+ * @{{ name.upper()}}_{{value_name.upper()}}: {{value.summary.strip('\n')}}.
+{% endfor %}
+ * @{{ name.upper() }}_NUM: Maximum number of {{summary}}.
+ */
+enum {{name}}
+{
+    {% for value_name, value in enum.values.items() %}
+	{{ enum_value_name(name, value_name) }} = {{value.value}},
+    {% endfor %}
+	{{ name.upper() }}_NUM
+};
+
+{% endmacro -%}
+
+{% macro struct_decl(name, struct) %}
+/**
+ * struct {{name}} - {{struct.summary.strip('\n')}}.
+    {% for field_name, field in struct.fields.items() %}
+        {% set field_name = field_name.replace('.', '_') %}
+ * @{{field_name}}: {{field.summary.strip('\n')}}.
+    {% endfor %}
+ */
+struct {{name}}
+{
+    {% for field_name, field in struct.fields.items() %}
+        {% if field.element_type == "itemized" %}
+            {# /* Find all indexes of itemized. */ #}
+            {% set define_size_name = get_itemized_size_name(field_name, field) %}
+	{{ get_full_type(field.item_type) }} {{field_name}}[{{define_size_name}}];
+        {% elif field.element_type == "array" %}
+            {% set size = field.size %}
+            {% if name == "l1_config" %}
+                {% set full_name = field_name %}
+            {% else %}
+                {% set full_name = name + "_" + field_name %}
+            {% endif %}
+	{{ get_full_type(field.item_type) }} {{field_name}}[{{size}}];
+        {% else %}
+	{{ get_full_type(field.element_type) }} {{field_name}};
+        {% endif %}
+    {% endfor %}
+};
+
+{% endmacro -%}
+
+{% macro bitfield_decl(name, bitfield) %}
+/**
+ * struct {{name}} - {{bitfield.summary.strip('\n')}}.
+    {% for bits_name, value in bitfield.bits.items() %}
+        {% set summary = value.summary.rstrip('\n') %}
+        {% set str_list = summary.split('\n') %}
+        {% if str_list|length > 1 %}
+ * @{{bits_name}}: {{str_list[0]}}
+            {% for str in str_list[1:str_list|length] %}
+ * {{str}}
+            {% endfor %}
+        {% else %}
+ * @{{bits_name}}: {{summary}}.
+        {% endif %}
+    {% endfor %}
+ */
+struct {{name}}
+{
+    {% for bits_name, value in bitfield.bits.items() %}
+	uint8_t {{bits_name}}: {{value.size}};
+    {% endfor %}
+};
+
+{% endmacro -%}
+
+{% macro array_decl(name, array) %}
+/**
+ * typedef {{name}} - {{array.summary.strip('\n')}}.
+ */
+typedef {{get_full_type(array.item_type)}} {{name}}[{{array.size}}];
+
+{% endmacro -%}
+
+{% macro type_decl(name, type) %}
+{# /* Format a C type declaration. */ #}
+    {% if is_builtin(type.element_type) == false %}
+        {% if type.element_type == "enum" %}
+            {{- enum_decl(name, type) -}}
+        {% elif type.element_type == "struct" %}
+            {{- struct_decl(name, type) -}}
+        {% elif type.element_type == "bitfield" %}
+            {{- bitfield_decl(name, type) -}}
+        {% elif type.element_type == "array" %}
+        {{- array_decl(name, type) -}}
+        {% else %}
+           {{ raise_error("unknown type {}".format(type.element_type)) }}
+        {% endif %}
+    {% endif %}
+{% endmacro -%}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Render defines of the model ----------------------------------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{% macro render_define(name, param) %}
+    {% if not name.startswith('CONFIG_') %}
+        {% set size = param.value %}
+        {% set summary = param.summary.rstrip('\n') %}
+/* {{summary}}. */
+#define {{name}} {{size}}
+
+    {% endif %}
+{% endmacro -%}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Add defines to check itemized index --------------------------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{# /* Global variable to register all checkers already created. Allows to avoid creating the */ #}
+{# /* same one multiple times, when multiple itemized use the same indexes type. */ #}
+{% set checker_list = [] %}
+
+{% macro __render_check_index_itemized(name, param) %}
+    {% set idx_name = name + "_idx" %}
+    {% set checker_name = "CHECK_" + idx_name|upper %}
+    {% if checker_name not in checker_list %}
+#define {{checker_name}}({{idx_name}}) \
+	do { \
+	{% set is_enum, enum = is_itemized_indexes_enum(param) %}
+        {% if is_enum %}
+            {% set enum_name = param.indexes %}
+            {% set check_policy_func = get_checker_func(enum_name, enum) %}
+		if ({{check_policy_func}}((void *)&{{idx_name}}) != QERR_SUCCESS) \
+        {% else %}
+            {% set define_size_name = get_itemized_size_name(name, param) %}
+		if ({{idx_name}} >= {{define_size_name}}) \
+        {% endif %}
+			return QERR_EINVAL; \
+	} while (0)
+	{% set tmp = checker_list.append(checker_name) %}
+
+    {% endif %}
+{% endmacro -%}
+
+{% macro render_check_index(name, param) %}
+    {% set struct = None %}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% if base_type == "itemized" %}
+        {# /* Add the checker corresponding to current itemized. */ #}
+{{- __render_check_index_itemized(name, param) -}}
+        {# /* Iterate on items in case itemized below. */ #}
+        {% set struct = find_type(param.item_type) %}
+    {% elif base_type == "struct" %}
+        {# /* Iterate on struct fields in case itemized below. */ #}
+        {% set struct = find_type(param.element_type) %}
+    {% endif %}
+    {% if struct != None %}
+        {# /* Recursive call for all structure fields. */ #}
+        {% for field_name, field in struct.fields.items() %}
+{{- render_check_index(field_name, field) -}}
+        {% endfor %}
+    {% endif %}
+{% endmacro -%}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Getter APIs (declaration and implementation) -----------------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{% macro render_itemized_args(items_list) %}
+    {% for item in items_list %}
+        {% set item_name = item[0] %}
+uint8_t {{item_name}}_idx,
+    {%- endfor -%}
+{%- endmacro -%}
+
+{# /* Render getter prototype */ #}
+{% macro __getter_get_prototype(name, param, items_list, parent_name) %}
+    {% set full_name = get_getter_func(name, param, parent_name) %}
+    {% if param.element_type == "array" %}
+        {% set full_type = get_full_type(param.item_type) %}
+        {% set ret_arg = "const " + full_type + " **" + name %}
+    {% else %}
+        {% set full_type = get_full_type(param.element_type) %}
+        {% set ret_arg = full_type + " *" + name %}
+    {% endif %}
+    {% if items_list != [] %}
+        {% set ret_type = "enum qerr" %}
+    {% else %}
+        {% set ret_type = "void" %}
+    {% endif %}
+{{ret_type}} {{full_name}}({{render_itemized_args(items_list)}}{{ret_arg}})
+{%- endmacro -%}
+
+{# /* Render getter declaration for .h file, including its documentation. */ #}
+{% macro __getter_decl(name, param, items_list, parent_name) %}
+    {% set summary = param.summary.rstrip('\n') %}
+    {% set full_name = get_getter_func(name, param, parent_name) %}
+    {% set prototype = __getter_get_prototype(name, param, items_list, parent_name) %}
+/**
+ * {{full_name}} - Read the {{summary}}.
+    {% for item in items_list %}
+        {% set item_name = item[0] %}
+        {% set item_desc = item[1].summary.rstrip('\n') %}
+ * @{{item_name}}_idx: Index of the {{item_desc}}.
+    {% endfor %}
+ * @{{name}}: the returned {{summary}}.
+    {% if param.description %}
+ *
+        {% set str_list = param.description.rstrip('\n').split('\n') %}
+        {% for str in str_list %}
+ * {{str}}
+        {% endfor %}
+    {% endif %}
+    {% if items_list != [] %}
+ *
+ * Return: QERR_EINVAL if an index given as argument is invalid, else QERR_SUCCESS.
+    {% endif %}
+ */
+{{ prototype }};
+{% endmacro -%}
+
+{# /* Render getter implementation for .c file. */ #}
+{% macro __getter_func(name, param, items_list, parent_name, param_path) %}
+    {% set prototype = __getter_get_prototype(name, param, items_list, parent_name) %}
+{{ prototype }}
+{
+    {# /* When parameter is itemized, all indexes must be checked. */ #}
+    {% for item in items_list %}
+        {% set idx_name = item[0] + "_idx" %}
+        {% set checker_name = "CHECK_" + idx_name|upper %}
+	{{checker_name}}({{idx_name}});
+    {% endfor %}
+	*{{name}} = l1_config.params.{{param_path}}{{name}};
+    {# /* When parameter is itemized, function returns a status. */ #}
+    {% if items_list != [] %}
+	return QERR_SUCCESS;
+    {% endif %}
+}
+{% endmacro -%}
+
+{# /* Recursively render getters prototype and implementation. */ #}
+{% macro __getter_recursive(name, param, items_list, param_path, parent_name, is_decl) %}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% set struct = None %}
+    {% set tmp_items_list = items_list.copy() %}
+    {% if param.element_type == "itemized" %}
+        {# /* Add getter for all fields of the itemized struct. */ #}
+        {% set struct = find_type(param.item_type) %}
+        {% set param_path = param_path + name + "[" + name + "_idx]." %}
+        {% set parent_name = "" %}
+        {% set tmp = tmp_items_list.append((name, param)) %}
+    {% elif base_type == "struct" %}
+        {# /* Add getter for all fields of the struct. */ #}
+        {% set struct = find_type(param.element_type) %}
+        {% set param_path = param_path + name + "." %}
+        {% set parent_name = name %}
+    {% endif %}
+    {% if struct != None %}
+        {% for field_name, field in struct.fields.items() %}
+            {# /* Recursive call on each fields of the struct. */ #}
+{{- __getter_recursive(field_name, field, tmp_items_list, param_path, parent_name, is_decl) -}}
+        {% endfor %}
+    {% else %}
+        {% if is_decl == True %}
+{{ __getter_decl(name, param, items_list, parent_name) }}
+        {% else %}
+{{ __getter_func(name, param, items_list, parent_name, param_path) }}
+        {% endif %}
+    {% endif %}
+{% endmacro -%}
+
+{% macro getter_decl(name, param) %}
+{{- __getter_recursive(name, param, [], "", "", True) -}}
+{% endmacro -%}
+
+{% macro getter_func(name, param) %}
+{{- __getter_recursive(name, param, [], "", "", False) -}}
+{% endmacro -%}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Policy check -------------------------------------------------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{# /* Policy check for type enum. */ #}
+{% macro __policy_check_enum(name, param) %}
+    {% set policy_check_func_name = get_checker_func(name, param) %}
+STATIC enum qerr {{policy_check_func_name}}(void *value)
+{
+	uint8_t v = *(uint8_t *)value;
+	switch (v) {
+    {% for value_name, value in param.values.items() %}
+	case {{ name.upper()}}_{{value_name.upper()}}:
+    {% endfor %}
+		return QERR_SUCCESS;
+	default:
+		return QERR_ERANGE;
+	}
+}
+
+{% endmacro -%}
+
+{# /* Policy check for type bitfield. */ #}
+{% macro __policy_check_bitfield(name, param) %}
+    {% set policy_check_func_name = get_checker_func(name, param) %}
+    {% set full_type = "struct " + name %}
+STATIC enum qerr {{policy_check_func_name}}(void *value)
+{
+	{{ full_type }} v = *({{ full_type }} *)value;
+	uint8_t bits_val; (void)bits_val;
+
+    {% for bits_name, bits in param.bits.items() %}
+        {% if bits.num_range != None %}
+           {% set min_max = bits.num_range.split('..') %}
+           {% set min = min_max[0] %}
+           {% set max = min_max[1] %}
+        if (v.{{ bits_name }} > {{ max }})
+		return QERR_ERANGE;
+        {% elif bits.element_type != None %}
+            {% set checker_func = get_checker_func(bits_name, bits) %}
+	bits_val = v.{{ bits_name }};
+	if ({{ checker_func }}(&bits_val))
+		return QERR_ERANGE;
+        {% endif %}
+    {% endfor %}
+	return QERR_SUCCESS;
+}
+
+{% endmacro -%}
+
+{# /* Policy check for params with a range defined. */ #}
+{% macro __policy_check_range(name, param) %}
+    {% set policy_check_func_name = get_checker_func(name, param) %}
+STATIC enum qerr {{policy_check_func_name}}(void *value)
+{
+    {% set min_max = param.num_range.split('..') %}
+    {% set min = min_max[0] %}
+    {% set max = min_max[1] %}
+    {% if param.element_type == "array" %}
+        {% set type = param.item_type %}
+	{{type}} *v = ({{type}} *)value;
+	for (int i = 0; i < {{param.size}}; i++) {
+        {% if is_numeric_unsigned(type) and min|int == 0 %}
+		if (v[i] > {{max}}) {
+        {% else %}
+		if ((v[i] < {{min}}) || (v[i] > {{max}})) {
+        {% endif %}
+			return QERR_ERANGE;
+		}
+	}
+    {% else %}
+        {% set type = param.element_type %}
+	{{type}} v = *({{type}} *)value;
+	{% if is_numeric_unsigned(type) and min|int == 0 %}
+	if (v > {{max}}) {
+        {% else %}
+	if ((v < {{min}}) || (v > {{max}})) {
+        {% endif %}
+		return QERR_ERANGE;
+	}
+    {% endif %}
+	return QERR_SUCCESS;
+}
+
+{% endmacro -%}
+
+{# /* Policy check for an array. */ #}
+{% macro __policy_check_array(name, param) %}
+    {% set policy_check_func_name = get_checker_func(name, param) %}
+STATIC enum qerr {{policy_check_func_name}}(void *value)
+{
+    {% set item_param = find_type(param.item_type) %}
+    {% set item_checker_func = get_checker_func(param.item_type, item_param) %}
+    {% set type = get_full_type(param.item_type) %}
+	enum qerr r;
+	{{type}} *v = ({{type}} *)value;
+	for (int i = 0; i < {{param.size}}; i++) {
+		r = {{item_checker_func}}(&v[i]);
+		if (r)
+			return r;
+	}
+	return QERR_SUCCESS;
+}
+
+{% endmacro %}
+
+{# /* Create policy check for all types, if needed. */ #}
+{% macro render_policy_check_func_types(name, param) %}
+    {% if param.element_type == "enum" %}
+{{- __policy_check_enum(name, param) -}}
+    {% elif param.element_type == "bitfield" %}
+	{% if has_checker_func(name, param) %}
+{{- __policy_check_bitfield(name, param) -}}
+	{% endif %}
+    {%elif param.element_type == "array" %}
+	{% if has_checker_func(name, param) %}
+{{- __policy_check_array(name, param) -}}
+        {% endif %}
+    {% endif %}
+{% endmacro -%}
+
+{# /* Create policy check for the root config structure. */ #}
+{# /* The policy check for complex types are not generated here, but thanks to macro */ #}
+{# /* render_policy_check_func_types. This avoids to generate the same policy check func */ #}
+{# /* multiple times for the same type. */ #}
+{% macro render_policy_check_func_config(name, param, prefix="") %}
+    {# /* Format c function that check param validity, when needed. */ #}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% set full_name = prefix + name %}
+    {% set struct = None %}
+    {% if base_type == "itemized" %}
+        {# /* Item type is always a struct. Find its definition. */ #}
+        {% set struct = find_type(param.item_type) %}
+    {% elif base_type == "struct" %}
+        {% set struct = find_type(param.element_type) %}
+    {% endif %}
+    {% if struct != None %}
+        {# /* Recursive call for all structure fields. */ #}
+        {% for field_name, field in struct.fields.items() %}
+{{- render_policy_check_func_config(field_name, field, full_name + "_") -}}
+        {% endfor %}
+    {% else %}
+        {# /* Check if a range is specified. */ #}
+        {% set range = get_range(param) %}
+        {% if range != None %}
+{{- __policy_check_range(full_name, param) -}}
+        {% elif base_type == "array" %}
+            {% if has_checker_func(name, param) %}
+{{- __policy_check_array(full_name, param) -}}
+            {% endif %}
+        {% endif %}
+    {% endif %}
+{% endmacro -%}
+
+{# /* Call the policy check func for a parameter. */ #}
+{% macro render_policy_check_call(name, param, prefix="") %}
+{# /* Format c function that check param validity, when needed. */ #}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% set full_name = prefix + name %}
+    {% set struct = None %}
+    {% if base_type == "itemized" %}
+        {# /* Item type is always a struct. Find its definition. */ #}
+        {% set struct = find_type(param.item_type) %}
+    {% elif base_type == "struct" %}
+        {% set struct = find_type(param.element_type) %}
+    {% endif %}
+    {% if struct != None %}
+        {# /* Recursive call for all structure fields. */ #}
+        {% for field_name, field in struct.fields.items() %}
+{{- render_policy_check_call(field_name, field, full_name + "_") -}}
+        {% endfor %}
+    {% else %}
+        {% set check_policy_func = get_checker_func(full_name, param) %}
+        {% if check_policy_func != "NULL" %}
+            {% set macro_name = "IS_" + prefix|upper + "PARAM" %}
+	if ({{ macro_name }}({{ name }}))
+		return {{ check_policy_func }}(value);
+
+        {% endif %}
+    {% endif %}
+{% endmacro -%}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Generate key sections ----------------------------------------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{# /* Render key section line for a field which is itemized. */ #}
+{% macro __render_key_section_table_entry(name, param, data_info_name, prefix="") %}
+    {% set full_name = prefix + name %}
+    {% if data_info_name == "KEY_INFO" %}
+        {% set full_str_name = full_name %}
+    {% else %}
+        {% set full_str_name = "." + full_name %}
+    {% endif %}
+    {% if param.element_type == "itemized" %}
+        {% set itemized_size_name = get_itemized_size_name(name, param) %}
+        {% set itemized_section_name = param.item_type + "_keys" %}
+	{ "{{full_str_name}}", {{data_info_name}}({{full_name}}[0]),
+	  { {{itemized_size_name}}, qarray_size({{itemized_section_name}}), {{itemized_section_name}} }
+	},
+    {% else %}
+	{ "{{full_str_name}}", {{data_info_name}}({{full_name}}), NOT_ITEMIZED },
+    {% endif %}
+{% endmacro %}
+
+{# /* Render key section macro and structure for an itemized. */ #}
+{% macro __render_key_section_itemized(name, param) %}
+    {# /* Item type is always a struct. Find its definition. */ #}
+    {% set full_struct_type = get_full_type(param.item_type) %}
+    {% set data_info_name = param.item_type|upper + "_DATA_INFO" %}
+#define {{data_info_name}}(m)                                                            \
+	{                                                                                \
+		offsetof({{full_struct_type}}, m), sizeof_field({{full_struct_type}}, m) \
+	}
+
+/* Key section following prefix "{{param.item_type}}<>." */
+    {% set struct = find_type(param.item_type) %}
+struct l1_config_key_section {{param.item_type}}_keys[] = {
+    {% for field_name, field in struct.fields.items() %}
+        {% set base_type, is_native_type = get_base_type(field.element_type) %}
+	{% if base_type == "struct" %}
+	    {% set child_struct = find_type(field.element_type) %}
+            {% for child_field_name, child_field in child_struct.fields.items() %}
+{{- __render_key_section_table_entry(child_field_name, child_field, data_info_name, field_name + ".") -}}
+	    {% endfor %}
+        {% else %}
+{{- __render_key_section_table_entry(field_name, field, data_info_name) -}}
+        {% endif %}
+    {% endfor %}
+};
+
+{% endmacro -%}
+
+{# /* Render key sections for types. */ #}
+{% macro render_key_section_types(name, param) %}
+    {% if param.element_type == "struct" %}
+        {% for field_name, field in param.fields.items() %}
+            {% if field.element_type == "itemized" %}
+{{- __render_key_section_itemized(field_name, field) -}}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+{% endmacro -%}
+
+{# /* Render key section for the root config structure. */ #}
+{% macro render_key_section_config(name, param, prefix="") %}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% if base_type == "struct" %}
+        {% set struct = find_type(param.element_type) %}
+        {% for field_name, field in struct.fields.items() %}
+            {% set base_type, is_native_type = get_base_type(field.element_type) %}
+            {% set prefix = prefix + name + "." %}
+{{- render_key_section_config(field_name, field, prefix) -}}
+        {% endfor %}
+    {% else %}
+{{- __render_key_section_table_entry(name, param, "KEY_INFO", prefix) -}}
+    {% endif %}
+{% endmacro %}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Generate IS_PARAM_* used to know which policy check func to call ---------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{% macro render_itemized_var(items_list) %}
+    {% for item in items_list %}
+        {% set item_name = item[0] %}
+{{item_name}}[{{item_name}}_idx].
+    {%- endfor -%}
+{%- endmacro -%}
+
+{% macro get_itemized_name(items_list) %}
+    {% for item in items_list %}
+        {% set item_name = item[0] %}
+{{item_name}}_
+    {%- endfor -%}
+{%- endmacro -%}
+
+{% macro get_macro_is_param_name(name) %}
+IS_{{name.upper()}}PARAM
+{%- endmacro -%}
+
+{% macro get_itemized_macro_args(items_list) %}
+    {% for item in items_list %}
+        {% set item_name = item[0] %}
+, {{item_name}}_idx
+    {%- endfor -%}
+{%- endmacro -%}
+
+{# /* Generate macros for itemized params. */ #}
+{% macro __render_is_param_macros_itemized(items_list) %}
+    {% set macro_name = get_macro_is_param_name(get_itemized_name(items_list)) %}
+    {% set items_list_size = items_list|length %}
+    {% set first_item = items_list[0] %}
+    {% set first_item_name = first_item[0] %}
+    {% set first_item_param = first_item[1] %}
+    {% set itemized_size_name = get_itemized_size_name(first_item_name, first_item_param) %}
+    {% set type = get_full_type(first_item_param.item_type) %}
+
+    {%- if items_list_size == 1 %}
+#define {{macro_name}}(param)                                                               \
+	((offset >= KEY_OFFSET({{first_item_name}}[0].param)) &&                                             \
+	 ((offset - KEY_OFFSET({{first_item_name}}[0].param)) / sizeof({{type}}) < {{itemized_size_name}}) && \
+	 ((offset - KEY_OFFSET({{first_item_name}}[0].param)) % sizeof({{type}}) == 0))
+
+    {% else %}
+        {% set last_item = items_list|last %}
+        {% set last_item_name = last_item[0] %}
+	{% set cur_macro_name = macro_name + "_PER_" + last_item_name|upper %}
+	{% set items_list_subset = items_list[1:items_list_size] %}
+        {% set var = first_item_name + "[0]." + render_itemized_var(items_list_subset) %}
+        {% set params = "param" + get_itemized_macro_args(items_list_subset) %}
+#define {{cur_macro_name}}({{params}})                                        \
+	((offset >= KEY_OFFSET({{var}}param)) &&                                             \
+	 ((offset - KEY_OFFSET({{var}}param)) / sizeof({{type}}) < {{itemized_size_name}}) &&     \
+	 ((offset - KEY_OFFSET({{var}}param)) % sizeof({{type}}) == 0))
+
+        {% set nb_intermediate_macros = items_list_size - 2 %}
+        {% if nb_intermediate_macros > 0 %}
+            {% for i in range(nb_intermediate_macros) %}
+                {% set cur_item_idx = items_list_size - 1 - i %}
+                {% set cur_item = items_list[cur_item_idx] %}
+                {% set cur_itemized_size = get_itemized_size(cur_item[1]) %}
+                {% set items_list_subset = items_list[1:cur_item_idx] %}
+                {% set last_item = items_list_subset|last %}
+                {% set last_item_name = last_item[0] %}
+                {% set prev_macro_name = cur_macro_name %}
+                {% set cur_macro_name = macro_name + "_PER_" + last_item_name|upper %}
+                {% set params = "param" + get_itemized_macro_args(items_list_subset) %}
+#define {{cur_macro_name}}({{params}}) ( \
+                {% for j in range(0, cur_itemized_size - 1) %}
+	{{ prev_macro_name }}({{params}}, {{j}}) || \
+                {% endfor %}
+	{{ prev_macro_name }}({{params}}, {{cur_itemized_size - 1}}))
+            {% endfor %}
+
+        {% endif %}
+	{% set cur_item = items_list[1] %}
+	{% set cur_item_name = cur_item[0] %}
+	{% set cur_item_param = cur_item[1] %}
+	{% set prev_macro_name = macro_name + "_PER_" + cur_item_name|upper %}
+#define {{macro_name}}(param) (\
+	{% set cur_itemized_size = get_itemized_size(cur_item_param) %}
+	{% for j in range(0, cur_itemized_size - 1) %}
+	{{ prev_macro_name }}(param, {{j}}) || \
+	{% endfor %}
+	{{ prev_macro_name }}(param, {{cur_itemized_size - 1}}))
+
+    {% endif %}
+{% endmacro %}
+
+{# /* Generate IS_PARAM macros for all params. */ #}
+{% macro render_is_param_macros(name, param, items_list=[]) %}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% set itemized_name = get_itemized_name(items_list) %}
+    {% set tmp = items_list.append((name, param)) %}
+    {% if base_type == "itemized" %}
+{{- __render_is_param_macros_itemized(items_list) -}}
+        {# /* Item type is always a struct. Find its definition. */ #}
+        {% set struct = find_type(param.item_type) %}
+        {% for field_name, field in struct.fields.items() %}
+            {# /* Recursive call on each fields of the itemized structure. */ #}
+{{- render_is_param_macros(field_name, field, items_list) -}}
+        {% endfor %}
+    {% elif base_type == "struct" %}
+        {% set itemized_macro_name = get_macro_is_param_name(itemized_name) %}
+	{% set struct_itemized_name = itemized_name + name + "_" %}
+	{% set struct_macro_name = get_macro_is_param_name(struct_itemized_name) %}
+#define {{struct_macro_name}}(param) {{itemized_macro_name}}({{name}}.param)
+
+	{% set struct = find_type(param.element_type) %}
+	{% for field_name, field in struct.fields.items() %}
+	    {% set base_type, is_native_type = get_base_type(field.element_type) %}
+	    {% if base_type == "itemized" %}
+	        {% set cur_name = struct_itemized_name + field_name + "_" %}
+                {% set cur_macro_name = get_macro_is_param_name(cur_name) %}
+                {% set itemized_size = get_itemized_size(field) %}
+#define {{cur_macro_name}}(param) ( \
+                {% for j in range(0, itemized_size - 1) %}
+	{{struct_macro_name}}({{field_name}}[{{j}}].param) || \
+                {% endfor %}
+	{{struct_macro_name}}({{field_name}}[{{itemized_size - 1}}].param))
+
+            {% elif base_type == "struct" %}
+{{- render_is_param_macros(field_name, field, items_list) -}}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+    {% set tmp = items_list.remove((name, param)) %}
+{% endmacro -%}
+
+{# /*------------------------------------------------------------------------------------------*/ #}
+{# /*--- Generate the default config structure ------------------------------------------------*/ #}
+{# /*------------------------------------------------------------------------------------------*/ #}
+
+{% macro render_default_value(name, param) %}
+    {% set base_type, is_native_type = get_base_type(param.element_type) %}
+    {% if is_numeric(param.element_type) %}
+	.{{name}} = {{param.default}},
+    {% elif param.element_type == "bool" %}
+        {% if param.default == True %}
+	.{{name}} = true,
+	{% else %}
+	.{{name}} = false,
+	{% endif %}
+    {% elif base_type == "enum" %}
+	.{{name}} = {{enum_value_name(param.element_type, param.default)}},
+    {% elif param.element_type == "itemized" %}
+	.{{name}} = { [0 ...({{get_itemized_size_name(name, param)}} - 1)] = {
+        {% set struct = find_type(param.item_type) %}
+        {% for field_name, field in struct.fields.items() %}
+	{{ render_default_value(field_name, field)|indent("	") -}}
+        {% endfor %}
+	}},
+    {% elif base_type == "struct" %}
+        {% set struct = find_type(param.element_type) %}
+	.{{name}} = {
+	    {% for field_name, field in struct.fields.items() %}
+	{{ render_default_value(field_name, field)|indent("	") -}}
+            {% endfor %}
+	},
+    {% elif base_type == "bitfield" %}
+        {% set bitfield = find_type(param.element_type) %}
+	.{{name}} = {
+        {% for bits_name, bits in bitfield.bits.items() %}
+            {% if bits.element_type != None and bits.default is string %}
+		.{{bits_name}} = {{enum_value_name(bits.element_type, bits.default)}},
+	    {% else %}
+		.{{bits_name}} = {{bits.default}},
+	    {% endif %}
+        {% endfor %}
+	},
+    {% elif param.element_type == "array" %}
+        {% set array_base_type, _ = get_base_type(param.item_type) %}
+        {% if array_base_type == "array" %}
+	.{{name}} = { [0 ...({{param.size}} - 1)] = {
+            {% set param = find_type(param.item_type) %}
+            {% set array_child_base_type, _ = get_base_type(param.item_type) %}
+            {% set is_enum = array_child_base_type == "enum" %}
+        {% else %}
+            {% set is_enum = array_base_type == "enum" %}
+	.{{name}} = {
+	{% endif %}
+	    {# /* Default is a list in case of array. */ #}
+	    {% for val in param.default %}
+	        {% if is_enum %}
+	        {{enum_value_name(param.item_type, val)}},
+	        {% else %}
+		{{val}},
+		{% endif %}
+            {% endfor %}
+        {% if array_base_type == "array" %}
+	}},
+	{% else %}
+	},
+	{% endif %}
+    {% endif %}
+{% endmacro %}

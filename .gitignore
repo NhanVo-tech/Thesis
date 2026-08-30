@@ -1,0 +1,59 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Archives / large binaries (excluded from Git, GitHub 100MB limit)
+*.zip
+*.dmg
+*.exe
+*.msi
+*.7z
+*.rar
+*.tar
+*.gz
+
+# Qorvo UWB GUI installers (large binaries)
+DW3_QM33_SDK_1.1.1/SDK/Tools/GUI/
+
+# SDK / firmware build output
+DW3_QM33_SDK_1.1.1/SDK/Firmware/**/BuildOutput/
+*.a
+*.o
+*.out
+*.axf
+*.map
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Flutter / Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# Android / Gradle
+.gradle/
+local.properties
+*.iml
+captures/
+.kotlin/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# Logs / temp
+*.log
+*.tmp

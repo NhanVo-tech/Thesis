@@ -1,0 +1,6 @@
+*.bak
+.DS_Store
+BuildOutput/
+.vscode/
+*.user
+*.suo

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- Background -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#FF2196F3"
+                android:endColor="#FF1976D2"
+                android:angle="135" />
+            <corners android:radius="8dp" />
+            <stroke
+                android:width="2dp"
+                android:color="#FF0D47A1" />
+        </shape>
+    </item>
+    
+    <!-- Text overlay would go here, but we'll keep it simple for now -->
+    <!-- The banner size must be exactly 260x96 dp as per Android 12 requirements -->
+    
+</layer-list>

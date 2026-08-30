@@ -1,0 +1,15 @@
+# Jobs triggered when no tag is present
+Q-TAG-QANI-FreeRTOS:
+  extends: .build_qm33_freertos_job_template
+  variables:
+    BOARD: 'Q-TAG'
+    EXAMPLE: 'QANI'
+    OS: 'FreeRTOS'
+    BUILD: 'Debug'
+
+# uwbstack_integration job
+Q-TAG-FreeRTOS_uwb_stack_src:
+  extends:
+    - Q-TAG-QANI-FreeRTOS
+  variables:
+    BUILD_MAC_SRCS: 'yes'

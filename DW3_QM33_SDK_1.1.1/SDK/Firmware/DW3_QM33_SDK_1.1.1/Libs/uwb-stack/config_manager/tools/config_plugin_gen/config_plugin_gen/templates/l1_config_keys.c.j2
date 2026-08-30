@@ -1,0 +1,76 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Qorvo US, Inc.
+ *
+ * SPDX-License-Identifier: LicenseRef-Qorvo-2
+ */
+
+/*
+ * {{ generated }}
+ */
+
+#include <stdlib.h>
+#include <string.h>
+#include <stddef.h>
+
+#include "config_manager_internal.h"
+#include "l1_config_internal.h"
+#include "qerr.h"
+#include "qassert.h"
+#include "qtils.h"
+
+#pragma GCC diagnostic ignored "-Wunused-function"
+
+{% import "macros.h.j2" as macros -%}
+{% set root_struct = find_type(model.root) -%}
+
+extern struct l1_config l1_config;
+
+const struct l1_config default_config = {
+	.version = L1_CONFIG_VERSION,
+	.size = sizeof(struct l1_config),
+	.params = {
+{% for name, param in root_struct.fields.items() %}
+		{{- macros.render_default_value(name, param)|indent("	", True) -}}
+{% endfor -%}
+	},
+};
+
+{# /* Generate policy check functions. */#}
+{% for name, type in model.types.items() %}
+	{{- macros.render_policy_check_func_types(name, type) -}}
+{% endfor -%}
+
+{% for name, param in root_struct.fields.items() %}
+	{{- macros.render_policy_check_func_config(name, param) -}}
+{% endfor -%}
+
+{# /* Generate all key sections for itemized. */ #}
+{% for name, param in model.types.items() %}
+{{- macros.render_key_section_types(name, param) -}}
+{% endfor -%}
+
+/* All keys first part/section. */
+const struct l1_config_key_section root_keys[NB_ROOT_KEY_SECTIONS] = {
+{% for name, param in root_struct.fields.items() %}
+	{{- macros.render_key_section_config(name, param) -}}
+{% endfor %}
+};
+
+{# /* Generate policy check. */ #}
+enum qerr l1_config_policy_check(uint16_t offset, void *value)
+{
+{% for name, param in root_struct.fields.items() %}
+{{- macros.render_policy_check_call(name, param) -}}
+{% endfor %}
+	return QERR_SUCCESS;
+}
+
+{# /* Generate index check for itemized. */ #}
+{% for name, param in root_struct.fields.items() %}
+	{{- macros.render_check_index(name, param) -}}
+{% endfor -%}
+
+{# /* Generate getter API functions. */ #}
+{% for name, param in root_struct.fields.items() %}
+	{{- macros.getter_func(name, param) -}}
+{% endfor -%}

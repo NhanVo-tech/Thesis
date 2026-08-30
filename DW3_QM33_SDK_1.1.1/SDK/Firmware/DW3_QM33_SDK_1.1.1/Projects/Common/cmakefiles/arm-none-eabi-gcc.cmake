@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Qorvo US, Inc.
+# SPDX-License-Identifier: LicenseRef-QORVO-2
+
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR ARM)
+if(DEFINED ENV{TOOLCHAIN_PREFIX})
+  set(TOOLCHAIN_PREFIX $ENV{TOOLCHAIN_PREFIX})
+else()
+  set(TOOLCHAIN_PREFIX arm-none-eabi-)
+endif()
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
+set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
+set(CMAKE_ASM_COMPILER ${CMAKE_C_COMPILER})
+set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
+
+set(CMAKE_OBJCOPY
+    ${TOOLCHAIN_PREFIX}objcopy
+    CACHE INTERNAL "objcopy tool"
+)
+set(CMAKE_SIZE_UTIL
+    ${TOOLCHAIN_PREFIX}size
+    CACHE INTERNAL "size tool"
+)
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# Use ccache if the binary is found and if the environment variable USE_CCACHE is not "0"
+if("$ENV{USE_CCACHE}" STREQUAL "0")
+
+else()
+  find_program(CCACHE_FOUND ccache)
+  if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+  endif()
+endif()

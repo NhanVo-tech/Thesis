@@ -1,0 +1,1154 @@
+version: 7
+defines:
+  REF_FRAME_NUM:
+    summary: Maximum number of Reference Frames
+    value: 8
+  REF_FRAME_PAYLOAD_SZ_INVALID:
+    summary: Invalid/unset reference Frame payload data size
+    value: 0xFFFF
+  REF_FRAME_PHY_CFG_SIZE:
+    summary: Size of the Reference Frame PHY Configuration
+    value: 3
+  REF_FRAME_PHY_CFG_INVALID:
+    summary: Invalid/unset reference Frame PHY Configuration
+    value: 0xFFFFFF
+  PDOA_LUT_ENTRY_SIZE:
+    summary: Size of one PDoA LUT entry
+    value: 2
+  L1_CONFIG_PDOA_LUT_MAX:
+    summary: Maximum size of a PDoA LUT
+    value: 31
+  POST_TX_PATTERN_DATA_LEN:
+    summary: Size of the Post TX Tone pattern
+    value: 8
+    flag: CONFIG_UWB_MCPS_POST_TX_TONE
+  POST_TX_POWER_INDEX_DISABLED:
+    summary: Specific TX Power index value to use to disable Post TX tone
+    value: 0xFF
+    flag: CONFIG_UWB_MCPS_POST_TX_TONE
+  PAIR_NUM:
+    summary: Obvious number of fields in a pair
+    value: 2
+  ANTENNA_SET_MAX_NB_RX_ANTS:
+    summary: Max number of RX Antenna Paths or Pairs per Antenna Set
+    value: 3
+  ANT_PORT_MAX:
+    summary: Maximum antenna port
+    value: 4
+  PA_GAIN_OFFSET_INVALID:
+    summary: Invalid PA Gain Offset
+    value: -128
+  XTAL_TRIM_UNSET:
+    summary: Value indicating that XTAL Trim is not calibrated. In that case, value from OTP must be used.
+    value: 0xFF
+  TX_POWER_INDEX_MAX:
+    summary: Maximum TX Power index, for each section of the frame
+    value: 0xFE
+  TX_POWER_INDEX_NB_SECTIONS_PER_FRAME:
+    summary: Number of TX Power index sections per frame
+    value: 4
+  CIR_WINDOW_MAX_SIZE:
+    summary: Maximum CIR window size is (512 for STS, 1024 for Ipatov)
+    value: 1024
+  ANT_PATH_IDX_INVALID:
+    summary: Invalid/unset Antenna Path
+    value: -1
+
+types:
+
+  channels:
+    type: enum
+    summary: >
+      Channel numbers
+    values:
+      '5':
+        summary: Channel 5
+        value: 0
+      '9':
+        summary: Channel 9
+        value: 1
+
+  pdoa_axis:
+    type: enum
+    summary: >
+      PDoA axis
+    values:
+      x:
+        summary: Axis X
+        value: 0
+      y:
+        summary: Axis Y
+        value: 1
+      z:
+        summary: Axis Z
+        value: 2
+
+  wifi_coex_mode:
+    type: enum
+    summary: >
+      Wi-Fi coexistence modes
+    values:
+      DISABLED:
+        summary: WiFi coex disabled
+        value: 0
+      BLOCK_BASED_ONE_DIR:
+        summary: Block-based mode
+        value: 1
+      BLOCK_BASED_TWO_DIR:
+        summary: Block-based mode with additional diagnostics information
+        value: 2
+      FRAME_BASED_ONE_DIR:
+        summary: Frame based mode
+        value: 3
+
+  wifi_sw_mode:
+    type: enum
+    summary: >
+      WiFi switch configuration modes
+    values:
+      MANUAL:
+        summary: Activate the wifi switch GPIO via wifi_sw_cfg key
+        value: 0
+      AUTO:
+        summary: The WIFI switch GPIO will be activated at each tx/rx
+        value: 1
+
+  wifi_sw_config:
+    type: bitfield
+    summary: >
+      WiFi SPDT (Single pole, double throw switch) settings
+    bits:
+      level:
+        summary: |
+          GPIO level used in MANUAL mode:
+           - 0: Low level
+           - 1: High Level
+        size: 1
+        default: 0
+      mode:
+        summary: |
+          Control mode:
+             - 0: "MANUAL mode: the GPIO will be set based on bit `spdt`"
+             - 1: "AUTOMATIC mode: the GPIO will be set to `high` level at each rx/tx"
+        size: 1
+        default: 0
+      time_gap_us:
+        summary: >
+          Time gap duration, in µs unit, from 0 to 63 µs, used in AUTO mode
+        size: 6
+        default: 0
+
+  alternate_pulse_shape:
+    type: enum
+    summary: >
+      Alternative pulse shape
+    values:
+      NONE:
+        summary: No alternate pulse shape, use standard one
+        value: 0
+      JAPAN:
+        summary: Block-based mode
+        value: 1
+
+  channel:
+    type: struct
+    summary: >
+      Per Channel dependent parameters
+    fields:
+      wifi_coex_enabled:
+        type: bool
+        summary: >
+          WiFi coexistence enable status
+        description: |
+          Defines if WiFi coexistence is enabled for the specific channel.
+          Note: if wifi_coex_mode is WIFI_COEX_DISABLED, WiFi coexistence will be disabled for all
+          channels regardless of the ch<>.wifi_coex_enabled value:
+           - 0: WiFi coexistence disabled for the specific channel.
+           - 1: WiFi coexistence enabled for the specific channel.
+        default: True
+      pll_locking_code:
+        type: uint8_t
+        summary: >
+          PLL Locking code. Legacy, shall be removed in the future.
+        default: 0
+
+  ref_frame_prf:
+    type: enum
+    summary: >
+      Reference Frame Pulse Repetition Frequency
+    values:
+      BPRF:
+        summary: Base pulse repetition frequency
+        value: 0
+      HPRF:
+        summary: Higher pulse repetition frequency
+        value: 1
+
+  ref_frame_sfd:
+    type: enum
+    summary: >
+      Reference Frame Start of Frame Delimiter
+    values:
+      IEEE_4A:
+        summary: IEEE 8-bit ternary
+        value: 0
+      IEEE_4Z_4:
+        summary: IEEE 4-bit binary (4z)
+        value: 1
+      IEEE_4Z_8:
+        summary: IEEE 8-bit binary (4z)
+        value: 2
+      IEEE_4Z_16:
+        summary: IEEE 16-bit binary (4z)
+        value: 3
+      IEEE_4Z_32:
+        summary: IEEE 32-bit binary (4z)
+        value: 4
+
+  ref_frame_psr:
+    type: enum
+    summary: >
+      Reference Frame Preamble symbol repetitions
+    values:
+      '16':
+        summary: value for 16 repetitions
+        value: 0
+      '24':
+        summary: value for 24 repetitions
+        value: 1
+      '32':
+        summary: value for 32 repetitions
+        value: 2
+      '48':
+        summary: value for 48 repetitions
+        value: 3
+      '64':
+        summary: value for 64 repetitions
+        value: 4
+      '96':
+        summary: value for 96 repetitions
+        value: 5
+      '128':
+        summary: value for 128 repetitions
+        value: 6
+      '256':
+        summary: value for 256 repetitions
+        value: 7
+      '512':
+        summary: value for 512 repetitions
+        value: 8
+      '1024':
+        summary: value for 1024 repetitions
+        value: 9
+      '2048':
+        summary: value for 2048 repetitions
+        value: 10
+      '4096':
+        summary: value for 4096 repetitions
+        value: 11
+
+  ref_frame_data_rate:
+    type: enum
+    summary: >
+      Reference Frame Payload data rate
+    values:
+      850K:
+        summary: UWB bit rate 850 kbits/s
+        value: 0
+      6M8:
+        summary: UWB bit rate 6.8 Mbits/s
+        value: 1
+      NO_DATA:
+        summary: No data (SP3 packet format)
+        value: 2
+      6M8_128:
+        summary: UWB bit rate 6.8 Mbits/s (128 MHz PRF)
+        value: 4
+      27M_256:
+        summary: UWB bit rate 27 Mbits/s (256 MHz PRF)
+        value: 5
+      6M8_128_K7:
+        summary: UWB bit rate 6.8 Mbits/s (128 MHz PRF) K=7
+        value: 12
+      27M_256_K7:
+        summary: UWB bit rate 27 Mbits/s (256 MHz PRF) K=7
+        value: 13
+      54M_256:
+        summary: UWB bit rate 54 Mbits/s (256 MHz PRF)
+        value: 14
+      108M_256:
+        summary: UWB bit rate 108 Mbits/s (256 MHz PRF)
+        value: 15
+
+  ref_frame_bprf_phr_rate:
+    type: enum
+    summary: >
+      Reference Frame BPRF PHR data rate
+    values:
+      STD:
+        summary: Standard PHR data rate
+        value: 0
+      6M81:
+        summary: 6M81 PHR data rate
+        value: 1
+
+  ref_frame_seg_len:
+    type: enum
+    summary: >
+      Reference Frame STS segment length
+    values:
+      '0':
+        summary: No STS segment
+        value: 0
+      '16':
+        summary: STS length 16 bits
+        value: 1
+      '32':
+        summary: STS length 32 bits
+        value: 3
+      '64':
+        summary: STS length 64 bits
+        value: 7
+      '128':
+        summary: STS length 128 bits
+        value: 15
+      '256':
+        summary: STS length 256 bits
+        value: 31
+      '512':
+        summary: STS length 512 bits
+        value: 63
+      '1024':
+        summary: STS length 1024 bits
+        value: 127
+      '2048':
+        summary: STS length 2048 bits
+        value: 255
+
+  ref_frame_phy_cfg:
+    type: bitfield
+    summary: >
+      PHY Configuration defining a reference frame used for TX power index selection
+    bits:
+      prf:
+        summary: >
+          PRF mode, as defined by `enum ref_frame_prf`
+        size: 1
+        default: 0b1
+      sfd_type:
+        summary: >
+          SFD types, as defined by `enum ref_frame_sfd`
+        size: 3
+        type: ref_frame_sfd
+        default: 0b111
+      psr:
+        summary: |
+          Number of preamble symbol repetitions, as defined by `enum ref_frame_psr`
+        size: 4
+        type: ref_frame_psr
+        default: 0b1111
+      data_rate:
+        summary: |
+          Payload data rate, as defined by `enum ref_frame_data_rate`
+        size: 4
+        type: ref_frame_data_rate
+        default: 0b1111
+      phr_rate:
+        summary: |
+          BPRF PHR rate, as defined by `enum ref_frame_bprf_phr_rate`
+        size: 1
+        default: 0b1
+      seg_num:
+        summary: |
+          Number of STS segments, from 0 to 4
+        size: 3
+        range: 0..4
+        default: 0b111
+      seg_len:
+        summary: |
+          Length of STS segments, as defined by `enum ref_frame_seg_len`
+        size: 8
+        type: ref_frame_seg_len
+        default: 0xFF
+
+  ref_frame:
+    type: struct
+    summary: >
+      Reference frame definition
+    fields:
+      phy_cfg:
+        type: ref_frame_phy_cfg
+        alias: ref_frame_phy_cfg
+        summary: >
+          PHY configuration
+        description: |
+          The PHY configuration, combined to Payload size, defines a Reference Frame.
+          Reference frames are used to itemize parameters used for TX power index selection.
+
+          Only the first Reference Frame is defined by default, and corresponds to **BPRF SET#3**,
+          according to FiRa UWB PHY Technical specification.
+
+          Its PHY config is ``{ 0x44, 0x21, 0x07 }``, i.e.:
+
+          - ``prf``: BPRF
+          - ``sfd_type``: IEEE_4Z_8
+          - ``psr``: PSR_64
+          - ``payload_rate``: 6M8
+          - ``phr_rate``: Standard rate (0.85)
+          - ``sts_seg_num``: 1 segment
+          - ``sts_seg_len``: STS_LEN_64
+
+          **Note** : the first reference frame is mandatory. It can be overwritten. However, it
+          must always remain defined as BPRF, i.e bit[0] ``prf`` must be 0.
+
+          Other reference frames are undefined by default.
+
+      payload_size:
+        type: uint16_t
+        alias: ref_frame_payload_size
+        summary: >
+          Payload data size
+        description: |
+          The Payload data size, combined to PHY configuration, defines a Reference Frame.
+          Reference frames are used to itemize parameters used for TX power index selection.
+
+          Only the first Reference Frame is defined by default, and corresponds to **BPRF SET#3**,
+          according to FiRa UWB PHY Technical specification.
+          Its payload size is ``127``.
+
+          Other reference frames are undefined by default, i.e. use specific unset value
+          ``REF_FRAME_PAYLOAD_SZ_INVALID``.
+
+        default: REF_FRAME_PAYLOAD_SZ_INVALID
+
+  rx_diag_config:
+    type: struct
+    summary: >
+      RX Diag parameters
+    fields:
+      cir_n_taps:
+        type: uint16_t
+        summary: >
+          Number of taps, i.e. size of the CIR window, in CIR samples
+        range: 0..CIR_WINDOW_MAX_SIZE
+        default: 16
+      cir_fp_tap_offset:
+        type: uint16_t
+        summary: >
+          Offset relative to first path tap index at which the CIR window starts, in CIR samples
+        default: 8
+
+  pdoa_lut_entry:
+    type: array
+    summary: >
+      PDoA LUT entry
+    item_type: int16_t
+    size: PDOA_LUT_ENTRY_SIZE
+    default: [0, 0]
+
+  pdoa_lut:
+    type: struct
+    summary: >
+      PDoA Look-Up Table
+    fields:
+      data:
+        type: array
+        summary: >
+          PDoA LUT data
+        alias: pdoa_lut_data
+        item_type: pdoa_lut_entry
+        size: L1_CONFIG_PDOA_LUT_MAX
+
+  rx_segment:
+    type: enum
+    summary: >
+      RX frame segment used for ToA measurement in debug mode
+    values:
+      IP_M:
+        summary: Use Ipatov from main receiver
+        value: 0
+      STS0_M:
+        summary: Use STS0 from main receiver
+        value: 0x08
+      STS1_M:
+        summary: Use STS1 from main receiver
+        value: 0x10
+      STS2_M:
+        summary: Use STS2 from main receiver
+        value: 0x18
+      STS3_M:
+        summary: Use STS3 from main receiver
+        value: 0x20
+      IP_S:
+        summary: Use Ipatov from secondary receiver
+        value: 0x28
+      STS0_S:
+        summary: Use STS0 from secondary receiver
+        value: 0x30
+      STS1_S:
+        summary: Use STS1 from secondary receiver
+        value: 0x38
+      STS2_S:
+        summary: Use STS2 from secondary receiver
+        value: 0x40
+      STS3_S:
+        summary: Use STS3 from secondary receiver
+        value: 0x48
+      FORCED_DISABLED:
+        summary: >
+          Do not force RX segment: the one used is defined by the ToA earliest first path algorithm
+        value: 0xFF
+
+  debug_config:
+    type: struct
+    summary: >
+      Debug specific parameters
+    fields:
+      tx_power:
+        type: uint32_t
+        summary: >
+          TX Power used in debug mode
+        description: |
+          Only used when tx_power_control is in debug mode.
+          In debug mode, it indicates the TX power to apply, as four bytes, one for each part of the
+          frame:
+           - Byte 0: Data
+           - Byte 1: PHR
+           - Byte 2: SHR
+           - Byte 3: STS
+        default: 0xFDFDFDFD
+      pa_enabled:
+        type: bool
+        summary: >
+          PA value used in debug mode
+        description: |
+          Only used when tx_power_control is in debug mode.
+          In debug mode, it indicates if PA must be forced or bypassed
+        default: False
+      pll_bias_trim:
+        type: uint8_t
+        summary: >
+          PLL bias trim in debug mode
+        description: |
+          Only used when tx_power_control is in debug mode.
+          In debug mode, it indicates the PLL bias trim value configured
+        default: 0x04
+      rx_segment:
+        type: rx_segment
+        summary: >
+          RX segment used for ToA measurement in debug mode
+        description: |
+          By default, the RX segment used for ToA measurement is automatically chosen by the ToA
+          earliest first path algorithm.
+          In order to add more flexibility, especially needed for the RF engineers during tests, the
+          segment used can be overriden by current parameter.
+          If the received frame does not contain a STS segment while this parameter is set to a STS
+          segment, then the Ipatov segment of the same receiver is used.
+          This is the case for instance if a SP0 frame is sent
+        default: FORCED_DISABLED
+
+  post_tx_config:
+    type: struct
+    summary: >
+      Post TX Tone configuration
+    flag: CONFIG_UWB_MCPS_POST_TX_TONE
+    fields:
+      pattern_data:
+        type: array
+        summary: >
+          Reference test pattern definition
+        item_type: uint8_t
+        size: POST_TX_PATTERN_DATA_LEN
+        default: [0x77,0x77,0x77,0x77,0xDD,0xDD,0xDD,0xDD]
+      pattern_repetitions:
+        type: uint16_t
+        summary: >
+          Repetition of the reference test pattern
+        description: |
+          The number of repetition will impact the duration of the Post TX Tone.
+          One repetition lasts 32 ns.
+          Using two repetitions will cause a Post TX Tone of 64 ns.
+          Special value 0 allows to disable Post TX Tone
+        default: 0
+
+  dual_rx_auto_config:
+    type: struct
+    summary: >
+      Dual RX Main receiver automatic selection parameters
+    fields:
+      accum_period:
+        type: uint8_t
+        summary: >
+          Accumulation duration, in 0.1s unit
+        default: 30
+      rssi_diff_thres:
+        type: uint8_t
+        summary: >
+          RSSI difference threshold, in dBm
+        description: |
+          When (Secondary Receiver RSSI) - (Main Receiver RSSI) is greater than the configured
+          threshold, Main and Secondary receivers are automatically switched
+        default: 2
+      error_rate_thres:
+        type: uint8_t
+        summary: >
+          RX error rate threshold, in %
+        description: |
+          When the current error rate is greater than that threshold, Master and Slave receivers
+          must be switched
+        range: 0..100
+        default: 50
+
+  antenna_channel_ref_frame:
+    type: struct
+    summary: >
+      Per {Antenna - Channel - Ref Frame} dependent parameters
+    fields:
+      tx_power_index:
+        type: array
+        summary: >
+          TX power indexes, in -0.25 dB unit
+        description: |
+          TX power indexes are only used when tx_power_control is in normal mode (not debug mode).
+
+          The array returned contains 4 TX power indexes, one for each section of the frame:
+          - Byte 0: Power index on the STS section
+          - Byte 1: Power index on the SHR section
+          - Byte 2: Power index on the PHR section
+          - Byte 3: Power index on the DATA section
+
+          For each TX power index:
+          - One unit means an attenuation of 0.25 dB compared to maximum emitted power.
+          - An index of zero means no attenuation.
+          - Valid values are from 0 to TX_POWER_INDEX_MAX.
+        item_type: uint8_t
+        size: TX_POWER_INDEX_NB_SECTIONS_PER_FRAME
+        range: 0..TX_POWER_INDEX_MAX
+        default: [0,0,0,0]
+
+      max_gating_gain:
+        type: array
+        summary: >
+          Maximum Gating Gains
+        description: |
+          Max gating gains are only used when tx_power_control is in normal mode (not debug mode).
+
+          The table returned contains 4 max gating gains, one for each section of the frame:
+          - Byte 0: Power index on the STS section
+          - Byte 1: Power index on the SHR section
+          - Byte 2: Power index on the PHR section
+          - Byte 3: Power index on the DATA section
+
+          The max Gating Gain defines the limit applied on the compensation/boosting gain calculated
+          from Reference Frame properties, when Adaptive TX Power feature is enabled. It prevents
+          exceeding peak power (0 dBm in 50 MHz) for shortest SP0/SP1 frame types or to prevent from
+          PSD failure issues due to ePA compression.
+        item_type: uint8_t
+        size: TX_POWER_INDEX_NB_SECTIONS_PER_FRAME
+        default: [0xFF,0xFF,0xFF,0xFF]
+
+      post_tx_power_index:
+        type: uint8_t
+        summary: >
+          TX power index used for Post TX Tone, in -0.25 dB unit
+        description: |
+          Allowed values are between 0 and 0xFE.
+          Special value 0xFF disables the Post TX Tone feature.
+           - 0: Max Power.
+           - 1: Max Power - 0.25 dB.
+           - ...
+           - 0xFF: Post TX Tone disabled.
+        flag: CONFIG_UWB_MCPS_POST_TX_TONE
+        default: POST_TX_POWER_INDEX_DISABLED
+
+  antenna_channel:
+    type: struct
+    summary: >
+      Per {Antenna - Channel} dependent parameters
+    fields:
+      ref_frame:
+        type: itemized
+        summary: >
+          Reference Frames
+        indexes: REF_FRAME_NUM
+        item_type: antenna_channel_ref_frame
+      ant_delay:
+        type: uint32_t
+        summary: >
+          Antenna delay
+        default: 16405
+      tx_bypass_delay_offset:
+        type: int8_t
+        summary: >
+          Offset used to compensate TX antenna delay when PA is bypassed
+        default: 0
+      rx_bypass_delay_offset:
+        type: int8_t
+        summary: >
+          Offset used to compensate TX antenna delay when LNA is bypassed
+        default: 0
+      pa_gain_offset:
+        type: int8_t
+        summary: >
+          PA Gain Offset, in -0.25 dB unit
+        description: |
+          Offset corresponding to a correction to apply to ensure the TX power linearity at PA
+          switching point. Valid range is -127 to 127, in 0.25 dB steps.
+          Special value INT8_MIN allows to force usage of the OTP value instead of current value.
+        default: PA_GAIN_OFFSET_INVALID
+      pg_count:
+        type: uint8_t
+        summary: >
+          Pulse Generator count
+        default: 0
+      pg_delay:
+        type: uint8_t
+        summary: >
+          Pulse Generator delay
+        default: 0x34
+      rssi_offset_q3:
+        type: int8_t
+        summary: >
+          Rssi Offset using Q3 format
+        default: 0
+
+  transceiver:
+    type: enum
+    summary: >
+      Transceiver types
+    values:
+      TX:
+        summary: Transmitter
+        value: 0
+      RXA:
+        summary: Receiver A
+        value: 1
+      RXB:
+        summary: Receiver B
+        value: 2
+
+  ant_port:
+    type: enum
+    summary: >
+      Antenna Port
+    values:
+      '1':
+        summary: Antenna Port 1
+        value: 1
+      '2':
+        summary: Antenna Port 2
+        value: 2
+      '3':
+        summary: Antenna Port 3
+        value: 3
+      '4':
+        summary: Antenna Port 4
+        value: 4
+      NA:
+        summary: Invalid/Undefined Antenna Port
+        value: 0xF
+
+  antenna_path:
+    type: struct
+    summary: >
+      Antenna Path configuration
+    fields:
+      ch:
+        type: itemized
+        summary: >
+          Per {Antenna Path - Channel} dependent parameters
+        indexes: channels
+        item_type: antenna_channel
+      transceiver:
+        type: transceiver
+        summary: >
+          Transceiver used
+        alias: ant_path_transceiver
+        default: TX
+      port:
+        type: ant_port
+        summary: >
+          Antenna Port used
+        alias: ant_path_port
+        default: NA
+      ext_sw_cfg:
+        type: uint8_t
+        summary: >
+          State of External Switch(es)
+        description: |
+          Bitfield indicating the status of each external switch.
+            - A bit set to 1 indicates that the corresponding external switch is ON.
+            - A bit set to 0 indicates that the corresponding external switch is OFF.
+        alias: ant_path_ext_sw_cfg
+        range: 0..1
+        default: 0
+      lna:
+        type: bool
+        summary: >
+          LNA (Low Noise Amplifier) state
+        description: |
+          Boolean value indicating if the LNA is active or bypassed:
+            - False: Bypass
+            - True: Active
+        alias: ant_path_lna
+        default: False
+      pa:
+        flag: CONFIG_UWB_CHIP_API_DW3000
+        type: bool
+        summary: >
+          PA (Power Amplifier) state
+        description: |
+          Boolean value indicating if the PA is active or bypassed:
+            - False: Bypass
+            - True: Active
+        alias: ant_path_pa
+        default: False
+
+  pdoa_config:
+    type: struct
+    summary: >
+      PDoA measurement configuration
+    fields:
+      offset:
+        type: int16_t
+        alias: pdoa_offset
+        summary: >
+          PDoA offset. Value is in radian, in fixed-point Q11 format.
+        default: 0
+      interval_shift:
+        type: int16_t
+        alias: pdoa_interval_shift
+        summary: >
+          PDoA interval shift. Value is in radian, in fixed-point Q11 format.
+        default: 0
+      lut_id:
+        type: int8_t
+        alias: pdoa_lut_id
+        summary: >
+          PDOA Look-Up table index
+        description: |
+          When negative value is used, default PDoA LUT table is used.
+          That default table depends on the channel.
+        range: -1..CONFIG_L1_CONFIG_PDOA_LUT_NUM-1
+        default: -1
+
+  antenna_pair_channel:
+    type: struct
+    summary: >
+      Per {Antenna Pair - Channel} dependent parameters
+    fields:
+      pdoa:
+        type: pdoa_config
+        summary: >
+          PDoA measurement configuration
+
+  antenna_pair:
+    type: struct
+    summary: >
+      Antenna Pair configuration
+    fields:
+      axis:
+        type: pdoa_axis
+        summary: >
+          PDoA axis measured
+        alias: ant_pair_axis
+        default: x
+      ant_paths:
+        type: array
+        summary: >
+          Index of the two Antenna Paths constituting the pair
+        description: |
+          A negative value indicates that value is undefined
+        alias: ant_pair_ant_paths
+        item_type: int8_t
+        size: PAIR_NUM
+        range: -1..CONFIG_L1_CONFIG_ANT_NUM-1
+        default: [ANT_PATH_IDX_INVALID, ANT_PATH_IDX_INVALID]
+      ch:
+        type: itemized
+        summary: >
+          Per {Antenna Pair - Channel} dependent parameters
+        item_type: antenna_pair_channel
+        indexes: channels
+
+  tx_power_control:
+    type: bitfield
+    summary: >
+      TX power control mode
+    description: |
+      Mode is selected depending on bit `debug`:
+        - When bit is not set, Normal mode is used.
+          Values of PA and TX power are computed by the driver depending on the TX power index
+          provided by parameter`ant<>.ch<>.ref_frame<>.tx_power_index`.
+          Setting bit `frame` and/or `post_tx` allows to enable Adaptive TX power for UWB frame
+          and/or Post TX Tone.
+          When Adaptive TX Power is enabled, the TX power is compensated depending on the duration
+          of the frame, compared to a given Reference frame.
+        - When bit is set, Debug mode is used.
+          Values of PA and TX power must be provided by user using keys `debug.pa_enabled` and
+          `debug.tx_power`.
+    bits:
+      frame:
+        summary: |
+          Adaptive Power control for frame:
+            - 0 to disable
+            - 1 to enable
+        size: 1
+        default: 0
+      post_tx:
+        summary: |
+          Adaptive Power control for Post TX Tone:
+            - 0 to disable
+            - 1 to enable
+        size: 1
+        default: 0
+      rfu:
+        summary: >
+          Reserved for future usage
+        size: 5
+        default: 0
+      debug:
+        summary: >
+          Use debug mode: TX Power and PA state are forced using dedicated debug parameters
+        size: 1
+        default: 0
+
+  antenna_set:
+    type: struct
+    summary: >
+      Antenna Set configuration
+    fields:
+      rx_ants:
+        type: array
+        summary: >
+          List of RX Antennas indexes (Antenna Path or Antenna Pairs) used in the Antenna Set
+        description: |
+          A negative index indicates that value is undefined
+        alias: ant_set_rx_ants
+        item_type: int8_t
+        size: ANTENNA_SET_MAX_NB_RX_ANTS
+        range: -1..CONFIG_L1_CONFIG_ANT_NUM-1
+        default: [ANT_PATH_IDX_INVALID, ANT_PATH_IDX_INVALID, ANT_PATH_IDX_INVALID]
+      tx_ant_path:
+        type: int8_t
+        summary: >
+          Index of the Antenna Path used for TX
+        description: |
+          A negative value indicates that value is undefined
+        alias: ant_set_tx_ant_path
+        range: -1..CONFIG_L1_CONFIG_ANT_NUM-1
+        default: ANT_PATH_IDX_INVALID
+      nb_rx_ants:
+        type: uint8_t
+        summary: >
+          Number of RX Antennas (Antenna Path or Antenna Pairs) contained in the Antenna Set
+        alias: ant_set_nb_rx_ants
+        range: 0..ANTENNA_SET_MAX_NB_RX_ANTS
+        default: 0
+      rx_ants_are_pairs:
+        type: bool
+        summary: >
+          Indicates if the RX Antennas are Antenna Paths or Antenna Pairs
+        description: |
+          If value is True:
+            - PDoA/AoA will be measured.
+            - Parameter `rx_ants` contains index(es) of Antenna Pair(s).
+          If value is False:
+            - PDoA/AoA will NOT be measured.
+            - Parameter `rx_ants` contains index(es) of Antenna Path(s).
+        alias: ant_set_rx_ants_are_pairs
+        default: False
+      tx_power_control:
+        type: tx_power_control
+        summary: >
+          TX power control mode
+
+  mac_session_scheduler_id:
+    type: enum
+    summary: >
+      Session scheduler type identifier in the MAC
+    values:
+      STRICT:
+        summary: Strict priority scheduler
+        value: 0
+      FAIR:
+        summary: Weight priority scheduler (also called fair)
+        value: 1
+
+  mac_session_scheduler_params:
+    type: struct
+    summary: >
+      Session scheduler configuration parameters
+    fields:
+      id:
+        type: mac_session_scheduler_id
+        summary: Scheduler version exercized by FBS region
+        alias: mac_session_scheduler_id
+        default: STRICT
+
+  mac_params:
+    type: struct
+    summary: >
+      MAC configuration parameters
+    fields:
+      session_scheduler:
+        type: mac_session_scheduler_params
+        summary: >
+          Session scheduler configuration parameters
+
+  experimental:
+    type: struct
+    summary: >
+      Experimental parameters, to be used in development phase only
+    fields:
+      mac:
+        type: mac_params
+        summary: >
+          MAC configuration parameters
+
+  l1_config:
+    type: struct
+    summary: >
+      L1 configuration
+    fields:
+
+      restricted_channels:
+        type: uint16_t
+        summary: >
+          Restricted channels
+        description: |
+          The value is a bitfield indicating the restricted channel(s).
+          Setting to 1 a bit will restrict its corresponding channel.
+          For example, to restrict channel 5, value must be (1 << 5).
+          It is used for regulatory concerns.
+        default: 0
+
+      wifi_coex_mode:
+        type: wifi_coex_mode
+        summary: >
+          Wi-Fi coexistence mode
+        default: DISABLED
+
+      wifi_coex_time_gap:
+        type: uint8_t
+        summary: >
+          Delay (in milliseconds) to inform the Wi-Fi stack that there will be a UWB transmission
+        default: 0
+
+      ch:
+        type: itemized
+        summary: >
+          Channel: 5 or 9
+        indexes: channels
+        item_type: channel
+
+      wifi_coex_max_grant_duration:
+        type: uint8_t
+        summary: >
+          Max grant duration in ms
+        default: 0
+
+      wifi_coex_min_inactive_duration:
+        type: uint8_t
+        summary: >
+          Minimum inactive duration in ms
+        default: 0
+
+      wifi_sw_cfg:
+        type: wifi_sw_config
+        summary: >
+          WiFi SPDT (Single pole, double throw switch) configuration
+
+      alternate_pulse_shape:
+        type: alternate_pulse_shape
+        summary: >
+          Alternative pulse shape
+        default: NONE
+
+      ref_frame:
+        type: itemized
+        summary: >
+          Reference Frame, from 0 to 7
+        indexes: REF_FRAME_NUM
+        item_type: ref_frame
+
+      rx_diag_config:
+        type: rx_diag_config
+        summary: >
+          RX diag parameters
+
+      xtal_trim:
+        type: uint8_t
+        summary: >
+          Crystal trim value
+        description: |
+          Valid values should be in range 0x0 to 0x7F (127 steps, ~0.8ppm per step).
+          Initialized to 0xFF to use value from OTP.
+        range: 0..127
+        default: XTAL_TRIM_UNSET
+
+      rf_noise_offset:
+        type: int8_t
+        summary: >
+          Noise offset, in dB unit, to apply when calculating the RX SNR
+        default: -7
+
+      pdoa_lut:
+        type: itemized
+        summary: >
+          PDoA Look-Up Table
+        indexes: CONFIG_L1_CONFIG_PDOA_LUT_NUM
+        item_type: pdoa_lut
+
+      debug:
+        type: debug_config
+        summary: >
+          Debug specific parameters
+
+      post_tx:
+        type: post_tx_config
+        summary: >
+          Post TX Tone configuration
+        flag: CONFIG_UWB_MCPS_POST_TX_TONE
+
+      dual_rx_auto:
+        type: dual_rx_auto_config
+        summary: >
+          Dual RX Main receiver automatic selection parameters
+
+      ip_sts_sanity_thres_q2:
+        type: uint8_t
+        summary: >
+          Ipatov-STS time difference threshold
+        description: |
+          If the difference between Ipatov and STS timestamps is above the configured threshold,
+          then an error is returned. Special value 0 allows to disable the check.
+        default: 0
+
+      ant:
+        type: itemized
+        summary: >
+          Antenna Path, from 0 to CONFIG_L1_CONFIG_ANT_NUM - 1
+        indexes: CONFIG_L1_CONFIG_ANT_NUM
+        item_type: antenna_path
+
+      ant_pair:
+        type: itemized
+        summary: >
+          Antenna Pair, from 0 to CONFIG_L1_CONFIG_ANT_PAIR_NUM - 1
+        indexes: CONFIG_L1_CONFIG_ANT_PAIR_NUM
+        item_type: antenna_pair
+
+      ant_set:
+        type: itemized
+        summary: >
+          Antenna Set, from 0 to CONFIG_L1_CONFIG_ANT_SET_NUM - 1
+        item_type: antenna_set
+        indexes: CONFIG_L1_CONFIG_ANT_SET_NUM
+
+      experimental:
+        type: experimental
+        summary: >
+          Experimental parameters, to be used in development phase only
+
+root: l1_config

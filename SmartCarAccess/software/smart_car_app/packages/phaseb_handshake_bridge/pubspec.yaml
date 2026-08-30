@@ -1,0 +1,19 @@
+name: phaseb_handshake_bridge
+description: Android bridge plugin for smartcar Phase B handshake channel.
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.smartcar.phaseb.bridge
+        pluginClass: PhasebHandshakeBridgePlugin

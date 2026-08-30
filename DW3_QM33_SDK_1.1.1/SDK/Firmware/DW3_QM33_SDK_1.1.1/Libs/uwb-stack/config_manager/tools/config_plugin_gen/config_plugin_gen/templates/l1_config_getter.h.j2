@@ -1,0 +1,33 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Qorvo US, Inc.
+ *
+ * SPDX-License-Identifier: LicenseRef-Qorvo-2
+ */
+
+/*
+ * {{ generated }}
+ */
+
+#pragma once
+
+#include "l1_config_types.h"
+
+#include <qerr.h>
+#include <stdint.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+{% import "macros.h.j2" as macros -%}
+{% set root_struct = find_type(model.root) -%}
+
+{# /* Generate prototype of getter API for all parameters. */ #}
+{% for name, param in root_struct.fields.items() %}
+	{{- macros.getter_decl(name, param) -}}
+{% endfor -%}
+
+#ifdef __cplusplus
+}
+#endif

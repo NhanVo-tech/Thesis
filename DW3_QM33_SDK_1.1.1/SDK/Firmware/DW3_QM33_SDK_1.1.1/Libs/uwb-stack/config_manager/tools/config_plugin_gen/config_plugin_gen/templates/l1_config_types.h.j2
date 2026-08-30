@@ -1,0 +1,37 @@
+/*
+ * SPDX-FileCopyrightText: Copyright (c) 2024 Qorvo US, Inc.
+ *
+ * SPDX-License-Identifier: LicenseRef-Qorvo-2
+ */
+
+/*
+ * {{ generated }}
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+{% import "macros.h.j2" as macros -%}
+
+#define L1_CONFIG_NB_KEYS {{get_nb_keys()}}
+
+{# Generate defines. #}
+{% for name, param in model.defines.items() %}
+	{{- macros.render_define(name, param) -}}
+{% endfor -%}
+
+{% for name, type in model.types.items() %}
+    {% if name != model.root %}
+	{{- macros.type_decl(name, type) -}}
+    {% endif %}
+{% endfor -%}
+
+#ifdef __cplusplus
+}
+#endif
