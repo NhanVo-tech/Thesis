@@ -77,7 +77,8 @@ void tick() {
         UwbGeo::kAnchorX, UwbGeo::kAnchorY, f.d, f.valid_mask);
     if (!r.valid) continue;
 
-    Serial.printf("[POS2D] x=%.2f y=%.2f rms=%.3f\n", r.x, r.y, r.rms);
+    Serial.printf("[POS2D] t=%lu x=%.2f y=%.2f rms=%.3f\n",
+                  (unsigned long)f.t_ms, r.x, r.y, r.rms);
     // RMS weights how much the raw fix is trusted.
     Ekf::update(r.x, r.y, f.t_ms, r.rms);
   }
@@ -90,8 +91,9 @@ void tick() {
     if (Ekf::predictTo(now)) {
       const double fx = Ekf::x();
       const double fy = Ekf::y();
-      Serial.printf("[EKF] x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
-                    fx, fy, Ekf::vx(), Ekf::vy(), Ekf::speed());
+      Serial.printf("[EKF] t=%lu x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
+                    (unsigned long)now, fx, fy, Ekf::vx(), Ekf::vy(),
+                    Ekf::speed());
       AccessController::handlePosition(fx, fy, Ekf::vx(), Ekf::vy());
     }
   }
