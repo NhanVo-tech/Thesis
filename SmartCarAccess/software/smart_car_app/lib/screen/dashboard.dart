@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:smart_car_app/screen/location.dart';
 import 'package:smart_car_app/screen/profile.dart';
-import 'package:smart_car_app/screen/test_phase_ab.dart';
-import 'package:smart_car_app/screen/test_uwb.dart';
+import 'package:smart_car_app/screen/ble_uwb_screen.dart';
 import 'package:smart_car_app/screen/master_card_flow.dart';
 import 'package:smart_car_app/screen/settings.dart';
 import 'package:smart_car_app/screen/notifications.dart';
@@ -367,20 +366,11 @@ class _DashboardState extends State<Dashboard> {
           onPressed: _handleBgServiceToggle,
         ),
         IconButton(
-          icon: const Icon(Icons.science_outlined, color: AppColors.textPrimary),
-          tooltip: 'Test Phase A/B',
+          icon: const Icon(Icons.sensors_outlined, color: Color(0xFF273671)),
+          tooltip: 'Vehicle Access (BLE + UWB)',
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TestPhaseABScreen()),
-            );
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.radar_outlined, color: Color(0xFF273671)),
-          tooltip: 'Test UWB',
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TestUwbScreen()),
+              MaterialPageRoute(builder: (_) => const BleUwbScreen()),
             );
           },
         ),
