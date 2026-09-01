@@ -15,6 +15,12 @@ namespace {
 
 QueueHandle_t g_frameQueue = nullptr;
 bool g_ranging = false;
+uint32_t g_lastDriveMs = 0;  // last time the door logic was driven
+
+// Cadence at which the EKF estimate drives the access controller. Decoupling
+// this from the raw RANGE rate keeps the unlock debounce timing consistent and
+// lets prediction bridge dropped frames.
+constexpr uint32_t kDrivePeriodMs = 100;
 
 bool parseRange(const char* line, RangingFrame* out) {
   const char* p = line + 6;  // skip "RANGE:"
@@ -58,6 +64,8 @@ void feedLine(const char* line) {
 
 void tick() {
   if (!g_frameQueue) return;
+
+  // 1. Drain RANGE frames: each one corrects the EKF (no direct door drive).
   RangingFrame f;
   while (xQueueReceive(g_frameQueue, &f, 0) == pdTRUE) {
     Serial.printf("[RANGE3] t=%lu d0=%.2f d1=%.2f d2=%.2f valid=%u\n",
@@ -70,15 +78,22 @@ void tick() {
     if (!r.valid) continue;
 
     Serial.printf("[POS2D] x=%.2f y=%.2f rms=%.3f\n", r.x, r.y, r.rms);
-
-    // Fuse the noisy fix through the EKF and drive access control with the
-    // smoothed estimate (RMS weights how much the raw fix is trusted).
+    // RMS weights how much the raw fix is trusted.
     Ekf::update(r.x, r.y, f.t_ms, r.rms);
-    double fx = Ekf::x();
-    double fy = Ekf::y();
-    Serial.printf("[EKF] x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
-                  fx, fy, Ekf::vx(), Ekf::vy(), Ekf::speed());
-    AccessController::handlePosition(fx, fy);
+  }
+
+  // 2. Fixed-rate drive: predict the EKF forward (bridges dropped frames) and
+  //    feed the smoothed position + velocity to the door logic.
+  const uint32_t now = millis();
+  if (now - g_lastDriveMs >= kDrivePeriodMs) {
+    g_lastDriveMs = now;
+    if (Ekf::predictTo(now)) {
+      const double fx = Ekf::x();
+      const double fy = Ekf::y();
+      Serial.printf("[EKF] x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
+                    fx, fy, Ekf::vx(), Ekf::vy(), Ekf::speed());
+      AccessController::handlePosition(fx, fy, Ekf::vx(), Ekf::vy());
+    }
   }
 }
 
@@ -86,6 +101,7 @@ void sendStart() {
   if (g_ranging) return;
   g_ranging = true;
   Ekf::reset();
+  g_lastDriveMs = 0;
   Serial.println("CMD:START_RANGING");
 }
 

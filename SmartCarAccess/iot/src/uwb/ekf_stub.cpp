@@ -19,7 +19,8 @@ constexpr double kMaxGapS = 2.0;
 
 // ---- State -----------------------------------------------------------------
 bool     g_init = false;
-uint32_t g_lastMs = 0;
+uint32_t g_lastMs = 0;      // time the state was last propagated to
+uint32_t g_lastMeasMs = 0;  // time of the last actual measurement/correction
 double   g_x[4] = {0, 0, 0, 0};   // [px, py, vx, vy]
 double   g_P[4][4] = {{0}};       // state covariance
 
@@ -142,6 +143,7 @@ void correct(double zx, double zy, double measVar) {
 void reset() {
   g_init = false;
   g_lastMs = 0;
+  g_lastMeasMs = 0;
   for (int i = 0; i < 4; ++i) {
     g_x[i] = 0.0;
     for (int j = 0; j < 4; ++j) g_P[i][j] = 0.0;
@@ -154,26 +156,46 @@ void update(double x, double y, uint32_t t_ms, double measNoiseStd) {
   if (!g_init) {
     initFrom(x, y, measVar);
     g_lastMs = t_ms;
+    g_lastMeasMs = t_ms;
     return;
   }
 
   double dt = (double)(t_ms - g_lastMs) / 1000.0;
-  g_lastMs = t_ms;
+  const double gapSinceMeas = (double)(t_ms - g_lastMeasMs) / 1000.0;
 
-  if (dt <= 0.0 || dt > kMaxGapS) {
-    // Clock glitch or long gap: restart the track from this fix.
+  if (dt <= 0.0 || gapSinceMeas > kMaxGapS) {
+    // Clock glitch or long measurement gap: restart the track from this fix.
     initFrom(x, y, measVar);
+    g_lastMs = t_ms;
+    g_lastMeasMs = t_ms;
     return;
   }
 
   predict(dt);
   correct(x, y, measVar);
+  g_lastMs = t_ms;
+  g_lastMeasMs = t_ms;
 }
 
 void update(double x, double y) {
   const uint32_t synthMs =
       g_lastMs + (uint32_t)(kNominalDtS * 1000.0 + 0.5);
   update(x, y, synthMs, 0.0);
+}
+
+bool predictTo(uint32_t t_ms) {
+  if (!g_init) return false;
+
+  // Stop trusting the track once it has coasted too long without a fix.
+  const double gapSinceMeas = (double)(t_ms - g_lastMeasMs) / 1000.0;
+  if (gapSinceMeas > kMaxGapS) return false;
+
+  const double dt = (double)(t_ms - g_lastMs) / 1000.0;
+  if (dt <= 0.0) return true;  // already up to date
+
+  predict(dt);
+  g_lastMs = t_ms;
+  return true;
 }
 
 bool   initialized() { return g_init; }

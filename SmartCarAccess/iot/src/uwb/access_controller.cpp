@@ -10,6 +10,7 @@ static bool is_door_unlocked = false;
 static double last_x_m = 0.0;
 static double last_y_m = 0.0;
 static double last_distance_m = 0.0;
+static double last_radial_mps = 0.0;
 static uint32_t relay_deactivate_time_ms = 0;
 static bool relay_active = false;
 
@@ -42,9 +43,19 @@ static void fireRelayPulse() {
 }
 
 void handlePosition(double x, double y) {
+  handlePosition(x, y, 0.0, 0.0);
+}
+
+void handlePosition(double x, double y, double vx, double vy) {
   last_x_m = x;
   last_y_m = y;
   last_distance_m = distanceToUnlockPoint(x, y);
+
+  // Radial velocity along the door line: >0 moving away, <0 approaching.
+  const double dx = x - kUnlockPointX;
+  const double dy = y - kUnlockPointY;
+  last_radial_mps =
+      (last_distance_m > 1e-6) ? (vx * dx + vy * dy) / last_distance_m : 0.0;
 
   // 1. User walked away -> re-arm the lock state
   if (last_distance_m > RESET_RADIUS_M) {
@@ -64,12 +75,23 @@ void handlePosition(double x, double y) {
     return;
   }
 
-  // 3. Approaching. Count consecutive in-zone hits.
+  // 3. Approach gate: reject readings while the user is moving away.
+  if (ENABLE_APPROACH_GATE && last_radial_mps > APPROACH_SPEED_MIN_MPS) {
+    if (consecutive_close_reads > 0) {
+      Serial.printf(
+        "[DOOR] Moving away (vr=%.2fm/s). Resetting counter.\n",
+        last_radial_mps);
+      consecutive_close_reads = 0;
+    }
+    return;
+  }
+
+  // 4. Approaching. Count consecutive in-zone hits.
   if (last_distance_m <= UNLOCK_RADIUS_M) {
     consecutive_close_reads++;
-    Serial.printf("[DOOR] In zone! Hit count: %d/%d (d=%.2fm)\n",
+    Serial.printf("[DOOR] In zone! Hit count: %d/%d (d=%.2fm vr=%.2fm/s)\n",
                   consecutive_close_reads, REQUIRED_CONSECUTIVE_HITS,
-                  last_distance_m);
+                  last_distance_m, last_radial_mps);
 
     if (consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
       // --- FIRE THE DOOR RELAY ---
@@ -117,6 +139,10 @@ double getLastY() {
   return last_y_m;
 }
 
+double getLastRadialSpeed() {
+  return last_radial_mps;
+}
+
 void manualUnlock() {
   Serial.println("[DOOR] Manual unlock triggered");
   fireRelayPulse();
@@ -130,6 +156,7 @@ void resetDoorState() {
   last_x_m = 0.0;
   last_y_m = 0.0;
   last_distance_m = 0.0;
+  last_radial_mps = 0.0;
   if (relay_active) {
     digitalWrite(RELAY_PIN, LOW);
     relay_active = false;
