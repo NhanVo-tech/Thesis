@@ -70,14 +70,22 @@ void tick() {
     if (!r.valid) continue;
 
     Serial.printf("[POS2D] x=%.2f y=%.2f rms=%.3f\n", r.x, r.y, r.rms);
-    Ekf::update(r.x, r.y);
-    AccessController::handlePosition(r.x, r.y);
+
+    // Fuse the noisy fix through the EKF and drive access control with the
+    // smoothed estimate (RMS weights how much the raw fix is trusted).
+    Ekf::update(r.x, r.y, f.t_ms, r.rms);
+    double fx = Ekf::x();
+    double fy = Ekf::y();
+    Serial.printf("[EKF] x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
+                  fx, fy, Ekf::vx(), Ekf::vy(), Ekf::speed());
+    AccessController::handlePosition(fx, fy);
   }
 }
 
 void sendStart() {
   if (g_ranging) return;
   g_ranging = true;
+  Ekf::reset();
   Serial.println("CMD:START_RANGING");
 }
 
