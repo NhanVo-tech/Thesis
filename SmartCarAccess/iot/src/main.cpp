@@ -14,9 +14,9 @@ namespace {
 
 TaskHandle_t g_fsmTask = nullptr, g_nfcTask = nullptr, g_uwbTask = nullptr;
 
-// FSM entry hooks: start ranging once the secure channel is up, stop back in IDLE.
-void onEnterSecureChannel(FSM::StateContext&) { UwbBridge::sendStart(); }
-void onEnterIdle(FSM::StateContext&) { UwbBridge::sendStop(); }
+// Note: anchor sessions (CMD:START/STOP_RANGING over USB-CDC) are now driven
+// explicitly by the phone via CCC tunnel instructions 0x84/0x85, not by FSM
+// state entry hooks. See ble_auth.cpp kInsRangingStart/kInsRangingStop.
 
 void fsmTaskFn(void* p) { (void)p; for (;;) { FSM::tick(); vTaskDelay(pdMS_TO_TICKS(1)); } }
 void nfcTaskFn(void* p) { (void)p; for (;;) { NfcSession::tick(); vTaskDelay(pdMS_TO_TICKS(2)); } }
@@ -71,9 +71,6 @@ void setup() {
   NfcSession::begin(Serial2, 44, 43, 115200);
   UwbBridge::begin();
   AccessController::begin();
-
-  FSM::onStateEntry(FSM::AUTH_SECURE_CHANNEL_READY, onEnterSecureChannel);
-  FSM::onStateEntry(FSM::IDLE, onEnterIdle);
 
   xTaskCreatePinnedToCore(fsmTaskFn, "FSM", 8192, nullptr, 6, &g_fsmTask, 1);
   xTaskCreatePinnedToCore(nfcTaskFn, "NFC", 8192, nullptr, 4, &g_nfcTask, 1);

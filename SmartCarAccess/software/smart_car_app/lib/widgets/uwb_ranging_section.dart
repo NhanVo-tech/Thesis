@@ -10,9 +10,22 @@ import 'package:smart_car_app/service/uwb_multi_service.dart';
 /// live d0/d1/d2 and a status (ACTIVE/STOPPED/ERROR). Auto-stops and resets to
 /// the locked state on error or session loss.
 class UwbRangingSection extends StatefulWidget {
-  const UwbRangingSection({super.key, required this.sessionReady});
+  const UwbRangingSection({
+    super.key,
+    required this.sessionReady,
+    this.onStart,
+    this.onStop,
+  });
 
   final bool sessionReady;
+
+  /// Optional callback fired before phone-side UWB ranging starts. Use it to
+  /// notify the ECU (e.g. CCC tunnel 0x84) so the anchors begin ranging too.
+  final Future<void> Function()? onStart;
+
+  /// Optional callback fired before phone-side UWB ranging stops. Use it to
+  /// notify the ECU (e.g. CCC tunnel 0x85) so the anchors stop ranging too.
+  final Future<void> Function()? onStop;
 
   @override
   State<UwbRangingSection> createState() => _UwbRangingSectionState();
@@ -75,6 +88,9 @@ class _UwbRangingSectionState extends State<UwbRangingSection> {
 
   Future<void> _start() async {
     setState(() => _busy = true);
+    try {
+      await widget.onStart?.call();
+    } catch (_) {}
     final ok = await _svc.start();
     if (!mounted) return;
     setState(() {
@@ -86,6 +102,9 @@ class _UwbRangingSectionState extends State<UwbRangingSection> {
 
   Future<void> _stop() async {
     setState(() => _busy = true);
+    try {
+      await widget.onStop?.call();
+    } catch (_) {}
     await _svc.stop();
     if (!mounted) return;
     setState(() {

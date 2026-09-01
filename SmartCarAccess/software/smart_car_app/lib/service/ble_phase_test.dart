@@ -88,6 +88,14 @@ class BlePhaseTestService {
     return _authOrchestrator.disconnect();
   }
 
+  Future<bool> requestRangingStart() {
+    return _authOrchestrator.requestRanging(true);
+  }
+
+  Future<bool> requestRangingStop() {
+    return _authOrchestrator.requestRanging(false);
+  }
+
   Future<bool> sendGpsLocation() {
     return _authOrchestrator.sendGpsLocation();
   }

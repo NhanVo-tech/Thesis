@@ -668,7 +668,25 @@ class _BleUwbScreenState extends State<BleUwbScreen> {
             ),
           ),
         ),
-        UwbRangingSection(sessionReady: _sessionReady),
+        UwbRangingSection(
+          sessionReady: _sessionReady,
+          onStart: () async {
+            final ok = await _ble.requestRangingStart();
+            if (!ok) {
+              _log('Warning: ECU did not acknowledge ranging start');
+            } else {
+              _log('Requested anchors to start ranging');
+            }
+          },
+          onStop: () async {
+            final ok = await _ble.requestRangingStop();
+            if (!ok) {
+              _log('Warning: ECU did not acknowledge ranging stop');
+            } else {
+              _log('Requested anchors to stop ranging');
+            }
+          },
+        ),
       ],
     );
   }

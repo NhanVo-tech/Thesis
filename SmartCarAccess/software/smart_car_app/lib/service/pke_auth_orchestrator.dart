@@ -52,6 +52,8 @@ class PkeAuthOrchestrator {
   static const String authServiceUUID = '0000aaaa-1234-5678-9abc-def012345678';
   static const String charCccRxUUID = '0000aac1-1234-5678-9abc-def012345678';
   static const String charCccTxUUID = '0000aac2-1234-5678-9abc-def012345678';
+  static const int _insRangingStart = 0x84;
+  static const int _insRangingStop = 0x85;
 
   Uint8List? _phoneEphemeralPublicKey;
   Uint8List? _ecuEphemeralPublicKey;
@@ -838,6 +840,60 @@ class PkeAuthOrchestrator {
     _cCccTx = null;
     _cccTxSubscription = null;
     _device = null;
+  }
+
+  /// Request the ECU to start/stop anchor ranging over the active CCC tunnel.
+  Future<bool> requestRanging(bool start) async {
+    if (_cCccRx == null || _device == null || !_device!.isConnected) {
+      debugPrint('[RANGING] No active CCC tunnel; cannot request ranging');
+      return false;
+    }
+    try {
+      await _sendApdu(
+        ins: start ? _insRangingStart : _insRangingStop,
+        p1: 0x00,
+        data: Uint8List(0),
+      );
+      debugPrint('[RANGING] Sent ${start ? 'START' : 'STOP'} to ECU');
+      return true;
+    } catch (e) {
+      debugPrint('[RANGING] Failed to send ranging command: $e');
+      return false;
+    }
+  }
+
+  /// Send a ranging start/stop command to [device] over the CCC tunnel,
+  /// discovering the CCC RX characteristic on demand. Used by flows that hold
+  /// their own BLE connection instead of this orchestrator's tunnel.
+  static Future<bool> requestRangingOnDevice(
+    BluetoothDevice device,
+    bool start,
+  ) async {
+    try {
+      final services = await device.discoverServices();
+      final authService = services.firstWhere(
+        (s) =>
+            s.uuid.toString().toLowerCase() == authServiceUUID.toLowerCase(),
+        orElse: () => throw Exception('Auth service not found'),
+      );
+      final rx = authService.characteristics.firstWhere(
+        (c) => c.uuid.toString().toLowerCase() == charCccRxUUID.toLowerCase(),
+      );
+      final frame = BytesBuilder();
+      frame.addByte(0x00); // CLA
+      frame.addByte(start ? _insRangingStart : _insRangingStop);
+      frame.addByte(0x00); // P1
+      frame.addByte(0x00); // P2
+      frame.addByte(0x00); // Lc
+      await rx.write(frame.toBytes(), withoutResponse: false);
+      debugPrint(
+        '[RANGING] Sent ${start ? 'START' : 'STOP'} via on-demand tunnel',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[RANGING] requestRangingOnDevice failed: $e');
+      return false;
+    }
   }
 
   Future<void> _sendApdu({

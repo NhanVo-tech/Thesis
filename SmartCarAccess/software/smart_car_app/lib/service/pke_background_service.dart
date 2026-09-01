@@ -132,6 +132,10 @@ class PkeBackgroundService {
       await targetDevice.connect(timeout: const Duration(seconds: 12));
       _foregroundDevice = targetDevice;
 
+      // Ask the ECU to start the anchor sessions (CMD:START_RANGING to the PC
+      // bridge) before the phone starts its multicast UWB initiator.
+      await PkeAuthOrchestrator.requestRangingOnDevice(targetDevice, true);
+
       // Multi-anchor multicast DS-TWR: phone = controller 0x06C1, anchors 0/1/2.
       // Matches run_fira_bridge.py responder config (DstMacAddress=0x06C1,
       // session=42, channel=9, preamble=9, STS key 08 07 01 02 03 04 05 06).
@@ -170,10 +174,17 @@ class PkeBackgroundService {
 
     try {
       _log('foreground UWB stop requested requestId=${requestId ?? '-'}');
+      final device = _foregroundDevice;
+      if (device != null) {
+        // Ask the ECU to stop the anchor sessions (CMD:STOP_RANGING to the PC
+        // bridge) before stopping the phone-side multicast UWB.
+        try {
+          await PkeAuthOrchestrator.requestRangingOnDevice(device, false);
+        } catch (_) {}
+      }
       if (multiUwb != null) {
         await multiUwb.stop();
       }
-      final device = _foregroundDevice;
       if (device != null) {
         try {
           await device.disconnect();

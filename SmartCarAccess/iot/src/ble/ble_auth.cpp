@@ -25,6 +25,7 @@
 #include "ccc_mailbox.h"
 #include "fsm/fsm.h"
 #include "fsm/fsm_integration.h"
+#include "uwb/uwb_bridge.h"
 
 // Uncomment to enable verbose debug logging (adds ~150-200ms overhead)
 // #define BLE_AUTH_VERBOSE_DEBUG
@@ -40,6 +41,8 @@ namespace {
   static constexpr uint8_t kInsAuth1       = 0x81;
   static constexpr uint8_t kInsExchange    = 0x82;
   static constexpr uint8_t kInsControlFlow = 0x83;
+  static constexpr uint8_t kInsRangingStart = 0x84;
+  static constexpr uint8_t kInsRangingStop  = 0x85;
   static constexpr uint8_t kAuth0P1Standard = 0x11;
   static constexpr uint8_t kAuth0P1Fast = 0x01;
   static constexpr uint8_t kExchangePayloadV1 = 0x01;
@@ -1005,6 +1008,34 @@ namespace {
             print_latency_report_if_ready();
           }
           FSMIntegration::BLE::onControlFlowResponseSent();
+          break;
+        }
+
+        case kInsRangingStart: {
+          // Explicit "Start Ranging" from the phone: start the anchor sessions
+          // (CMD:START_RANGING over USB-CDC to the PC bridge).
+          if (!s_session_keys_ready) {
+            Serial.println("[RANGING] Reject start: session not ready");
+            sendTunnelResponse(ins, kSw1Conditions, kSw2Conditions);
+            break;
+          }
+          UwbBridge::sendStart();
+          Serial.println("[RANGING] Start requested by phone");
+          sendTunnelResponse(ins, kSw1Ok, kSw2Ok);
+          break;
+        }
+
+        case kInsRangingStop: {
+          // Explicit "Stop Ranging" from the phone: stop the anchor sessions
+          // (CMD:STOP_RANGING over USB-CDC to the PC bridge).
+          if (!s_session_keys_ready) {
+            Serial.println("[RANGING] Reject stop: session not ready");
+            sendTunnelResponse(ins, kSw1Conditions, kSw2Conditions);
+            break;
+          }
+          UwbBridge::sendStop();
+          Serial.println("[RANGING] Stop requested by phone");
+          sendTunnelResponse(ins, kSw1Ok, kSw2Ok);
           break;
         }
 
