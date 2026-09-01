@@ -27,11 +27,10 @@ import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
- * Multicast DS-TWR ranging bridge (Stage 2). Uses the android.ranging framework
- * API (API 36+) so the phone controller address can be pinned to 0x06C1, matching
+ * Multicast DS-TWR ranging bridge. Uses the android.ranging framework API
+ * (API 36+) so the phone controller address can be pinned to 0x06C1, matching
  * the fixed anchors (addresses 0/1/2). Ported from the reference app Uwb.kt.
  *
- * This is ADDITIVE: the Stage 1 unicast bridge (UwbRangingBridge) is untouched.
  * Emits over EventChannel:
  *   { type:"range",  d0, d1, d2, mask }     // mask bit i => d(i) valid
  *   { type:"status", status, message }      // ACTIVE | STOPPED | ERROR

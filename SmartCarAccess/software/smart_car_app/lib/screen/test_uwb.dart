@@ -1,12 +1,15 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:smart_car_app/service/uwb_service.dart';
 import 'package:smart_car_app/widgets/uwb_ranging_section.dart';
 
+/// Test screen for multi-anchor UWB ranging (multicast DS-TWR).
+///
+/// Connect BLE first (this keeps the ESP32 FSM secure channel alive so the
+/// PC bridge stays ranged), then use the "UWB Multi-Anchor Ranging" card to
+/// start/stop ranging against the 3 anchors.
 class TestUwbScreen extends StatefulWidget {
   const TestUwbScreen({super.key});
 
@@ -15,79 +18,35 @@ class TestUwbScreen extends StatefulWidget {
 }
 
 class _TestUwbScreenState extends State<TestUwbScreen> {
-  final UwbService _uwb = UwbService();
-
   final ScrollController _logScroll = ScrollController();
-  final TextEditingController _payloadCtrl = TextEditingController();
-  final TextEditingController _sessionIdCtrl = TextEditingController(text: '42');
-  final TextEditingController _phoneMacCtrl = TextEditingController(text: '0x0001');
-  final TextEditingController _carMacCtrl = TextEditingController(text: '0x0002');
-  final TextEditingController _channelCtrl = TextEditingController(text: '9');
-
   final List<String> _logs = <String>[];
   final List<ScanResult> _devices = <ScanResult>[];
 
-  StreamSubscription<String>? _logSub;
-  StreamSubscription<Uint8List>? _infoSub;
-  StreamSubscription<UwbOobPayload>? _oobSub;
-  StreamSubscription<UwbRangingEvent>? _rangingSub;
   StreamSubscription<List<ScanResult>>? _scanSub;
+  StreamSubscription<BluetoothConnectionState>? _connSub;
 
-  bool _isScanning = false;
-  bool _isSending = false;
-  bool _isStartingUwb = false;
   BluetoothDevice? _selectedDevice;
-  UwbOobPayload? _lastOob;
-  UwbRangingEvent? _lastRangingEvent;
-  Map<dynamic, dynamic>? _lastPrepareSession;
+  bool _isScanning = false;
+  bool _isConnecting = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _logSub = _uwb.logs.listen(_appendLog);
-    _infoSub = _uwb.infoNotifications.listen((bytes) {
-      _appendLog('INFO NOTIFY: ${UwbService.toHex(bytes)}');
-    });
-    _oobSub = _uwb.oobPayloads.listen((oob) {
-      if (!mounted) return;
-      setState(() => _lastOob = oob);
-    });
-    _rangingSub = _uwb.rangingEvents.listen((event) {
-      if (!mounted) return;
-      setState(() => _lastRangingEvent = event);
-      
-      // Add visual feedback on the phone when in unlock zone
-      if (event.distanceM != null) {
-        if (event.distanceM! <= 2.0) {
-          _appendLog('🎯 [UNLOCK ZONE] Distance: ${event.distanceM!.toStringAsFixed(2)}m');
-        } else if (event.distanceM! > 3.0) {
-          _appendLog('✓ [RESET ZONE] Distance: ${event.distanceM!.toStringAsFixed(2)}m - Ready to unlock again');
-        }
-      }
-    });
-    _buildDefaultPayload();
-  }
+  bool get _isConnected =>
+      _selectedDevice != null && _selectedDevice!.isConnected;
 
   @override
   void dispose() {
-    _logSub?.cancel();
-    _infoSub?.cancel();
-    _oobSub?.cancel();
-    _rangingSub?.cancel();
     _scanSub?.cancel();
-    _uwb.dispose();
+    _connSub?.cancel();
     _logScroll.dispose();
-    _payloadCtrl.dispose();
-    _sessionIdCtrl.dispose();
-    _phoneMacCtrl.dispose();
-    _carMacCtrl.dispose();
-    _channelCtrl.dispose();
     super.dispose();
   }
 
   void _appendLog(String line) {
     if (!mounted) return;
-    setState(() => _logs.add(line));
+    setState(
+      () => _logs.add(
+        '[${DateTime.now().toIso8601String().substring(11, 19)}] $line',
+      ),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_logScroll.hasClients) {
         _logScroll.animateTo(
@@ -106,9 +65,7 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
     });
 
     try {
-      await _uwb.ensureBluetoothReady();
       _appendLog('Scanning for BLE devices...');
-
       await _scanSub?.cancel();
       final Map<String, ScanResult> seen = <String, ScanResult>{};
       _scanSub = FlutterBluePlus.scanResults.listen((results) {
@@ -146,171 +103,48 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
   }
 
   Future<void> _connect(BluetoothDevice device) async {
+    if (_isConnected && _selectedDevice?.remoteId == device.remoteId) {
+      _appendLog('Already connected');
+      return;
+    }
+
+    await _disconnect();
+    setState(() => _isConnecting = true);
     try {
-      await _uwb.connect(device);
+      _appendLog(
+        'Connecting to ${_deviceLabelFromDevice(device)} '
+        '(${device.remoteId.str})...',
+      );
+      await device.connect(timeout: const Duration(seconds: 12));
       if (!mounted) return;
       setState(() => _selectedDevice = device);
-      _appendLog(
-        'Connected: ${_deviceLabelFromDevice(device)} (${device.remoteId.str})',
-      );
+      _appendLog('Connected');
+
+      _connSub?.cancel();
+      _connSub = device.connectionState.listen((state) {
+        _appendLog('Connection state: $state');
+        if (!mounted) return;
+        setState(() {});
+      });
     } catch (e) {
       _appendLog('Connect error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isConnecting = false);
+      }
     }
   }
 
   Future<void> _disconnect() async {
-    await _uwb.disconnect();
-    if (!mounted) return;
-    setState(() {
-      _selectedDevice = null;
-      _lastPrepareSession = null;
-      _lastOob = null;
-      _lastRangingEvent = null;
-    });
-  }
-
-  void _selectDevice(BluetoothDevice device) {
-    setState(() => _selectedDevice = device);
-    _appendLog(
-      'Selected: ${_deviceLabelFromDevice(device)} (${device.remoteId.str})',
-    );
-  }
-
-  Future<void> _connectSelected() async {
     final device = _selectedDevice;
-    if (device == null) {
-      _appendLog('Please select a device first');
-      return;
+    if (device != null && device.isConnected) {
+      try {
+        await device.disconnect();
+      } catch (_) {}
     }
-    await _connect(device);
-  }
-
-  void _buildDefaultPayload() {
-    try {
-      final sessionId = int.parse(_sessionIdCtrl.text.trim());
-      final phoneMac = _parseFlexibleInt(_phoneMacCtrl.text.trim());
-      final carMac = _parseFlexibleInt(_carMacCtrl.text.trim());
-      final channel = int.parse(_channelCtrl.text.trim());
-      _uwb.clearPreparedContext();
-
-      final payload = _uwb.buildDefaultOobPayloadV1(
-        sessionId: sessionId,
-        phoneMac: phoneMac,
-        carMac: carMac,
-        channel: channel,
-      );
-      _payloadCtrl.text = UwbService.toHex(payload);
-      final parsed = _uwb.parseOobPayload(payload);
-      if (mounted) {
-        setState(() {
-          _lastOob = parsed;
-          _lastPrepareSession = null;
-          _lastRangingEvent = null;
-        });
-      } else {
-        _lastOob = parsed;
-        _lastPrepareSession = null;
-        _lastRangingEvent = null;
-      }
-      _appendLog('Generated payload V1: ${payload.length} bytes');
-    } catch (e) {
-      _appendLog('Payload build error: $e');
+    if (mounted) {
+      setState(() => _selectedDevice = null);
     }
-  }
-
-  Future<void> _sendOob() async {
-    setState(() => _isSending = true);
-    try {
-      final prepared = await _preparePayloadWithLocalUwbAddress();
-      final bytes = prepared['payload'] as Uint8List;
-      final session = prepared['session'];
-      await _uwb.sendOobPayload(bytes);
-      _appendLog('OOB cached on ECU using local UWB ${session is Map ? session['localAddress'] ?? '-' : '-'}');
-    } catch (e) {
-      _appendLog('Send OOB failed: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
-    }
-  }
-
-  Future<void> _sendStatusCmd() async {
-    try {
-      await _uwb.sendAdminCmd(0x33);
-    } catch (e) {
-      _appendLog('Status command failed: $e');
-    }
-  }
-
-  Future<void> _joinFromPayload() async {
-    setState(() => _isStartingUwb = true);
-    try {
-      final bytes = UwbService.parseHex(_payloadCtrl.text);
-      final result = await _uwb.joinSessionFromOob(bytes);
-      if (!mounted) return;
-      setState(() {
-        final session = result['session'];
-        _lastPrepareSession = session is Map ? Map<dynamic, dynamic>.from(session) : null;
-      });
-      _appendLog('UWB start requested on ECU and phone ranging started');
-    } catch (e) {
-      _appendLog('Join UWB failed: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isStartingUwb = false);
-      }
-    }
-  }
-
-  Future<Map<String, Object?>> _preparePayloadWithLocalUwbAddress() async {
-    final bytes = UwbService.parseHex(_payloadCtrl.text);
-    final prepared = await _uwb.preparePayloadForOob(bytes);
-    final patchedPayload = prepared['payload'] as Uint8List;
-    final oobMap = Map<dynamic, dynamic>.from(prepared['oob'] as Map);
-    final session = prepared['session'];
-    final patchedOob = _uwb.parseOobPayload(patchedPayload);
-
-    if (!mounted) {
-      return prepared;
-    }
-
-    setState(() {
-      _payloadCtrl.text = UwbService.toHex(patchedPayload);
-      _phoneMacCtrl.text = '0x${patchedOob.phoneMac.toRadixString(16).padLeft(4, '0').toUpperCase()}';
-      _lastOob = patchedOob;
-      _lastPrepareSession = session is Map ? Map<dynamic, dynamic>.from(session) : null;
-    });
-
-    _appendLog('Patched OOB phoneMac to ${oobMap['phoneMacString']} from local UWB address');
-    _appendLog('Forced roles: phone=controller, car=controlee');
-    return prepared;
-  }
-
-  Future<void> _stopRanging() async {
-    try {
-      await _uwb.stopRanging();
-      if (!mounted) return;
-      setState(() {
-        _lastPrepareSession = null;
-      });
-      _appendLog('Requested UWB stop');
-    } catch (e) {
-      _appendLog('Stop ranging failed: $e');
-    }
-  }
-
-  Map<String, Object?>? _currentPreparedContext() {
-    try {
-      final bytes = UwbService.parseHex(_payloadCtrl.text);
-      return _uwb.getPreparedContext(bytes);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool _isPreparedPayloadCurrent() {
-    return _currentPreparedContext() != null;
   }
 
   @override
@@ -340,7 +174,7 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
                     child: Row(
                       children: [
                         Expanded(child: _buildDeviceList()),
-                        Expanded(child: _buildUwbStatus()),
+                        Expanded(child: _buildRanging()),
                         Expanded(child: _buildLogs()),
                       ],
                     ),
@@ -353,9 +187,8 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
               padding: EdgeInsets.zero,
               children: [
                 _buildTopControls(),
-                UwbRangingSection(sessionReady: _uwb.isConnected),
+                _buildRanging(),
                 SizedBox(height: 280, child: _buildDeviceList()),
-                SizedBox(height: 360, child: _buildUwbStatus()),
                 SizedBox(height: 260, child: _buildLogs()),
               ],
             );
@@ -366,9 +199,6 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
   }
 
   Widget _buildTopControls() {
-    final isPreparedFlowReady = _isPreparedPayloadCurrent();
-    final preparedLocalAddress = _lastPrepareSession?['localAddress']?.toString();
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -410,106 +240,46 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
                 label: Text(_isScanning ? 'Scanning...' : 'Scan'),
               ),
               ElevatedButton.icon(
-                onPressed: (_selectedDevice != null && !_uwb.isConnected && !_isScanning)
-                    ? _connectSelected
+                onPressed: (_selectedDevice != null &&
+                        !_isConnected &&
+                        !_isScanning &&
+                        !_isConnecting)
+                    ? () => _connect(_selectedDevice!)
                     : null,
-                icon: const Icon(Icons.link),
-                label: const Text('Connect'),
+                icon: _isConnecting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.link),
+                label: Text(_isConnecting ? 'Connecting...' : 'Connect'),
               ),
               OutlinedButton.icon(
-                onPressed: _uwb.isConnected ? _disconnect : null,
+                onPressed: _isConnected ? _disconnect : null,
                 icon: const Icon(Icons.link_off),
                 label: const Text('Disconnect'),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              SizedBox(width: 180, child: _smallField(_sessionIdCtrl, 'Session ID (dec)')),
-              SizedBox(width: 190, child: _smallField(_phoneMacCtrl, 'Phone MAC (hex)')),
-              SizedBox(width: 180, child: _smallField(_carMacCtrl, 'Car MAC (hex)')),
-              SizedBox(width: 120, child: _smallField(_channelCtrl, 'Channel')),
-              ElevatedButton(
-                onPressed: _buildDefaultPayload,
-                child: const Text('Generate Payload'),
-              ),
-              ElevatedButton(
-                onPressed: _uwb.isConnected ? _sendStatusCmd : null,
-                child: const Text('Status 0x33'),
-              ),
-              ElevatedButton(
-                onPressed: (_uwb.isConnected && !_isStartingUwb && isPreparedFlowReady) ? _joinFromPayload : null,
-                child: Text(_isStartingUwb ? 'Starting UWB...' : 'Join UWB From Payload'),
-              ),
-              OutlinedButton(
-                onPressed: _stopRanging,
-                child: const Text('Stop Ranging'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _payloadCtrl,
-            maxLines: 2,
-            onChanged: (_) {
-              final prepared = _currentPreparedContext();
-              if (!mounted) return;
-              setState(() {
-                final session = prepared?['session'];
-                _lastPrepareSession = session is Map ? Map<dynamic, dynamic>.from(session) : null;
-              });
-            },
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'OOB payload hex (37 bytes)',
-              hintText: '01 01 2A 00 00 00 ...',
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _uwb.isConnected && !_isSending ? _sendOob : null,
-              icon: const Icon(Icons.send),
-              label: Text(_isSending ? 'Sending...' : 'Send OOB to Admin 0005'),
-            ),
-          ),
-          const SizedBox(height: 4),
           Text(
-            isPreparedFlowReady
-                ? 'Prepared flow ready. Join will ask ECU to start the cached config, then reuse local UWB ${preparedLocalAddress ?? '-'} and the same phone MAC on the phone side.'
-                : 'Press Send OOB first. That step prepares the phone UWB session, patches phone MAC into this payload, and caches the exact config on ECU for Join to start.',
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
-          ),
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _uwb.isConnected && _selectedDevice != null
-                  ? 'Connected: ${_deviceLabelFromDevice(_selectedDevice!)} (${_selectedDevice!.remoteId.str})'
-                  : _selectedDevice != null
-                  ? 'Selected: ${_deviceLabelFromDevice(_selectedDevice!)} (${_selectedDevice!.remoteId.str})'
-                  : 'No device selected',
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
+            _isConnected && _selectedDevice != null
+                ? 'Connected: ${_deviceLabelFromDevice(_selectedDevice!)} '
+                    '(${_selectedDevice!.remoteId.str})'
+                : _selectedDevice != null
+                    ? 'Selected: ${_deviceLabelFromDevice(_selectedDevice!)} '
+                        '(${_selectedDevice!.remoteId.str})'
+                    : 'No device selected',
+            style: const TextStyle(fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _smallField(TextEditingController ctrl, String label) {
-    return TextField(
-      controller: ctrl,
-      decoration: InputDecoration(
-        border: const OutlineInputBorder(),
-        labelText: label,
-        isDense: true,
-      ),
-    );
+  Widget _buildRanging() {
+    return UwbRangingSection(sessionReady: _isConnected);
   }
 
   Widget _buildDeviceList() {
@@ -536,22 +306,28 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
                     itemBuilder: (context, index) {
                       final r = _devices[index];
                       final name = _deviceLabel(r);
-                      final isSelected =
-                          _selectedDevice?.remoteId.str.toUpperCase() == r.device.remoteId.str.toUpperCase();
-                      final isConnected =
-                          _uwb.connectedDevice?.remoteId.str.toUpperCase() == r.device.remoteId.str.toUpperCase();
+                      final isSelected = _selectedDevice?.remoteId.str
+                              .toUpperCase() ==
+                          r.device.remoteId.str.toUpperCase();
+                      final isConnected = _isConnected &&
+                          _selectedDevice?.remoteId.str.toUpperCase() ==
+                              r.device.remoteId.str.toUpperCase();
                       return ListTile(
                         dense: true,
                         selected: isSelected,
-                        selectedTileColor: const Color(0xFF273671).withAlpha(20),
+                        selectedTileColor:
+                            const Color(0xFF273671).withValues(alpha: 0.1),
                         leading: Icon(
                           Icons.bluetooth,
-                          color: isSelected ? const Color(0xFF273671) : Colors.grey,
+                          color: isSelected
+                              ? const Color(0xFF273671)
+                              : Colors.grey,
                         ),
                         title: Text(
                           name,
                           style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight:
+                                isSelected ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                         subtitle: Text(
@@ -561,11 +337,23 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
                         trailing: isConnected
                             ? const Icon(Icons.check_circle, color: Colors.green)
                             : isSelected
-                                ? const Icon(Icons.radio_button_checked, color: Color(0xFF273671))
+                                ? const Icon(
+                                    Icons.radio_button_checked,
+                                    color: Color(0xFF273671),
+                                  )
                                 : _isLikelyEspDevice(r)
-                                    ? const Icon(Icons.priority_high, color: Colors.orange)
+                                    ? const Icon(
+                                        Icons.priority_high,
+                                        color: Colors.orange,
+                                      )
                                     : null,
-                        onTap: () => _selectDevice(r.device),
+                        onTap: () {
+                          setState(() => _selectedDevice = r.device);
+                          _appendLog(
+                            'Selected: ${_deviceLabelFromDevice(r.device)} '
+                            '(${r.device.remoteId.str})',
+                          );
+                        },
                       );
                     },
                   ),
@@ -609,10 +397,16 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
               itemCount: _logs.length,
               itemBuilder: (context, index) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   child: Text(
                     _logs[index],
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
                 );
               },
@@ -621,100 +415,6 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildUwbStatus() {
-    final oob = _lastOob;
-    final ranging = _lastRangingEvent;
-    final localAddress = _lastPrepareSession?['localAddress']?.toString();
-
-    return Card(
-      margin: const EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'UWB Session / Ranging',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            _infoRow('Prepared local UWB', localAddress ?? '-'),
-            _infoRow('Event type', ranging?.type ?? '-'),
-            _infoRow('Distance', _formatDistance(ranging?.distanceM)),
-            _infoRow('Azimuth', _formatAngle(ranging?.azimuthDeg)),
-            _infoRow('Elevation', _formatAngle(ranging?.elevationDeg)),
-            _infoRow('Elapsed', ranging?.elapsedMs == null ? '-' : '${ranging!.elapsedMs} ms'),
-            _infoRow('Peer seen', ranging?.positionSeen?.toString() ?? '-'),
-            const Divider(height: 24),
-            const Text(
-              'Last OOB payload',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: oob == null
-                  ? const Center(child: Text('No OOB parsed yet'))
-                  : SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _infoRow('Phone role', 'controller'),
-                          _infoRow('Car role', oob.carIsControlee ? 'controlee' : 'controller'),
-                          _infoRow('Session ID', '${oob.sessionId}'),
-                          _infoRow('Phone MAC', oob.phoneMacString),
-                          _infoRow('Car MAC', oob.carMacString),
-                          _infoRow('Remote address', oob.remoteAddress),
-                          _infoRow('Channel', '${oob.channel}'),
-                          _infoRow('Preamble index', '${oob.preambleIdx}'),
-                          _infoRow('Slot duration', '${oob.slotDuration}'),
-                          _infoRow('Ranging interval', '${oob.rangingInterval}'),
-                          _infoRow('Static STS IV', UwbService.toHex(oob.staticStsIv)),
-                        ],
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  int _parseFlexibleInt(String input) {
-    if (input.toLowerCase().startsWith('0x')) {
-      return int.parse(input.substring(2), radix: 16);
-    }
-    return int.parse(input);
-  }
-
-  String _formatDistance(double? value) {
-    if (value == null) return '-';
-    return '${value.toStringAsFixed(2)} m';
-  }
-
-  String _formatAngle(double? value) {
-    if (value == null) return '-';
-    return '${value.toStringAsFixed(2)} deg';
   }
 
   String _deviceLabel(ScanResult result) {

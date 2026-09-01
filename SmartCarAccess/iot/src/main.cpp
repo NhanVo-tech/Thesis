@@ -7,7 +7,7 @@
 #include "fsm/fsm.h"
 #include "fsm/fsm_integration.h"
 #include "test/test_fsm.h"
-#include "uwb/uci_door_unlock.h"
+#include "uwb/access_controller.h"
 #include "uwb/uwb_bridge.h"
 
 namespace {
@@ -49,7 +49,7 @@ void uwbTaskFn(void* p) {
   for (;;) {
     handleConsole();
     UwbBridge::tick();
-    UwbDoorUnlock::tick();
+    AccessController::tick();
     vTaskDelay(pdMS_TO_TICKS(5));
   }
 }
@@ -69,8 +69,8 @@ void setup() {
   FSM::begin();
   BLEMod::begin();
   NfcSession::begin(Serial2, 44, 43, 115200);
-  UwbDoorUnlock::begin();
   UwbBridge::begin();
+  AccessController::begin();
 
   FSM::onStateEntry(FSM::AUTH_SECURE_CHANNEL_READY, onEnterSecureChannel);
   FSM::onStateEntry(FSM::IDLE, onEnterIdle);

@@ -16,7 +16,6 @@ namespace {
   const char* kAdminCmdCharUUID   = "9a9b9c9d-0002-4000-8000-9a9b9c9d0002"; // write-only small commands
   const char* kAdminInfoCharUUID  = "9a9b9c9d-0003-4000-8000-9a9b9c9d0003"; // read/notify info
   const char* kAdminPhoneKeyUUID  = "9a9b9c9d-0004-4000-8000-9a9b9c9d0004"; // write-only: phone PEM (supports chunking)
-  const char* kAdminUwbOobUUID    = "9a9b9c9d-0005-4000-8000-9a9b9c9d0005"; // write-only: binary UWB OOB payload V1
 
   // Admin state
   BLEMod::AdminMode s_adminMode = BLEMod::ADMIN_NORMAL;
@@ -160,14 +159,6 @@ namespace {
           _info->setValue("AUTH_STATS_PRINTED");
           _info->notify();
           break;
-        case 0x50: // Start UWB session (handled by PC over USB-CDC)
-          _info->setValue("UWB_BY_PC");
-          _info->notify();
-          break;
-        case 0x51: // Stop UWB session (handled by PC over USB-CDC)
-          _info->setValue("UWB_BY_PC");
-          _info->notify();
-          break;
         default:
           _info->setValue("UNSUPPORTED");
           _info->notify();
@@ -189,18 +180,6 @@ namespace {
       _info->notify();
     }
   };
-
-  // UWB OOB payload writer (binary V1), mapped directly to UCI run config.
-  class AdminUwbOobCallbacks : public NimBLECharacteristicCallbacks {
-    NimBLECharacteristic* _info;
-   public:
-    explicit AdminUwbOobCallbacks(NimBLECharacteristic* info): _info(info) {}
-    void onWrite(NimBLECharacteristic* c, NimBLEConnInfo&) override {
-      (void)c;
-      _info->setValue("UWB_OOB_UNSUPPORTED_USE_PC");
-      _info->notify();
-    }
-  };
 }
 
 namespace BLEAdmin {
@@ -219,9 +198,6 @@ namespace BLEAdmin {
     // Phone public key upload
     NimBLECharacteristic* cPhoneKey = pAdmin->createCharacteristic(kAdminPhoneKeyUUID, NIMBLE_PROPERTY::WRITE);
     static AdminPhoneKeyCallbacks phoneKeyCb(cAdminInfo); cPhoneKey->setCallbacks(&phoneKeyCb);
-    // UWB OOB payload (binary)
-    NimBLECharacteristic* cUwbOob = pAdmin->createCharacteristic(kAdminUwbOobUUID, NIMBLE_PROPERTY::WRITE);
-    static AdminUwbOobCallbacks uwbOobCb(cAdminInfo); cUwbOob->setCallbacks(&uwbOobCb);
     pAdmin->start();
   }
 

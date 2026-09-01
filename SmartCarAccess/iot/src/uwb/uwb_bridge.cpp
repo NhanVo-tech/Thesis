@@ -3,6 +3,7 @@
 #include "uwb/uwb_geometry.h"
 #include "uwb/trilateration.h"
 #include "uwb/ekf_stub.h"
+#include "uwb/access_controller.h"
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -70,6 +71,7 @@ void tick() {
 
     Serial.printf("[POS2D] x=%.2f y=%.2f rms=%.3f\n", r.x, r.y, r.rms);
     Ekf::update(r.x, r.y);
+    AccessController::handlePosition(r.x, r.y);
   }
 }
 

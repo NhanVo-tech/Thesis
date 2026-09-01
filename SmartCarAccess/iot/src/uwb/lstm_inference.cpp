@@ -1,3 +1,8 @@
+// TEMPORARILY DISABLED (2026-09-01): the Stage 1 LSTM expects 1-D features
+// (filtered distance, residual, velocity). It has not yet been reworked for the
+// 2-D position features (x, y, vx, vy). Re-enable after the system is
+// feature-complete and the CNN-LSTM (M5/M6) is implemented.
+#if 0
 #include "uwb/lstm_inference.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/all_ops_resolver.h"
@@ -134,3 +139,4 @@ bool LstmInference::predict(float current_filtered_m, float current_residual_m,
 
   return true;
 }
+#endif  // lstm_inference temporarily disabled

@@ -21,7 +21,6 @@ class UwbMultiRange {
 }
 
 /// Dart wrapper over the native android.ranging multicast DS-TWR bridge.
-/// Additive: separate channels from the Stage 1 single-anchor UwbService.
 class UwbMultiService {
   static const MethodChannel _method = MethodChannel('smartcar/uwb_multi');
   static const EventChannel _events = EventChannel('smartcar/uwb_multi/events');

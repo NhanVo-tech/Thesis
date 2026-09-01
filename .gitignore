@@ -55,6 +55,7 @@ node_modules/
 
 # Local workspace (kept locally, not in repo)
 thesis253_workspace/
+uwb-multicast-android/
 
 # Logs / temp
 *.log

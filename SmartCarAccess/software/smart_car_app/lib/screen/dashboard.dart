@@ -377,7 +377,7 @@ class _DashboardState extends State<Dashboard> {
         ),
         IconButton(
           icon: const Icon(Icons.radar_outlined, color: Color(0xFF273671)),
-          tooltip: 'Test UWB/OOB',
+          tooltip: 'Test UWB',
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const TestUwbScreen()),

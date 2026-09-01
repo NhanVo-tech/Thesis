@@ -13,7 +13,6 @@ import 'pke_auth_orchestrator.dart';
 import 'pke_rollout_flags.dart';
 import 'pke_telemetry.dart';
 import 'uwb_multi_service.dart';
-import 'uwb_service.dart';
 
 class PkeBackgroundService {
   static const String _channelId = 'pke_background_runtime';
@@ -26,7 +25,7 @@ class PkeBackgroundService {
   static bool _configured = false;
   static bool _foregroundListenerConfigured = false;
   static bool _foregroundHandoffInFlight = false;
-  static UwbService? _foregroundUwb;
+  static BluetoothDevice? _foregroundDevice;
   static UwbMultiService? _foregroundMultiUwb;
 
   static void _log(String message) {
@@ -70,7 +69,6 @@ class PkeBackgroundService {
     }
 
     _foregroundListenerConfigured = true;
-    _foregroundUwb ??= UwbService(enableEventChannel: true, logToConsole: true);
     _foregroundMultiUwb ??= UwbMultiService();
 
     FlutterBackgroundService()
@@ -106,11 +104,10 @@ class PkeBackgroundService {
     String? requestId,
   ) async {
     final service = FlutterBackgroundService();
-    final uwb = _foregroundUwb;
     final multiUwb = _foregroundMultiUwb;
     bool ok = false;
 
-    if (uwb == null || multiUwb == null) {
+    if (multiUwb == null) {
       _log('foreground handoff failed: UWB service not initialized');
       service.invoke('uwbHandoffResult', {
         'requestId': requestId,
@@ -132,7 +129,8 @@ class PkeBackgroundService {
 
       // Keep the BLE connection open (the background isolate releases it
       // after auth; the ESP32 FSM holds the secure channel while connected).
-      await uwb.connect(targetDevice);
+      await targetDevice.connect(timeout: const Duration(seconds: 12));
+      _foregroundDevice = targetDevice;
 
       // Multi-anchor multicast DS-TWR: phone = controller 0x06C1, anchors 0/1/2.
       // Matches run_fira_bridge.py responder config (DstMacAddress=0x06C1,
@@ -168,7 +166,6 @@ class PkeBackgroundService {
 
   static Future<void> _handleForegroundHandoffStop(String? requestId) async {
     final service = FlutterBackgroundService();
-    final uwb = _foregroundUwb;
     final multiUwb = _foregroundMultiUwb;
 
     try {
@@ -176,9 +173,12 @@ class PkeBackgroundService {
       if (multiUwb != null) {
         await multiUwb.stop();
       }
-      if (uwb != null) {
-        await uwb.stopRanging();
-        await uwb.disconnect();
+      final device = _foregroundDevice;
+      if (device != null) {
+        try {
+          await device.disconnect();
+        } catch (_) {}
+        _foregroundDevice = null;
       }
       _log('foreground UWB stop completed requestId=${requestId ?? '-'}');
       service.invoke('uwbHandoffStopped', {

@@ -85,6 +85,45 @@ python ui-demo\main_screen.py
 
 ---
 
+### 0.3 Cleanup — single-ranging/UCI/OOB removed (2026-09-01)
+
+Multi-anchor ranging over USB/USB-CDC is now validated end-to-end and the Stage 1 single-anchor pipeline has been **deleted** from both firmware and app:
+
+**Current working pipeline:**
+
+```
+Phone (android.ranging multicast DS-TWR, controller 0x06C1)
+      │  UWB PHY → 3 anchors (responders, mac 0/1/2)
+      ▼
+Anchor0/1/2 ──USB/UART──▶ PC (run_fira_bridge.py)
+      │  collects d0,d1,d2 → sends "RANGE:d0=..,d1=..,d2=..,valid=.." over USB-CDC
+      ▼
+ESP32-S3 (UwbBridge) ── parse RANGE → trilateration → EKF stub → AccessController (2D unlock, GPIO26)
+      ▲
+      └── sends "CMD:START_RANGING"/"CMD:STOP_RANGING" on FSM secure-channel enter/exit
+```
+
+**Deleted (superseded by the PC-bridge + multicast path):**
+
+| Area | Removed files |
+|------|---------------|
+| UCI session / UART link / OOB | `iot/{include,src}/uwb/uci_session_manager.*`, `uci_uart_link.*`, `uci_oob.*` |
+| 1-D Kalman filter | `iot/lib/Kalman/` |
+| ESP-NOW bridge / host bridge | `anchor_bridge.*`, `espnow_bridge.*`, `uci_host_bridge.*`, `oob_parser.*`, `session_config.*` (removed earlier) |
+| Phone unicast / OOB | `uwb_service.dart`, `UwbRangingBridge.kt` (multicast `UwbMulticastBridge` + `UwbMultiService` + `UwbRangingSection` remain) |
+| BLE admin UWB stubs | `0x50/0x51` commands and UWB OOB characteristic (`0005`) removed from `ble_admin.cpp` |
+
+**Repurposed (not deleted):**
+
+| Area | Change |
+|------|--------|
+| Single-anchor door unlock | `uci_door_unlock.*` → **`access_controller.*`**: renamed and converted from 1-D `handleRangingDistance(d)` to 2-D `handlePosition(x, y)` (Euclidean distance to the unlock point + same hysteresis). Wired into `UwbBridge::tick()` after trilateration. |
+| Single-point LSTM | `lstm_inference.*` + `uwb_lstm_model.h` restored as-is (kept untouched for the future AI/CNN-LSTM milestone M5/M6). |
+
+The multiranging path (M0–M4 transport, trilateration, EKF stub) is untouched. Embedded port of the EKF/CNN-LSTM remains a later milestone per §4.
+
+---
+
 ## 1. Stage 2 Goals
 
 By the end of Stage 2 the system must achieve the following (mapped 1:1 to the four thesis requirements):
@@ -213,7 +252,7 @@ Milestones are strictly ordered by dependency. Each proves out one layer before 
 - **Dependencies**: M3 (position measurements to feed the filter).
 - **Deliverable**: Log `[EKF],t,x,y,vx,vy` showing visibly smoothed trajectory with spike rejection vs. raw `[POS2D]`; side-by-side plot via an extended visualizer.
 - **Files to create/modify**:
-  - New `iot/include/uwb/ekf_tracker.h` + `iot/src/uwb/ekf_tracker.cpp` (constant-velocity model; predict/update; NLOS gating via innovation threshold). This **supersedes the scalar `Kalman`** in the multi-anchor path but does not delete `iot/lib/Kalman/Kalman.h` (still used by the legacy 1‑D path — see §7).
+  - New `iot/include/uwb/ekf_tracker.h` + `iot/src/uwb/ekf_tracker.cpp` (constant-velocity model; predict/update; NLOS gating via innovation threshold). The scalar `Kalman` from Stage 1 was removed in the 2026-09-01 cleanup.
   - Extend `iot/tools/realtime_lstm_visualizer.py` (or a new `realtime_traj_visualizer.py`) to plot 2‑D trajectory + velocity.
 - **Complexity**: High.
 
@@ -223,7 +262,7 @@ Milestones are strictly ordered by dependency. Each proves out one layer before 
 - **Deliverable**: A quantized `.tflite` model + generated C header `iot/include/uwb/uwb_traj_model.h`; offline accuracy/confusion report. Datasets stored alongside Stage 1 CSVs (`iot/uwb_traj_data_label{0,1,2}.csv`).
 - **Files to create/modify**:
   - New Python training pipeline under `iot/tools/` (e.g. `train_traj_cnn_lstm.py`), reusing the `[EKF]`/CSV logging convention from Stage 1 tools (`serial_csv_logger.py`).
-  - New `iot/include/uwb/uwb_traj_model.h` (generated, mirrors how `uwb_lstm_model.h` is produced).
+  - New `iot/include/uwb/uwb_traj_model.h` (generated C header from the `.tflite` flatbuffer).
 - **Complexity**: High.
 
 ### M6 — On-device CNN‑LSTM inference (TFLM)
@@ -231,8 +270,8 @@ Milestones are strictly ordered by dependency. Each proves out one layer before 
 - **Dependencies**: M5 (model header) and M4 (live feature source).
 - **Deliverable**: Log `[INTENT],t,approach,pass,anomaly` at the ranging cadence; warm-up handling analogous to Stage 1.
 - **Files to create/modify**:
-  - New `iot/include/uwb/traj_inference.h` + `iot/src/uwb/traj_inference.cpp` (modeled on the existing `LstmInference` class in `iot/src/uwb/lstm_inference.cpp`: sliding window, z-score scaler, `MicroInterpreter`). Update `TIME_STEPS`/`NUM_FEATURES` for the 4-feature trajectory.
-  - Modify `iot/platformio.ini` if the TFLM arena/`build_flags` must grow (see R3).
+  - New `iot/include/uwb/traj_inference.h` + `iot/src/uwb/traj_inference.cpp` (sliding window, z-score scaler, `MicroInterpreter`), modeled on the restored Stage 1 `LstmInference` in `iot/src/uwb/lstm_inference.cpp`. Update `TIME_STEPS`/`NUM_FEATURES` for the 4-feature trajectory.
+  - Modify `iot/platformio.ini` if the TFLM arena/`build_flags` must grow (see R3). `TensorFlowLite_ESP32` is already present for the restored LSTM.
 - **Complexity**: High.
 
 ### M7 — Geofencing zone classifier
@@ -240,7 +279,7 @@ Milestones are strictly ordered by dependency. Each proves out one layer before 
 - **Dependencies**: M4 (position). Can proceed in parallel-conceptually with M6 but is listed after because the actuation gate needs both.
 - **Deliverable**: Log `[ZONE],t,zoneName`; demonstrated stable zone transitions along a reference walk.
 - **Files to create/modify**:
-  - New `iot/include/uwb/geofence.h` + `iot/src/uwb/geofence.cpp` (zone polygon/rectangle definitions + hysteresis, reusing the dual-threshold hysteresis pattern already proven in `iot/src/uwb/uci_door_unlock.cpp`).
+  - New `iot/include/uwb/geofence.h` + `iot/src/uwb/geofence.cpp` (zone polygon/rectangle definitions + hysteresis; the Stage 1 `uci_door_unlock.cpp` hysteresis reference was removed in the cleanup).
 - **Complexity**: Medium.
 
 ### M8 — Actuation gate + relay bank
@@ -248,19 +287,16 @@ Milestones are strictly ordered by dependency. Each proves out one layer before 
 - **Dependencies**: M6 (intent) and M7 (zone).
 - **Deliverable**: End-to-end demo: authenticated phone walking into Driver-Door zone while classified "approaching" fires the unlock relay; trunk zone fires trunk-kick; anomaly/no-session fires nothing.
 - **Files to create/modify**:
-  - Refactor/extend `iot/include/uwb/uci_door_unlock.h` + `iot/src/uwb/uci_door_unlock.cpp` into a broader `access_controller` (or add `handleZoneIntent(zone, intent, conf)`), keeping the existing `handleRangingWithAI` for backward compatibility. Add new relay GPIO constants alongside `RELAY_PIN=26`.
+  - ~~New~~ `iot/include/uwb/access_controller.h` + `iot/src/uwb/access_controller.cpp` — **created** (2026-09-01). The Stage 1 1D `uci_door_unlock.*` was renamed to `AccessController` and converted to 2D: `handlePosition(x, y)` computes the Euclidean distance to the unlock point (`kUnlockPointX/Y`) and applies the same hysteresis + consecutive-hit debounce before firing `RELAY_PIN=26`. Remaining work: add `handleZoneIntent(zone, intent, conf)` (intent gate + relay bank) once M6/M7 land, and keep the door relay behind the BLE session-validity gate.
   - Optionally add FSM states/events in `iot/include/fsm/fsm_states.h` (e.g. `UNLOCKING_CHECK_PROXIMITY` already exists) and bridges in `iot/include/fsm/fsm_integration.h` to keep orchestration centralized.
 - **Complexity**: Medium.
 
-### M9 — Phone-side one-to-many Initiator + OOB
-- **Goal**: Make the Android app configure and drive a FiRa **one-to-many** session against all 3 anchors and deliver the 3-anchor OOB config over BLE.
-- **Dependencies**: M0/M1 (anchor MACs + session params known). Can be developed in parallel with M2–M4 but must land before full-system M8 demo.
-- **Deliverable**: App `test_uwb.dart` screen shows 3 simultaneous distances; ESP32 receives a valid multi-anchor OOB.
-- **Files to create/modify**:
-  - Extend `software/smart_car_app/lib/service/uwb_service.dart` and the `UwbOobPayload` data class (see [DATA_CONTRACTS.md](DATA_CONTRACTS.md) §2.5) to carry `destMac[3]` / anchor list.
-  - Extend `software/smart_car_app/lib/screen/test_uwb.dart` to display multiple `UwbRangingEvent`s.
-  - Native `UwbRangingBridge.kt` for one-to-many session setup per the Qorvo FiRa tutorial.
-- **Complexity**: High.
+### M9 — Phone-side one-to-many Initiator ✅ (done; OOB removed)
+- **Goal**: Make the Android app configure and drive a FiRa **one-to-many** session against all 3 anchors.
+- **Dependencies**: M0/M1 (anchor MACs + session params known).
+- **Status**: ✅ **Done.** The app uses `android.ranging` multicast DS-TWR (`UwbMulticastBridge.kt` + `UwbMultiService.dart` + `UwbRangingSection.dart`), phone controller address pinned to `0x06C1`, ranging anchors `0/1/2`. The BLE OOB path (37-byte payload over Admin `0005`) was **removed** in the cleanup — the PC bridge drives the anchors directly over USB/UART.
+- **Deliverable**: App `test_uwb.dart` screen shows 3 simultaneous distances with a start/stop button and live log.
+- **Complexity**: ~~High~~ Done.
 
 ### M10 — System integration, tuning & evaluation
 - **Goal**: Tune EKF noise, geofence boundaries, intent thresholds, GDOP-driven anchor placement; produce evaluation figures.
@@ -283,9 +319,9 @@ Milestones are strictly ordered by dependency. Each proves out one layer before 
 - **Embedded port (later)**: porting to ESP32 will require re-solving the transport (UART hub / mux, or reverting to bridges) — but this is no longer a blocker for validating the Stage 2 algorithm.
 
 ### R3 — TFLite Micro memory constraints on ESP32
-- **Description**: Stage 1 already runs an LSTM via `TensorFlowLite_ESP32` (`LstmInference`, `uwb_lstm_model.h`). Adding a **CNN‑LSTM** with a larger tensor arena, plus EKF matrices, plus 3 UART buffers and NimBLE, may exceed RAM. The `uwbTask` already uses a 20 KB stack.
+- **Description**: The Stage 1 LSTM (`LstmInference`, `uwb_lstm_model.h`, `TensorFlowLite_ESP32`) is **kept as-is** for now and will be worked on after the system is feature-complete (M5/M6). Adding a **CNN‑LSTM** with a larger tensor arena, plus EKF matrices, plus NimBLE, may exceed RAM. The `uwbTask` already uses a 20 KB stack.
 - **Worst case**: Model fails to allocate its arena or the system OOM-crashes at runtime.
-- **Mitigation**: Quantize to int8; keep the trajectory window small (tune `TIME_STEPS`); size the arena empirically and pin it as a `constexpr`; consider **replacing** the Stage 1 3-class LSTM rather than running both models simultaneously; monitor heap via existing serial logging; if needed raise `uwbTask` stack and use PSRAM on the S3. Adjust `iot/platformio.ini` `build_flags`.
+- **Mitigation**: Quantize to int8; keep the trajectory window small (tune `TIME_STEPS`); size the arena empirically and pin it as a `constexpr`; consider replacing the Stage 1 3-class LSTM rather than running both models simultaneously; monitor heap via existing serial logging; if needed raise `uwbTask` stack and use PSRAM on the S3. Adjust `iot/platformio.ini` `build_flags`.
 
 ### R4 — GDOP geometry for anchor placement
 - **Description**: Geometric Dilution of Precision: poorly placed / near-collinear anchors amplify ranging noise into large `(x,y)` error, especially far from the anchor triangle.
@@ -357,10 +393,10 @@ These components are load-bearing for security/correctness and must remain **unt
 - **BLE Phase B authentication** — `iot/src/ble/ble_auth.cpp` and phone-side `pke_auth_orchestrator.dart` / `PhaseBCrypto.kt`. Stage 2 **consumes** `isSessionReady()` as an actuation gate but must not alter the handshake, ECDH, or session-key derivation. *(Why: the relay decision must stay cryptographically gated.)*
 - **BLE service topology & UUIDs** — `ble.cpp`, `ble_admin/attestation/echo.*`. Only **add** characteristics/OOB fields; do not renumber existing UUIDs (phone and firmware are coupled). *(Why: cross-side protocol compatibility.)*
 - **FSM core** — `iot/src/fsm/*`. Reuse and **extend** with new states/events/bridges (`fsm_states.h`, `fsm_integration.h`) rather than rewriting the transition engine or its `validateConfiguration()` checks. *(Why: it is the validated orchestration spine.)*
-- **UCI UART framing** — `iot/include/uwb/uci_uart_link.h` (`Mt`, `UciPacket`, framing). Extend for anchor IDs/multiplexing but keep the packet parser contract. *(Why: Anchor 0 already depends on it.)*
-- **Legacy 1‑D path** — `iot/lib/Kalman/Kalman.h`, `LstmInference`, and `UwbDoorUnlock::handleRangingWithAI(...)`. Keep them functional (as a fallback / single-anchor mode) even after the EKF path lands. *(Why: safe rollback if multi-anchor is unavailable.)*
-- **Serial logging conventions** — the `[LSTM_DATA]`, `[AI]`, `[DOOR]`, `[UCI]` tag scheme consumed by `iot/tools/*.py`. Add new tags (`[RANGE3]`, `[POS2D]`, `[EKF]`, `[INTENT]`, `[ZONE]`) rather than repurposing existing ones. *(Why: keeps existing tools working.)*
+- **Serial logging conventions** — the `[BLE]`, `[FSM]`, `[AUTH]`, `[PhaseA]` tag scheme consumed by `iot/tools/*.py`. Add new tags (`[RANGE3]`, `[POS2D]`, `[EKF]`, `[INTENT]`, `[ZONE]`) rather than repurposing existing ones. *(Why: keeps existing tools working.)*
 - **FreeRTOS task structure & priorities** in `main.cpp` (FSMTask/NFCTask/UWBTask). Extend `uwbTask`; don't destabilize BLE/NFC timing. *(Why: BLE callbacks and NFC timing are already balanced.)*
+
+> Note: the Stage 1 single-anchor path was largely **removed** in the 2026-09-01 cleanup (§0.3): UCI session/UART link, UWB OOB, and the 1-D `Kalman` filter are gone. `UwbDoorUnlock` was renamed to **`AccessController`** and converted to 2-D (`handlePosition(x, y)`); `LstmInference`/`uwb_lstm_model.h` were kept as-is for the future CNN-LSTM milestone (M5/M6).
 
 ---
 
