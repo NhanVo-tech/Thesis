@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:smart_car_app/service/uwb_service.dart';
+import 'package:smart_car_app/widgets/uwb_ranging_section.dart';
 
 class TestUwbScreen extends StatefulWidget {
   const TestUwbScreen({super.key});
@@ -352,6 +353,7 @@ class _TestUwbScreenState extends State<TestUwbScreen> {
               padding: EdgeInsets.zero,
               children: [
                 _buildTopControls(),
+                UwbRangingSection(sessionReady: _uwb.isConnected),
                 SizedBox(height: 280, child: _buildDeviceList()),
                 SizedBox(height: 360, child: _buildUwbStatus()),
                 SizedBox(height: 260, child: _buildLogs()),

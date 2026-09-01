@@ -42,7 +42,10 @@ void handleRangingDistance(double distanceM);
  * @param p_loiter Probability of hovering / loitering [0-1]
  * @param p_attack Probability of relay attack [0-1]
  */
+// STAGE1_DISABLED: replaced by multi-anchor Stage 2 flow
+#if 0
 void handleRangingWithAI(double distanceM, float p_walk, float p_loiter, float p_attack);
+#endif
 
 /**
  * Tick function for background state management

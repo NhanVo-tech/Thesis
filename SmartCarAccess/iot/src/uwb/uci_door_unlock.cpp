@@ -125,6 +125,8 @@ void resetDoorState() {
   }
 }
 
+// STAGE1_DISABLED: replaced by multi-anchor Stage 2 flow
+#if 0
 void handleRangingWithAI(double distanceM, float p_walk, float p_loiter, float p_attack) {
   // TÍNH TOÁN VẬN TỐC VẬT LÝ TỨC THỜI
   double current_velocity_m_per_frame = abs(distanceM - last_filtered_distance_m);
@@ -195,5 +197,6 @@ void handleRangingWithAI(double distanceM, float p_walk, float p_loiter, float p
     consecutive_close_reads = 0;
   }
 }
+#endif  // STAGE1_DISABLED
 
 }  // namespace UwbDoorUnlock

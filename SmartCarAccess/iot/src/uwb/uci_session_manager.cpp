@@ -84,6 +84,8 @@ bool UciSessionManager::runOnce(const UciRunConfig& cfg) {
   first_reading_ = true;
   Serial.println("[UCI] ==== Run sequence begin ====");
 
+  // STAGE1_DISABLED: replaced by multi-anchor Stage 2 flow
+#if 0
   const bool initOk = commandSessionInit(cfg);
   if (!initOk) {
     Serial.println("[UCI] session_init failed");
@@ -108,6 +110,11 @@ bool UciSessionManager::runOnce(const UciRunConfig& cfg) {
   sessionActive_ = true;
   Serial.printf("[UCI] ==== Session active. notif_count=%lu ====" "\n", static_cast<unsigned long>(rangingNotifCount_));
   return true;
+#else
+  (void)cfg;
+  Serial.println("[UCI] Stage 1 single-anchor UCI flow disabled (Stage 2 multi-anchor active)");
+  return false;
+#endif  // STAGE1_DISABLED
 }
 
 bool UciSessionManager::stopActiveSession() {
@@ -356,7 +363,10 @@ void UciSessionManager::onPacket(const UciPacket& packet) {
           if (ai_ready) {
             Serial.printf("[AI] Walk: %.2f | Loiter: %.2f | Attack: %.2f\n",
                           p_walk, p_loiter, p_attack);
+            // STAGE1_DISABLED: replaced by multi-anchor Stage 2 flow
+#if 0
             UwbDoorUnlock::handleRangingWithAI(filteredDistanceMeters, p_walk, p_loiter, p_attack);
+#endif
           } else {
             Serial.printf("[AI] Window warm-up: %d/15 frames\n", static_cast<int>(lstm_ai_.getFrameCount()));
             // During warm-up, still process distance but don't make lock decisions

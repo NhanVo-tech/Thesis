@@ -29,6 +29,7 @@ class MainActivity : FlutterActivity() {
     private var readerModeEnabled = false
     private var isForeground = false
     private var uwbBridge: UwbRangingBridge? = null
+    private var uwbMultiBridge: UwbMulticastBridge? = null
     private val nfcAdapter: NfcAdapter? by lazy { NfcAdapter.getDefaultAdapter(this) }
     private val pendingIntent: PendingIntent by lazy {
         val intent = Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -38,6 +39,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         uwbBridge = UwbRangingBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        uwbMultiBridge = UwbMulticastBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         // Register Phase B handshake channel (Android Keystore-backed ECDSA signing)
         HandshakeChannel.register(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
@@ -257,6 +259,8 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         uwbBridge?.dispose()
         uwbBridge = null
+        uwbMultiBridge?.dispose()
+        uwbMultiBridge = null
         super.onDestroy()
     }
 
@@ -266,6 +270,9 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         if (uwbBridge?.onRequestPermissionsResult(requestCode, grantResults) == true) {
+            return
+        }
+        if (uwbMultiBridge?.onRequestPermissionsResult(requestCode, grantResults) == true) {
             return
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

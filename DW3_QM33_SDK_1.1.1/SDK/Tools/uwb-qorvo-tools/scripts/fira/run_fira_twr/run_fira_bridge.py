@@ -239,6 +239,8 @@ class Bridge:
             elif line == "CMD:STOP_RANGING":
                 print("[ESP] CMD:STOP_RANGING")
                 self.stop_ranging()
+            elif self._args.esp_debug:
+                print(f"[ESP] {line}")
 
     # ---- RANGE forwarding (main thread) ----------------------------------
 
@@ -315,6 +317,8 @@ def main():
                         help="Max valid distance in metres (default: 30.0)")
     parser.add_argument("--autostart", action="store_true", default=False,
                         help="Start ranging immediately without waiting for CMD")
+    parser.add_argument("--esp-debug", action="store_true", default=False,
+                        help="Log every line received from the ESP32 (FSM/BLE/AUTH diagnostics)")
     parser.add_argument("-v", "--verbose", action="store_true", default=False)
 
     args = parser.parse_args()

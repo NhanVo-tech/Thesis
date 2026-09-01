@@ -7,7 +7,6 @@
 #include "ccc_mailbox.h"
 #include "../../include/nfc_session.h"
 #include "../../include/ble/ble_auth.h"
-#include "../../include/app/anchor_bridge.h"
 
 
 namespace {
@@ -161,36 +160,14 @@ namespace {
           _info->setValue("AUTH_STATS_PRINTED");
           _info->notify();
           break;
-        case 0x50: { // Start cached UWB session
-          const char* err = nullptr;
-          const bool ok = AnchorBridge::requestStart(&err);
-          if (!ok) {
-            char buf[48];
-            snprintf(buf, sizeof(buf), "UWB_START_ERR:%s", err ? err : "unknown");
-            _info->setValue(buf);
-            _info->notify();
-            Serial.printf("[BLE-Admin] UWB start rejected: %s\n", err ? err : "unknown");
-            break;
-          }
-          _info->setValue("UWB_START_QUEUED");
+        case 0x50: // Start UWB session (handled by PC over USB-CDC)
+          _info->setValue("UWB_BY_PC");
           _info->notify();
-          Serial.println("[BLE-Admin] UWB start queued from cached OOB");
-          break; }
-        case 0x51: { // Stop active UWB session
-          const char* err = nullptr;
-          const bool ok = AnchorBridge::requestStop(&err);
-          if (!ok) {
-            char buf[48];
-            snprintf(buf, sizeof(buf), "UWB_STOP_ERR:%s", err ? err : "unknown");
-            _info->setValue(buf);
-            _info->notify();
-            Serial.printf("[BLE-Admin] UWB stop rejected: %s\n", err ? err : "unknown");
-            break;
-          }
-          _info->setValue("UWB_STOPPED");
+          break;
+        case 0x51: // Stop UWB session (handled by PC over USB-CDC)
+          _info->setValue("UWB_BY_PC");
           _info->notify();
-          Serial.println("[BLE-Admin] UWB stop completed");
-          break; }
+          break;
         default:
           _info->setValue("UNSUPPORTED");
           _info->notify();
@@ -219,29 +196,9 @@ namespace {
    public:
     explicit AdminUwbOobCallbacks(NimBLECharacteristic* info): _info(info) {}
     void onWrite(NimBLECharacteristic* c, NimBLEConnInfo&) override {
-      std::string v = c->getValue();
-        // Dump raw payload for debugging to help diagnose bad_mac issues
-        Serial.print("[BLE-Admin] OOB raw bytes:");
-        for (size_t i = 0; i < v.size(); ++i) {
-          uint8_t b = static_cast<uint8_t>(v[i]);
-          Serial.printf(" %02X", b);
-        }
-        Serial.println();
-      const uint8_t* raw = reinterpret_cast<const uint8_t*>(v.data());
-      const char* err = nullptr;
-      const bool ok = AnchorBridge::submitBleOob(raw, v.size(), &err);
-      if (!ok) {
-        char buf[48];
-        snprintf(buf, sizeof(buf), "UWB_OOB_ERR:%s", err ? err : "unknown");
-        _info->setValue(buf);
-        _info->notify();
-        Serial.printf("[BLE-Admin] UWB OOB rejected: %s (len=%u)\n", err ? err : "unknown", (unsigned)v.size());
-        return;
-      }
-
-      _info->setValue("UWB_OOB_CACHED");
+      (void)c;
+      _info->setValue("UWB_OOB_UNSUPPORTED_USE_PC");
       _info->notify();
-      Serial.printf("[BLE-Admin] UWB OOB cached (len=%u)\n", (unsigned)v.size());
     }
   };
 }

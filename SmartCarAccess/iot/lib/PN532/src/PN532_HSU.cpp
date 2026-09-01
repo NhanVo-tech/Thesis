@@ -229,6 +229,7 @@ int8_t PN532_HSU::receive(uint8_t *buf, int len, uint16_t timeout)
             {
                 break;
             }
+            // delay(1);  // yield to scheduler so the idle task can feed the watchdog
         } while ((timeout == 0) || ((millis() - start_millis) < timeout));
 
         if (ret < 0)

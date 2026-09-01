@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
-import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -13,6 +12,7 @@ import 'nfc_provisioning_service.dart';
 import 'pke_auth_orchestrator.dart';
 import 'pke_rollout_flags.dart';
 import 'pke_telemetry.dart';
+import 'uwb_multi_service.dart';
 import 'uwb_service.dart';
 
 class PkeBackgroundService {
@@ -27,6 +27,7 @@ class PkeBackgroundService {
   static bool _foregroundListenerConfigured = false;
   static bool _foregroundHandoffInFlight = false;
   static UwbService? _foregroundUwb;
+  static UwbMultiService? _foregroundMultiUwb;
 
   static void _log(String message) {
     debugPrint('[PKE][BG] $message');
@@ -39,6 +40,16 @@ class PkeBackgroundService {
     }
 
     await _ensureConfigured();
+
+    // Respect the user's manual on/off toggle (pke_bg_service_enabled).
+    // When disabled, skip auto-start so the FSM does not auto-trigger UWB;
+    // this lets manual UWB testing proceed without background interference.
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('pke_bg_service_enabled') ?? true;
+    if (!enabled) {
+      _log('background service disabled by user; skipping auto-start');
+      return;
+    }
 
     final running = await _service.isRunning();
     _log(
@@ -60,6 +71,7 @@ class PkeBackgroundService {
 
     _foregroundListenerConfigured = true;
     _foregroundUwb ??= UwbService(enableEventChannel: true, logToConsole: true);
+    _foregroundMultiUwb ??= UwbMultiService();
 
     FlutterBackgroundService()
       .on('runUwbHandoff')
@@ -95,9 +107,10 @@ class PkeBackgroundService {
   ) async {
     final service = FlutterBackgroundService();
     final uwb = _foregroundUwb;
+    final multiUwb = _foregroundMultiUwb;
     bool ok = false;
 
-    if (uwb == null) {
+    if (uwb == null || multiUwb == null) {
       _log('foreground handoff failed: UWB service not initialized');
       service.invoke('uwbHandoffResult', {
         'requestId': requestId,
@@ -116,26 +129,30 @@ class PkeBackgroundService {
       // Because the background isolate is holding the connection open, 
       // the OS will instantly resolve this connect request.
       final targetDevice = BluetoothDevice.fromId(targetAddress);
-      
+
+      // Keep the BLE connection open (the background isolate releases it
+      // after auth; the ESP32 FSM holds the secure channel while connected).
       await uwb.connect(targetDevice);
 
-      final payload = uwb.buildDefaultOobPayloadV1(
-        role: UwbOobPayload.carRoleControlee,
-        sessionId: DateTime.now().millisecondsSinceEpoch & 0xFFFFFFFF,
-        phoneMac: 0x0001,
-        carMac: 0x0002,
+      // Multi-anchor multicast DS-TWR: phone = controller 0x06C1, anchors 0/1/2.
+      // Matches run_fira_bridge.py responder config (DstMacAddress=0x06C1,
+      // session=42, channel=9, preamble=9, STS key 08 07 01 02 03 04 05 06).
+      final started = await multiUwb.start(
+        sessionId: 42,
         channel: 9,
+        preambleIndex: 9,
+        localAddress: 0x06C1,
+        anchorAddresses: const <int>[0, 1, 2],
+        sessionKeyInfo: const <int>[
+          0x08, 0x07, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+        ],
       );
-
-      final prepared = await uwb.preparePayloadForOob(payload);
-      final preparedPayload = prepared['payload'] as Uint8List?;
-      if (preparedPayload == null) {
-        throw Exception('foreground handoff: prepared payload missing');
+      if (!started) {
+        throw Exception('foreground handoff: multicast UWB start failed');
       }
 
-      await uwb.sendOobThenJoinFromPayload(preparedPayload);
       ok = true;
-      _log('foreground handoff completed');
+      _log('foreground handoff completed (multicast UWB started)');
     } catch (e, st) {
       _log('foreground handoff failed: $e');
       debugPrint('[PKE][FG] $st');
@@ -152,9 +169,13 @@ class PkeBackgroundService {
   static Future<void> _handleForegroundHandoffStop(String? requestId) async {
     final service = FlutterBackgroundService();
     final uwb = _foregroundUwb;
+    final multiUwb = _foregroundMultiUwb;
 
     try {
       _log('foreground UWB stop requested requestId=${requestId ?? '-'}');
+      if (multiUwb != null) {
+        await multiUwb.stop();
+      }
       if (uwb != null) {
         await uwb.stopRanging();
         await uwb.disconnect();

@@ -62,6 +62,7 @@ class DynEnum(Enum):
                     raise KeyError(
                         f"{v} duplicate value in {cls.__name__}: {k} and {cls._value2member_map_[v].name}."
                     )
+                setattr(cls, k, v)
                 cls._member_names_.append(k)
                 cls._member_map_[k] = v
                 cls._value2member_map_[v.value] = v
@@ -71,6 +72,7 @@ class DynEnum(Enum):
                     raise KeyError(f"{k} already exists in {cls.__name__}")
                 if v in cls._member_map_.values():
                     raise KeyError(f"{v} duplicate value in {cls.__name__}")
+                setattr(cls, k, v)
                 cls._member_names_.append(k)
                 cls._member_map_[k] = v
                 cls._value2member_map_[v] = k
