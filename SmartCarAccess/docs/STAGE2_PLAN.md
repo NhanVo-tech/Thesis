@@ -5,6 +5,32 @@
 
 ---
 
+## 0.0 Status update (2026-09-02)
+
+Milestones **M3 (trilateration)** and **M4 (EKF)** are now **DONE on the ESP32**, not just in
+simulation. The firmware pipeline is live end-to-end:
+
+```
+PC bridge (run_fira_bridge.py) --RANGE:d0,d1,d2,valid--> UwbBridge
+   -> Trilateration::solve (2-circle / Gauss-Newton, iot/src/uwb/trilateration.cpp)
+   -> Ekf::update (2-D constant-velocity KF [x,y,vx,vy], iot/src/uwb/ekf_stub.cpp)
+   -> AccessController::handlePosition(x,y,vx,vy) geometric zone unlock (GPIO26)
+```
+
+Also changed since the sections below were written:
+- **Ranging start/stop is now driven by the phone** via CCC tunnel instructions `0x84`/`0x85`
+  (`ble_auth.cpp`), which call `UwbBridge::sendStart/sendStop` → `CMD:START/STOP_RANGING`. It is
+  **no longer** tied to FSM secure-channel enter/exit hooks.
+- **AccessController gained a radial-velocity approach gate** (rejects users moving away/passing
+  by) in addition to the distance hysteresis.
+- The **1-D LSTM remains dormant** (present but not called); the CNN-LSTM intent classifier
+  (**M5/M6**) and geofenced multi-zone actuation (**M7/M8**) are the next open milestones.
+
+The remainder of this document is the original Stage 2 plan and is kept for roadmap context;
+treat §0.1–§0.3 milestone statuses through the lens of this update.
+
+---
+
 ## 0. Current Progress (2026-08-09)
 
 ### 0.1 Simulation UI for UWB Trilateration — COMPLETED

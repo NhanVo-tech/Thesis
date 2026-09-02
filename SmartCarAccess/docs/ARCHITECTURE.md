@@ -1,175 +1,228 @@
 # ARCHITECTURE.md
 
-System architecture for the **ESP32 Smart Car Access** digital-key platform (CCC Release 3 inspired).
+High-level system design for **Smart Car Access** — a multi-factor, multi-transport digital
+key system inspired by the Car Connectivity Consortium (CCC) Digital Key Release 3.
+
+> Last updated: 2026-09-02. This document reflects the **multi-anchor UWB** architecture:
+> UWB ranging is now collected by a PC bridge and fused on the ESP32 into a 2-D position via
+> trilateration + Extended Kalman Filter (EKF), which drives a geometric door-unlock policy.
+> The former single-anchor 1-D pipeline (`uci_session_manager`, `uci_door_unlock`, ESP-NOW
+> C3 bridges, BLE OOB) has been removed.
 
 ---
 
-## 1. High-Level System Diagram
+## 1. System Overview
+
+The system spans four cooperating domains:
+
+| Domain | Hardware / Runtime | Responsibility |
+|--------|--------------------|----------------|
+| **Vehicle** | ESP32-S3 (`yolo_uno`), PN532 NFC, door relay | Root of trust, provisioning reader, BLE peripheral, position fusion + unlock actuation |
+| **Ranging bridge** | PC (Python) + 3× UWB anchors (DWM3001CDK) | Multi-anchor DS-TWR ranging, distance aggregation, USB-CDC transport to the vehicle |
+| **Phone** | Android (Flutter + Kotlin native) | Digital key holder, HCE provisioning card, BLE authenticator, UWB controller, cloud client |
+| **Cloud** | Firebase (Auth, Firestore, Storage, FCM) + Gemini API | Account/key metadata, access logs, AI access-pattern anomaly scoring |
 
 ```mermaid
 flowchart TB
-    subgraph Phone["📱 Phone — Flutter + Kotlin"]
-        UI["Screens (dashboard, tests)"]
-        KS["Android Keystore\nP-256 identity key"]
-        HCE["ProvisioningHostApduService\n(NFC HCE applet)"]
-        PKE["PkeAuthOrchestrator\n(BLE Phase B)"]
-        GPS["GpsService"]
-        ANO["AnomalyDetectionService\n+ AIService (Gemini)"]
+    subgraph Phone["📱 Android Phone (Flutter + Kotlin)"]
+        HCE[HCE Provisioning Card]
+        BLEc[BLE Authenticator / CCC tunnel]
+        UWBc[UWB Controller 0x06C1<br/>android.ranging DS-TWR]
+        AI[Access-pattern anomaly + Gemini]
     end
 
-    subgraph Cloud["☁️ Cloud"]
-        FB["Firebase Auth + Firestore\n(metadata, anomaly logs)"]
-        GEM["Google Gemini API"]
+    subgraph Anchors["📡 3× UWB Anchors (DWM3001CDK)"]
+        A0[Anchor0 mac0]
+        A1[Anchor1 mac1]
+        A2[Anchor2 mac2]
     end
 
-    subgraph Vehicle["🚗 Vehicle — ESP32-S3 Master firmware"]
-        NFC["NfcSession (PN532 reader)"]
-        PROV["ProvisioningPhase"]
-        CCC["CCCMailbox (NVS root of trust)"]
-        BLE["BLEMod\n(Auth/Admin/Attest/Echo)"]
-        FSM["FSM (state machine)"]
-        HOST["UwbUciHost\n(OOB cache / ESP-NOW)"]
-        KAL["Kalman filter"]
-        LSTM["LstmInference (TFLM)"]
-        DOOR["UwbDoorUnlock (relay GPIO26)"]
+    subgraph PC["💻 PC Bridge (run_fira_bridge.py)"]
+        Bridge[Aggregate d0,d1,d2 + valid]
     end
 
-    subgraph Bridge["🔗 ESP32-C3 UCI Bridge (thesis253_workspace)"]
-        EN["EspNowLink\n(ESP-NOW → UCI)"]
-        US["UciSession\n(Init→Config→Start)"]
-        UU["UciUart\n(UCI frame over UART)"]
+    subgraph ESP["🚗 ESP32-S3 Vehicle ECU"]
+        NFC[NFC Session / Provisioning A]
+        BLEs[BLE Phase B + Attestation + Admin]
+        FSM[Finite State Machine]
+        UWBb[UwbBridge: parse RANGE]
+        TRI[Trilateration 2-D]
+        EKF[EKF x,y,vx,vy]
+        AC[AccessController zone unlock]
+        RELAY[(Door Relay GPIO26)]
     end
 
-    subgraph Radios["📡 UWB radio"]
-        DW["nRF52840 + DW3000"]
+    subgraph Cloud["☁️ Firebase + Gemini"]
+        FS[(Firestore cars/keys/logs)]
+        FCM[Push notifications]
     end
 
-    HCE -- "Phase A: NFC APDU" --> NFC
-    KS --- HCE
-    NFC --> PROV --> CCC
-    PKE -- "Phase B: BLE GATT" --> BLE
-    KS --- PKE
-    BLE --> FSM
-    NFC --> FSM
-    GPS -- "encrypted GPS over BLE" --> BLE
-    HOST -- "ESP-NOW" --> EN
-    EN --> US --> UU
-    UU -- "UCI/UART" --> DW
-    UU -- "RANGE_DATA_NTF" --> EN
-    EN -- "ESP-NOW (RangingMsg)" --> HOST
-    HOST --> KAL --> LSTM --> DOOR
-    UI --> ANO --> GEM
-    UI --> FB
-    ANO --> FB
-    FSM --- CCC
+    HCE -- NFC APDU --> NFC
+    BLEc -- GATT CCC tunnel --> BLEs
+    UWBc -. UWB PHY .-> A0 & A1 & A2
+    A0 & A1 & A2 -- USB/UART --> Bridge
+    Bridge -- "RANGE: over USB-CDC" --> UWBb
+    UWBb -- "CMD:START/STOP" --> Bridge
+    BLEs --> FSM
+    UWBb --> TRI --> EKF --> AC --> RELAY
+    BLEs -. "0x84/0x85" .-> UWBb
+    AI --> FS
+    BLEs --> FCM
 ```
 
 ---
 
-## 2. Data Flow (Input → Output)
+## 2. Data Flows
 
-### 2.1 Provisioning (Phase A, NFC)
-```
-Phone HCE applet ──NFC APDU──▶ PN532 ──▶ NfcSession.tick()
-  SELECT AID (A000000809434343444B467631)
-  → SPAKE2+ shell (HMAC verify)
-  → GET DATA (phone endpoint key ep_PK)
-  → WRITE DATA (vehicle v_pub)
-  → signature proof (phone signs challenge, ESP32 verifies with ep_PK)
-  → OP CONTROL commit gate
-  → ProvisioningPhase.setOwnerProvisioned() → CCCMailbox slot 0 + tok_0 (NVS)
-```
+### 2.1 Provisioning — Phase A (NFC)
 
-### 2.2 Authentication (Phase B, BLE)
-```
-PkeAuthOrchestrator ──GATT──▶ BLEAuth (service 0000aaaa-…)
-  0x80 Auth0    : exchange ephemeral public keys
-  0x81 Auth1    : phone sends identity-signed ephemeral key; ESP32 returns its ephemeral
-  ECDH(P-256)   : derive shared secret
-  0x82 Exchange : HKDF-SHA256 → session_enc_key[32] + session_mac_key[32]
-  0x83 ControlFlow : challenge-response bound to v_id → session ready
-  → GPS packets (AES/HMAC) flow over encrypted channel
-```
-
-### 2.3 Proximity + AI decision (UWB via ESP32-C3 Bridge)
+Binds one owner phone to the vehicle. The vehicle acts as the **NFC reader** (PN532), the phone
+acts as an **HCE card** (`ProvisioningHostApduService.kt`). Fail-closed: the vehicle validates
+payload content (TLV tags), not just status words.
 
 ```
-Phone ──BLE(OOB)──▶ UwbUciHost.submitBleOob()
-  → parse OOB → map to UciRunConfig → cache
-  → on requestStart(): send StartSession over ESP-NOW to ESP32-C3 Bridge
-
-ESP32-C3 Bridge ──UCI/UART──▶ DW3000 (nRF52840DK)
-  SESSION_INIT → SET_APP_CONFIG → RANGING_START
-  ← RANGE_DATA_NTF (status + distance_cm)
-
-ESP32-C3 Bridge ──ESP-NOW(RangingMsg)──▶ Master tick()
-  → parse dist(cm) → +antenna offset 0.24m → sanity[-1..30m]
-  → Kalman.getFilteredValue() → residual = raw - filtered
-  → velocity = Δfiltered/Δt
-  → LstmInference.predict() → p_walk / p_loiter / p_attack
-  → UwbDoorUnlock.handleRangingWithAI(dist, p...)
-      accept: dist ≤ 2.0m AND p_walk > 0.80 (×3 consecutive) → relay pulse (GPIO26, 500ms)
-      reject: p_attack > 0.70 → relay disabled
+Owner taps phone ─▶ PN532 polls ISO14443A ─▶ SELECT AID (CCC applet)
+   ─▶ SPAKE2+ challenge/response (HMAC over shared master secret from master card)
+   ─▶ GET DATA (phone endpoint public key + optional cert chain + fast artifact)
+   ─▶ WRITE DATA (vehicle_id 0x80 + vehicle_pub 0x81 pushed to phone)
+   ─▶ Signature proof (phone signs challenge, ESP verifies with endpoint key)
+   ─▶ OP CONTROL commit gate ─▶ persist owner slot 0 + ensure immobilizer token
 ```
 
-### 2.4 App-side anomaly pipeline
+### 2.2 Authentication — Phase B (BLE, CCC tunnel)
+
+Proves the phone owns the enrolled identity key and establishes an encrypted session over an
+APDU-like tunnel (GATT service `0000aaaa…`, RX `0000aac1`, TX `0000aac2`).
+
 ```
-AccessEvent → AnomalyDetectionService.analyzeAccessEventWithAI()
-  → preprocess (hour, weekday, distanceFromUsual, accessCountLastHour)
-  → AIService.detectAnomalyWithAI() → Gemini (fallback: rule-based)
-  → AnomalyEnrichedDecision {severity, action, shouldNotify}
-  → Firestore(anomaly_analysis) + push notification (medium/high)
+AUTH0 (0x80) ─▶ ECU ephemeral P-256 keypair (+ vehicle-key signature)
+AUTH1 (0x81) ─▶ phone ephemeral key + signature ─▶ ECU verifies with stored endpoint key
+             ─▶ ECDH shared secret ─▶ HKDF-SHA256 → session ENC + MAC keys
+EXCHANGE (0x82) ─▶ challenge = vehicleId(8)‖nonce(16); phone signs; ECU verifies
+                   (optional epoch time-sync payload)
+CONTROL_FLOW (0x83) ─▶ unlock decision / secure command path
+Fast path: AUTH0 P1=0x01 uses a pre-shared "fast artifact" to skip ECDH.
+```
+
+### 2.3 Proximity — Multi-anchor UWB → 2-D position → unlock
+
+This is the workflow that changed most. There is **no direct radio on the ESP32**; ranging is
+performed between the phone (UWB controller) and 3 anchors, aggregated by a PC, and streamed to
+the vehicle as text frames over USB-CDC.
+
+```mermaid
+sequenceDiagram
+    participant P as Phone (controller 0x06C1)
+    participant A as Anchors 0/1/2 (responders)
+    participant PC as PC bridge (run_fira_bridge.py)
+    participant E as ESP32 UwbBridge
+    participant AC as AccessController
+    Note over P,E: Phase B session already established
+    E->>PC: CMD:START_RANGING  (triggered by phone via CCC 0x84)
+    PC->>A: session_init + ranging_start (DS-TWR)
+    PC-->>E: ACK:START_RANGING
+    loop every ranging round
+        P-->>A: DS-TWR ranging (UWB PHY)
+        A-->>PC: distance notifications
+        PC->>E: RANGE:d0=..,d1=..,d2=..,valid=0|1
+        E->>E: trilaterate → (x,y,rms)
+        E->>E: EKF update → (x,y,vx,vy)
+        E->>AC: handlePosition(x,y,vx,vy) @10 Hz
+        AC->>AC: zone + approach-gate + hysteresis
+        AC-->>AC: fire relay if unlock criteria met
+    end
+    E->>PC: CMD:STOP_RANGING  (via CCC 0x85)
+    PC-->>E: ACK:STOP_RANGING
+```
+
+`valid=1` only when **all three** anchor readings are fresh (`≤ fresh_ms`) and within
+`[dmin, dmax]`. The ESP32 only trilaterates frames with a non-zero validity mask.
+
+### 2.4 App-side access-pattern anomaly (independent)
+
+Separate from the firmware relay-attack analysis. The Flutter app scores each access event by
+**time, location, and frequency**, optionally enriched by **Gemini 2.5 Flash Lite**, producing
+`ALLOW / CONFIRM / BLOCK` decisions and localized push notifications. This does **not** gate the
+physical relay; it protects the app/cloud key-usage surface.
+
+---
+
+## 3. Module Ownership & Boundaries
+
+| Module | Location | Owns |
+|--------|----------|------|
+| CCC Mailbox | `iot/src/ccc_mailbox.cpp` | Vehicle identity, keys, slots, tokens, fast artifact (NVS `ccc_dk`) |
+| NFC Session / Provisioning | `iot/src/nfc_session.cpp`, `provisioning_phase.cpp` | Phase A reader + persistence + fail-closed validation |
+| BLE | `iot/src/ble/*.cpp` | Phase B auth, attestation, admin, echo, telemetry, advertising rollout |
+| FSM | `iot/src/fsm/*.cpp` | State orchestration + integration hooks between subsystems |
+| UWB Bridge | `iot/src/uwb/uwb_bridge.cpp` | Parse RANGE/ACK frames, drive fusion at fixed cadence, issue CMD |
+| Trilateration | `iot/src/uwb/trilateration.cpp` | 3-circle intersection / Gauss-Newton LS → `(x, y, rms)` |
+| EKF | `iot/src/uwb/ekf_stub.cpp` | 2-D constant-velocity Kalman filter `[x, y, vx, vy]` |
+| Access Controller | `iot/src/uwb/access_controller.cpp` | Geometric zone unlock + relay actuation |
+| LSTM (dormant) | `iot/src/uwb/lstm_inference.cpp` | Retained TFLM model, **not wired** into current pipeline |
+| PC Bridge | `DW3_QM33_SDK.../scripts/fira/run_fira_twr/run_fira_bridge.py` | Anchor session lifecycle, distance forwarding, CMD handling |
+| Flutter services | `software/smart_car_app/lib/service/*.dart` | Auth, keys, BLE, UWB, GPS, anomaly, background |
+| Android native | `software/smart_car_app/android/.../*.kt` | HCE applet, Keystore, Phase B crypto, UWB bridge |
+
+---
+
+## 4. Runtime & Concurrency (ESP32)
+
+Three FreeRTOS tasks pinned to core 1, plus the Arduino loop for BLE housekeeping
+(`iot/src/main.cpp`):
+
+| Task | Priority | Stack | Role |
+|------|----------|-------|------|
+| `FSM` | 6 | 8 KB | `FSM::tick()` state machine |
+| `UWB` | 5 | 20 KB | Read USB-CDC RANGE/ACK, `UwbBridge::tick()`, `AccessController::tick()` |
+| `NFC` | 4 | 8 KB | `NfcSession::tick()` PN532 polling |
+| `loop()` | — | — | `BLEMod::tick()` every 50 ms |
+
+The UWB task is placed above NFC so RANGE frames are not starved by NFC polling. The EKF is
+driven at a fixed **10 Hz** (`kDrivePeriodMs = 100`), decoupled from the raw RANGE rate so unlock
+debounce timing stays consistent and prediction bridges dropped frames (up to `kMaxGapS = 2 s`).
+
+---
+
+## 5. External Dependencies & Hardware
+
+| Dependency | Where | Purpose |
+|------------|-------|---------|
+| NimBLE-Arduino | firmware | GATT peripheral |
+| PN532 | firmware | NFC reader (HSU/UART) |
+| TensorFlowLite_ESP32 | firmware | Dormant on-device inference runtime |
+| mbedTLS | firmware | ECDSA/ECDH/HKDF/HMAC (P-256) |
+| `pyserial`, `numpy`, `matplotlib` | PC tools | Bridge + analysis/visualization |
+| Qorvo `uci` package | PC bridge | FiRa/UCI anchor control |
+| Firebase (Auth/Firestore/Storage/FCM) | app | Accounts, key metadata, logs, notifications |
+| Gemini 2.5 Flash Lite | app | Access-pattern anomaly enrichment |
+| Android Keystore | app native | Non-exportable identity private key (P-256) |
+| `android.ranging` (API 36+) | app native | Phone-side UWB controller (multicast DS-TWR) |
+
+**Physical connections**
+
+```
+Phone ──(NFC)──▶ PN532 ──(UART HSU)──▶ ESP32-S3
+Phone ──(BLE GATT)──▶ ESP32-S3
+Phone ──(UWB PHY, DS-TWR)──▶ Anchor0/1/2
+Anchor0/1/2 ──(USB/UART, one COM each)──▶ PC
+PC ──(USB-CDC serial)──▶ ESP32-S3
+ESP32-S3 ──(GPIO26)──▶ Door relay
 ```
 
 ---
 
-## 3. Module Boundaries (Owns / Does NOT own)
+## 6. Trust Boundaries
 
-| Module | Owns | Does NOT own |
-|--------|------|--------------|
-| `CCCMailbox` | Vehicle identity, slots, tokens, NVS persistence, vehicle signing | Transport (NFC/BLE), unlock decision |
-| `NfcSession` / `ProvisioningPhase` | Phase A APDU loop, phone-key persistence, signature verify | Session keys, UWB, relay |
-| `BLEMod` / `BLEAuth` | GATT services, Phase B handshake, session keys, GPS decrypt | Physical proximity, relay firing |
-| `FSM` | State/event orchestration, transition validation | Crypto primitives, hardware I/O (delegates) |
-| `UwbUciHost` (master only) | OOB parsing, ESP-NOW to C3 bridges, ranging-data consumption | UCI framing, relay GPIO |
-| `EspNowLink` / `UciSession` / `UciUart` (C3 bridge) | ESP-NOW receive, UCI session lifecycle, UCI framing over UART, ranging data send-back | Cryptographic auth, AI inference, door policy |
-| `LstmInference` | Sliding window, normalization, TFLM inference | Distance acquisition, unlock policy |
-| `UwbDoorUnlock` | Hysteresis, AI-gated relay policy, GPIO26 | Distance filtering, AI model |
-| App `PkeAuthOrchestrator` | Phone-side BLE handshake, session keys | Immobilizer tokens, relay |
-| App `GpsService` | Location capture, 32-byte packet, HMAC | Transport, decryption on vehicle |
-| App `AnomalyDetectionService` | Access-pattern scoring, notifications | Physical unlock, immobilizer trust |
-| Kotlin `KeystoreBridge`/`PhaseBCrypto` | P-256 keys, ECDH, HKDF, signing | BLE transport, UI |
-| Firebase | App metadata, keys registry, anomaly logs | **Immobilizer tokens (never stored)** |
+- **Vehicle (ESP32)** — root of trust for immobilizer tokens and the vehicle private key
+  (`v_priv`, NVS). Trusts only cryptographically verifiable data; unlock actuation is local.
+- **Phone** — holds its identity private key in Android Keystore (non-exportable). Cannot mint
+  immobilizer tokens.
+- **PC bridge** — a transport/aggregation convenience for research. It carries **raw distances
+  only**; it does not hold keys and cannot unlock the vehicle without a valid BLE session
+  (ranging start/stop is gated by `s_session_keys_ready`).
+- **Cloud** — untrusted for unlock decisions; stores metadata/logs only, never immobilizer tokens.
 
-**Trust boundaries**: Vehicle = root of trust for immobilizer secrets; Phone = holds private keys in Android Keystore; Cloud = untrusted for unlock decisions.
-
----
-
-## 4. External Dependencies & Connections
-
-| Dependency | Used by | Connection |
-|------------|---------|------------|
-| NimBLE-Arduino | firmware BLE | ESP32 BLE radio → phone `flutter_blue_plus` |
-| PN532 driver | `NfcSession` | UART2 (HSU) RX44/TX43 → phone HCE |
-| TensorFlowLite_ESP32 (TFLM) | `LstmInference` | in-process, model `uwb_lstm_model.h` |
-| Kalman lib | `UciSessionManager` | in-process |
-| mbedTLS | CCC/BLE/provisioning | in-process crypto |
-| nRF52840 + DW3000 | ESP32-C3 Bridge (`thesis253_workspace`) | UART @115200, UCI protocol |
-| ESP32-C3 (×1-3) | `UwbUciHost` (ESP-NOW send/recv) | ESP-NOW on WiFi STA, 34-byte structs |
-| Firebase (core/auth/firestore) | app services | HTTPS |
-| Google Gemini API | `AIService` | HTTPS `gemini-2.5-flash-lite` |
-| Geocoding/Geolocator | `GpsService` | platform channels + HTTPS |
-| Android Keystore / HCE | Kotlin bridges | platform APIs via `MethodChannel` |
-
----
-
-## 5. Runtime / Concurrency Model (Firmware)
-
-```
-loop() core-idle ──▶ BLEMod::tick() + serial console
-FreeRTOS tasks (pinned to core 1):
-  FSMTask  (prio 6, 8KB)  → FSM::tick() every 1ms
-  NFCTask  (prio 4, 8KB)  → NfcSession::tick() every 2ms
-  UWBTask  (prio 5, 20KB) → UciSessionManager::poll(), UwbUciHost::tick(), UwbDoorUnlock::tick() every 5ms
-BLE callbacks run on the NimBLE host stack (keep short; heavy work deferred to tasks).
-```
+See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for the residual risks of the current research-grade
+transport, and [STAGE2_PLAN.md](STAGE2_PLAN.md) for the roadmap toward on-device intent
+recognition and geofenced actuation.
