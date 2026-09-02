@@ -1,0 +1,463 @@
+\documentclass[a4paper,12pt,twoside]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T5]{fontenc} 
+\usepackage{vntex}
+\usepackage{geometry}
+\geometry{a4paper, inner=30mm, outer=20mm, top=20mm, bottom=30mm}
+
+\usepackage{tabularx}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\usepackage{seqsplit}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{float}
+\usepackage{color,xcolor}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\hypersetup{urlcolor=black,linkcolor=black,citecolor=black,colorlinks=true}
+\usepackage{breakurl}
+\usepackage{titlesec}
+\titleclass{\subsubsubsection}{straight}[\subsubsection]
+
+\newcounter{subsubsubsection}[subsubsection]
+\renewcommand\thesubsubsubsection{\thesubsubsection.\arabic{subsubsubsection}}
+
+\titleformat{\subsubsubsection}
+  {\normalfont\normalsize\bfseries}
+  {\thesubsubsubsection}{1em}{}
+
+\titlespacing*{\subsubsubsection}
+  {0pt}{2.5ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+\usepackage{titletoc}
+
+\titlecontents{subsubsubsection}
+  [11 em]                
+  {}
+  {\contentslabel{4.0 em}}
+  {}
+  {\titlerule*[0.7pc]{.}\contentspage}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{multicol,longtable}
+\usepackage{caption,subcaption}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,snakes,backgrounds,shapes,positioning}
+
+\setlength{\headheight}{40pt}
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{
+ \begin{tabular}{rl}
+    \begin{picture}(25,15)(0,0)
+    \put(0,-8){\includegraphics[width=8mm]{image/hcmut.png}}
+   \end{picture}&
+	\begin{tabular}{l}
+		\textbf{\ttfamily Trường Đại Học Bách Khoa TP.HCM}\\
+		\textbf{\ttfamily Khoa Khoa Học \& Kỹ Thuật Máy Tính}
+	\end{tabular}
+ \end{tabular}
+}
+\fancyfoot[R]{\scriptsize \ttfamily Trang \thepage}
+
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+\makeatletter
+\let\ps@plain\ps@fancy
+\makeatother
+\usepackage{listings}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    numbers=left,
+    numberstyle=\tiny\color{mygray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{white},
+    showspaces=false,
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    keywordstyle=\color{blue},
+    commentstyle=\color{mygreen},
+    stringstyle=\color{mymauve}
+}
+\lstdefinestyle{mystyle}{
+    basicstyle=\ttfamily\footnotesize,
+    numbers=left,
+    numberstyle=\tiny\color{mygray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{white},
+    showspaces=false,
+    showstringspaces=false,
+    breaklines=true,
+    frame=single,
+    keywordstyle=\color{blue},
+    commentstyle=\color{mygreen},
+    stringstyle=\color{mymauve}
+}
+
+% --- BẮT ĐẦU PHẦN ĐỊNH NGHĨA KOTLIN ---
+% Định nghĩa màu sắc giống IntelliJ IDEA / Android Studio
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{kwd}{rgb}{0.0, 0.0, 0.6}      % Keywords
+\definecolor{typ}{rgb}{0.0, 0.4, 0.6}      % Types
+\definecolor{str}{rgb}{0.0, 0.5, 0.0}      % Strings
+
+\lstdefinelanguage{Kotlin}{
+  keywords={package, as, typealias, this, super, val, var, fun, for, null, true, false, is, in, throw, return, break, continue, object, if, try, else, while, do, when, class, interface, enum, inheritance, implements, delegate, dynamic, public, private, protected, internal, abstract, final, open, override, late, init, constructor, companion, reified, crossinline, noinline, operator, infix, suspend, data, catch, finally},
+  keywordstyle=\color{kwd}\bfseries,
+  ndkeywords={@Deprecated, @JvmName, @JvmStatic, @JvmOverloads, @JvmField, @JvmSynthetic, Iterable, Int, Integer, Float, Double, String, Runnable, dynamic},
+  ndkeywordstyle=\color{typ}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{gray}\ttfamily,
+  stringstyle=\color{str},
+  morestring=[b]",
+  morestring=[b]',
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  stepnumber=1,
+  tabsize=2,
+  captionpos=b,
+  frame=single
+}
+% --- KẾT THÚC PHẦN ĐỊNH NGHĨA KOTLIN ---
+
+
+
+
+\lstset{style=mystyle}
+\renewcommand{\baselinestretch}{1.5} 
+\onehalfspacing
+\newcommand{\img}[3]{
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=#3]{#1}
+        \caption{#2}
+        \label{fig:#1}
+    \end{figure}
+}
+
+\usepackage{chngcntr}
+
+\counterwithin{figure}{chapter}
+
+\begin{document}
+\raggedbottom
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+\newgeometry{inner=0mm, outer=30mm, top=0mm, bottom=0mm}
+\begin{titlepage}
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/bia.pdf}
+\includepdf[
+  pages=1,
+  pagecommand={},
+  width=\paperwidth,
+  height=\paperheight,
+  trim=20 0 0 0, % cắt 20pt bên trái
+  clip
+]{pdf files/bia.pdf}
+
+\clearpage
+
+% \newpage
+% \thispagestyle{empty}
+% \mbox{}
+% \newpage
+
+
+%============================phieu nhiem vu=========================
+\newpage
+\includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Nv_signed.pdf}
+\clearpage
+
+
+%============================phieu huong dan=========================
+\newpage
+\includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
+\clearpage
+
+\newpage
+\includepdf[pages=2,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
+\clearpage
+
+
+%============================phieu phan bien=========================
+\newpage
+\includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/PB_signed.pdf}
+\clearpage
+
+
+\iffalse
+\begin{center}
+\textbf{\large ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}\\
+\textbf{\large TRƯỜNG ĐẠI HỌC BÁCH KHOA}\\
+\textbf{\large KHOA KHOA HỌC \& KỸ THUẬT MÁY TÍNH}
+\end{center}
+
+\vspace{1cm}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=3cm]{image/hcmut.png}
+\end{figure}
+
+\begin{center}
+\begin{tabular}{c}
+\textbf{\Large ĐỒ ÁN TỐT NGHIỆP KỸ THUẬT MÁY TÍNH} \\
+\textbf{\Large Mã đề tài: HK252 - DATN - 232}\\
+
+\hline
+\\
+\textbf{\huge Nghiên cứu và Phát triển giải pháp}\\
+\textbf{\huge Smart Car Access đa công nghệ}\\
+\textbf{\huge trên nền tảng Devkit và mô phỏng ECU}\\
+\\
+\hline
+\end{tabular}
+\end{center}
+
+
+\begin{table}[H]
+\begin{tabular}{rll}
+\hspace{2.5 cm} \textbf{HỘI ĐỒNG:} & \textbf{HỘI ĐỒNG 5L KỸ THUẬT MÁY TÍNH} \\
+\\
+\hspace{2.5 cm} \textbf{Giảng viên hướng dẫn:} & TS.~Lê Trọng Nhân \\
+\hspace{2.5 cm} \textbf{Chủ tịch hội đồng:} & TS. Lê Trọng Nhân\\
+\hspace{2.5 cm} \textbf{Ủy viên hội đồng:} & ThS. Nguyễn Cao Trí \\
+\hspace{2.5 cm} \textbf{Thư ký hội đồng:} & CN. Trần Nguyễn Minh Duy \\
+\\
+\hspace{2.5 cm} \textbf{Sinh viên thực hiện:} & Nguyễn Kim Thuận -- 2213357 \\
+\hspace{2.5 cm}  & Hoàng Minh Quân -- 2011909 \\
+\end{tabular}
+\end{table}
+
+\vspace{2cm}
+
+\begin{center}
+\textbf{Thành phố Hồ Chí Minh -- Tháng 6/2026}
+\end{center}
+\fi
+
+\end{titlepage}
+\restoregeometry
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{LỜI CAM ĐOAN}
+\section*{\MakeUppercase{LỜI CAM ĐOAN}}
+\begin{quotation}
+Chúng tôi xin cam đoan toàn bộ nội dung và kết quả của đề tài “Nghiên cứu và Phát triển giải pháp Smart Car Access đa công nghệ trên nền tảng Devkit và mô phỏng ECU” là sản phẩm nghiên cứu, tìm hiểu và phát triển của riêng nhóm chúng tôi dưới sự hướng dẫn khoa học của TS. Lê Trọng Nhân.
+
+Các kết quả, số liệu và mã nguồn được trình bày trong báo cáo là hoàn toàn trung thực, phản ánh đúng kết quả thực nghiệm của nhóm và chưa từng được công bố trong bất kỳ công trình nghiên cứu nào khác của các tác giả khác hay tại các cơ sở đào tạo khác.
+
+Trong quá trình thực hiện đề tài, chúng tôi có tham khảo và kế thừa các thành tựu khoa học, tài liệu, sách báo và các trang web chuyên ngành. Tất cả các nguồn tài liệu tham khảo này đều được trích dẫn đầy đủ, rõ ràng.
+
+Nếu phát hiện có bất kỳ sự gian lận, sao chép không hợp lệ hay vi phạm các nguyên tắc về liêm chính học thuật, chúng tôi xin chịu hoàn toàn trách nhiệm và chấp nhận mọi hình thức kỷ luật theo quy định.
+\end{quotation}
+
+\begin{flushright}
+\begin{tabular}{c}
+Tp. Hồ Chí Minh, tháng 06/2026\\
+\textbf{Nhóm sinh viên thực hiện}\\
+Nguyễn Kim Thuận\\
+Hoàng Minh Quân
+\end{tabular}
+\end{flushright}
+
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{LỜI CẢM ƠN}
+\section*{\MakeUppercase{LỜI CẢM ƠN}}
+\begin{quotation}
+Trong suốt quá trình thực hiện luận văn tốt nghiệp với đề tài: “Nghiên cứu và Phát triển giải pháp Smart Car Access đa công nghệ trên nền tảng devkit và mô phỏng ECU”, nhóm chúng em đã có cơ hội kế thừa và phát triển từ đồ án chuyên ngành trước đó. Đây là một quá trình đòi hỏi sự đầu tư nghiêm túc cả về kiến thức chuyên môn lẫn kỹ năng nghiên cứu, qua đó giúp chúng em từng bước hoàn thiện năng lực học thuật và thực tiễn. Để hoàn thành luận văn này, bên cạnh sự nỗ lực của bản thân, chúng em đã nhận được rất nhiều sự hỗ trợ quý báu từ quý thầy cô, gia đình và bạn bè.
+\singlespacing 
+Trước hết, chúng em xin bày tỏ lòng biết ơn chân thành đến toàn thể quý thầy cô giảng viên Trường \textit{Đại học Bách Khoa - Đại học Quốc gia Thành phố Hồ Chí Minh}, những người đã tận tâm giảng dạy, truyền đạt kiến thức và định hướng tư duy nghiên cứu trong suốt quá trình học tập. Những kiến thức nền tảng từ các môn học cơ sở đến chuyên ngành chính là tiền đề quan trọng giúp chúng em có thể tiếp cận, phát triển và hoàn thiện đề tài luận văn này.
+\singlespacing 
+Đặc biệt, chúng em xin gửi lời cảm ơn sâu sắc đến \textbf{TS. Lê Trọng Nhân}, người đã trực tiếp hướng dẫn và đồng hành cùng chúng em trong suốt quá trình thực hiện luận văn. Thầy đã tận tình chỉ bảo và đóng góp nhiều ý kiến chuyên môn quý giá, giúp chúng em định hướng rõ ràng hơn trong nghiên cứu cũng như hoàn thiện nội dung luận văn một cách khoa học và chặt chẽ. Chúng em cũng trân trọng cảm ơn hội nghị IAAA 2026 đã ghi nhận và chấp nhận bài báo liên quan đến đề tài, tạo thêm động lực để nhóm tiếp tục hoàn thiện nghiên cứu.
+\singlespacing 
+Bên cạnh đó, chúng em xin chân thành cảm ơn gia đình đã luôn là chỗ dựa vững chắc, động viên và hỗ trợ chúng em trong suốt quá trình học tập và nghiên cứu. Đồng thời, chúng em cũng cảm ơn bạn bè và đồng nghiệp đã luôn đồng hành, chia sẻ kinh nghiệm và hỗ trợ lẫn nhau trong quá trình thực hiện luận văn. 
+\singlespacing 
+Mặc dù đã nỗ lực hoàn thiện luận văn một cách tốt nhất, song do hạn chế về thời gian và kinh nghiệm nghiên cứu, luận văn khó tránh khỏi những thiếu sót. Chúng em rất mong nhận được những ý kiến đóng góp quý báu từ quý thầy cô để có thể tiếp tục hoàn thiện và phát triển đề tài trong tương lai.
+
+\singlespacing
+Xin chân thành cảm ơn!
+
+\begin{flushright}
+\begin{tabular}{c}
+Tp. Hồ Chí Minh, tháng 06/2026\\
+\textbf{Nhóm sinh viên thực hiện}\\
+Nguyễn Kim Thuận\\
+Hoàng Minh Quân
+\end{tabular}
+\end{flushright}
+
+\end{quotation}
+
+
+
+% ==========================
+% TÓM TẮT
+% ==========================
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{TÓM TẮT}
+\section*{\MakeUppercase{TÓM TẮT}}
+
+Đề tài \textbf{``Nghiên cứu và Phát triển giải pháp Smart Car Access đa công nghệ trên nền tảng devkit và mô phỏng ECU''} tập trung xây dựng một giải pháp xác thực an toàn và tiện dụng cho hệ thống truy cập không chìa khóa (Keyless Entry) trên ô tô hiện đại. Trước nhu cầu ngày càng cao về khả năng mở khóa nhanh, an toàn và thân thiện với người dùng, đề tài hướng đến việc thiết kế một hệ thống truy cập thông minh tuân thủ các tiêu chuẩn công nghiệp, đồng thời đảm bảo khả năng triển khai thực tế với chi phí hợp lý.
+
+Trong phiên bản hoàn thiện của luận văn, hệ thống được thiết kế và phát triển bám sát theo chuẩn \textit{Car Connectivity Consortium (CCC)}, thay vì chỉ dừng ở mức tham khảo như các giai đoạn trước. Kiến trúc xác thực được xây dựng theo hướng đa công nghệ, kết hợp Bluetooth Low Energy (BLE), Near Field Communication (NFC) và Ultra-Wideband (UWB). Trong đó, BLE được sử dụng cho giao tiếp tầm trung, NFC phục vụ xác thực cự ly gần với độ bảo mật cao, và UWB được tích hợp như một thành phần bắt buộc trong phiên xác thực nhằm tăng độ chính xác định vị và chống tấn công relay.
+
+Hệ thống hỗ trợ hai cơ chế xác thực chính: (i) \textit{Standard Authentication} dùng cho lần mở khóa đầu tiên với đầy đủ quy trình bảo mật; (ii) \textit{Fast Authentication} cho các lần sử dụng hằng ngày, được tối ưu nhằm giảm độ trễ và nâng cao trải nghiệm người dùng. Bên cạnh đó, cơ chế xác thực tự động qua BLE (Auto BLE Authentication) được triển khai, cho phép thiết bị nhận diện người dùng và khởi tạo phiên làm việc một cách liền mạch.
+
+Về mặt triển khai, hệ thống gồm hai thành phần chính: bộ điều khiển phía xe sử dụng vi điều khiển ESP32-S3 đóng vai trò mô phỏng ECU, và ứng dụng di động phát triển bằng Flutter hỗ trợ nền tảng Android. Giao thức bảo mật được thiết kế theo các nguyên tắc của chuẩn NIST, sử dụng các thuật toán như HMAC-SHA256 và AES-128-GCM nhằm đảm bảo tính toàn vẹn và bảo mật dữ liệu.
+
+Kiến trúc hệ thống được tổ chức theo mô hình Máy trạng thái hữu hạn (FSM), giúp quản lý luồng xử lý một cách rõ ràng, đảm bảo tính đơn định, dễ bảo trì và thuận tiện cho việc mở rộng. Ngoài ra, giao diện ứng dụng cũng được tối ưu nhằm nâng cao trải nghiệm người dùng, đảm bảo thao tác nhanh chóng và trực quan trong quá trình sử dụng.
+
+Kết quả thực nghiệm cho thấy hệ thống đạt được khả năng mở khóa nhanh, ổn định và an toàn hơn so với các phương pháp chỉ sử dụng BLE. Việc tích hợp UWB và tuân thủ chuẩn CCC đã nâng cao đáng kể mức độ bảo mật cũng như tính thực tiễn của giải pháp, tạo tiền đề cho việc phát triển thành một hệ thống hoàn chỉnh trong môi trường thực tế.
+
+\par\vspace{2em}
+\textbf{\underline{Các từ khóa}}: Keyless Entry, CCC, NFC, BLE, UWB, Fast Authentication, HMAC-SHA256, AES-128-GCM, ESP32-S3, Automotive Security, FSM, Mobile Authentication.
+
+
+% ==========================
+% MỤC LỤC
+% ==========================
+\newpage
+\tableofcontents
+\newpage
+
+% ==========================
+% DANH MỤC HÌNH VẼ
+% ==========================
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{DANH SÁCH HÌNH ẢNH}
+\listoffigures
+\newpage
+
+% ==========================
+% DANH MỤC BẢNG
+% ==========================
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{DANH SÁCH BẢNG}
+\listoftables
+\newpage
+
+% ==========================
+% DANH MỤC TỪ VIẾT TẮT
+% ==========================
+\chapter*{\MakeUppercase{DANH MỤC TỪ VIẾT TẮT}}
+\addcontentsline{toc}{chapter}{DANH MỤC TỪ VIẾT TẮT}
+
+\begin{longtable}{p{3cm} p{11cm}}
+\textbf{Viết tắt} & \textbf{Diễn giải} \\
+\hline
+\endhead
+
+ADAS & Advanced Driver Assistance Systems \\
+AES-GCM & Advanced Encryption Standard – Galois/Counter Mode \\
+API & Application Programming Interface \\
+BLE & Bluetooth Low Energy \\
+CCC & Car Connectivity Consortium \\
+DS-TWR & Double-Sided Two-Way Ranging \\
+ECU & Electronic Control Unit \\
+ESP32-S3 & Espressif ESP32-S3 Microcontroller \\
+EV & Electric Vehicle \\
+FSM & Finite State Machine \\
+GATT & Generic Attribute Profile \\
+GPIO & General Purpose Input/Output \\
+HMAC & Hash-based Message Authentication Code \\
+HMAC-SHA256 & HMAC using SHA-256 \\
+IEC & International Electrotechnical Commission \\
+ISO & International Organization for Standardization \\
+IoT & Internet of Things \\
+MAC & Message Authentication Code \\
+MaaS & Mobility-as-a-Service \\
+MITM & Man-in-the-Middle \\
+NFC & Near Field Communication \\
+NIST & National Institute of Standards and Technology \\
+PKE & Passive Keyless Entry \\
+RF & Radio Frequency \\
+RFID & Radio Frequency Identification \\
+RKE & Remote Keyless Entry \\
+SDV & Software-Defined Vehicles \\
+STS & Scrambled Timestamp Sequence \\
+UART & Universal Asynchronous Receiver-Transmitter \\
+UWB & Ultra-Wideband \\
+V2X & Vehicle-to-Everything \\
+\end{longtable}
+
+\newpage
+
+
+% ==========================
+% NỘI DUNG CHÍNH
+% ==========================
+\input{text/section1}
+\input{text/section2}
+\input{text/section3}
+\input{text/section4}
+\input{text/section5}
+\input{text/section6}
+
+\addcontentsline{toc}{chapter}{DANH MỤC TÀI LIỆU THAM KHẢO}
+\input{text/bibliography}
+\input{text/phuluc}
+
+
+\newpage
+\thispagestyle{empty}
+\mbox{}
+
+% \fancyhf{}
+% \newpage
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Nv_signed.pdf}
+
+
+% \newpage
+% \thispagestyle{empty}
+% \mbox{}
+% \newpage
+
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
+
+
+% \newpage
+% \thispagestyle{empty}
+% \mbox{}
+% \newpage
+
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/PB_signed.pdf}
+
+
+% \newpage
+% \thispagestyle{empty}
+% \mbox{}
+% \newpage
+
+
+
+\end{document}

@@ -1,0 +1,59 @@
+\newpage
+\chapter{\MakeUppercase{KẾT LUẬN VÀ ĐỊNH HƯỚNG PHÁT TRIỂN}}
+
+Đồ án đã hoàn thành đầy đủ các mục tiêu nghiên cứu và thực nghiệm đề ra. Thông qua quá trình nghiên cứu lý thuyết, thiết kế kiến trúc và triển khai thực tế trên nền tảng hệ thống nhúng, nhóm nghiên cứu xin rút ra các kết luận tổng quát như sau:
+
+\begin{enumerate}
+    \item \textbf{Về mặt kiến trúc và giao thức:} Đồ án đã hiện thực hóa thành công mô hình bảo mật đa giao thức \textit{Tri-Radio} (NFC, BLE, UWB) bám sát đặc tả kỹ thuật của liên minh CCC Digital Key Release 3. Việc kết hợp chặt chẽ giữa cơ sở hạ tầng xác thực mật mã bất đối xứng (ECDSA/ECDH) và kỹ thuật đo đạc khoảng cách vật lý an toàn bằng sóng UWB đã tạo ra một "hàng rào" bảo mật đa lớp, giải quyết triệt để các rủi ro của hệ thống chìa khóa thông minh truyền thống.
+
+    \item \textbf{Về mặt kỹ thuật nhúng và hiệu năng:} Hệ thống đã chứng minh tính khả thi khi vận hành ổn định các giao thức mật mã phức tạp và xử lý tín hiệu thời gian thực trên vi điều khiển ESP32-S3 dưới sự quản lý của hệ điều hành FreeRTOS. Các chỉ số hiệu năng thực tế, bao gồm độ trễ giao dịch toàn trình ($\approx 1.5$s) và độ trễ bàn giao kết nối ($\approx 630$ms), đều nằm trong ngưỡng đáp ứng tiêu chuẩn công nghiệp, mang lại trải nghiệm liền mạch cho người dùng.
+
+    \item \textbf{Về điểm đột phá Trí tuệ nhân tạo (TinyML):} Điểm sáng tạo của đề tài là việc vượt ra khỏi các thuật toán so sánh ngưỡng (Rule-based) đơn thuần để nhúng thành công mô hình học máy (mạng tích chập 1D - Conv1D) trực tiếp lên thiết bị biên. Khả năng nhận diện ngữ cảnh hành vi (Walk, Loiter, Attack) từ dữ liệu UWB đã giúp nâng cấp hệ thống từ mức đo lường thụ động sang nhận thức thông minh, tăng cường đáng kể khả năng phòng vệ trước các kịch bản tấn công tiếp sóng (Relay Attack) tinh vi.
+
+    \item \textbf{Về giá trị thực tiễn và khoa học:} Đồ án là minh chứng cho việc làm chủ công nghệ xuyên suốt từ tầng vật lý (Physical Layer) đến tầng ứng dụng (Application Layer). Sự kết hợp hiệu quả giữa bộ lọc Kalman truyền thống và học máy hiện đại mang lại độ chính xác nhận diện hành vi đạt $77\%$, mở ra hướng tiếp cận khả thi và tối ưu chi phí cho các hệ thống an ninh ô tô thế hệ mới.
+\end{enumerate}
+
+Tóm lại, hệ thống Smart Car Access được phát triển trong đồ án là một giải pháp mang tính toàn diện, hội đủ các yếu tố: an ninh mật mã, ổn định phần cứng và thông minh hóa phần mềm. Đây là tiền đề quan trọng để phát triển các ứng dụng bảo mật ô tô hướng tới sự tiện nghi và an toàn tuyệt đối trong kỷ nguyên xe điện và xe tự hành.
+
+\section*{Hạn chế của đề tài}
+\addcontentsline{toc}{section}{Hạn chế của đề tài}
+
+Mặc dù hệ thống đã hiện thực hóa thành công luồng truy cập PKE dựa trên kiến trúc Tri-Radio tuân thủ tiêu chuẩn CCC, đồ án vẫn còn một số rào cản nhất định do giới hạn về mặt thời gian, chi phí và tài nguyên phần cứng trong môi trường nghiên cứu học thuật.
+
+\begin{itemize}
+    \item \textbf{Giới hạn về nền tảng phần cứng và định vị không gian (Spatial Resolution):}
+    \begin{itemize}
+        \item Hệ thống hiện tại sử dụng vi điều khiển đa dụng ESP32-S3. Mặc dù có hiệu năng xử lý tốt, đây chưa phải là dòng vi điều khiển đạt chuẩn ô tô (Automotive-Grade MCU) và chưa đáp ứng các tiêu chuẩn an toàn chức năng khắt khe như ISO 26262 hay kiến trúc phần mềm AUTOSAR.
+        \item Về mặt định vị, hệ thống mới chỉ sử dụng một vi mạch UWB (DWM3000) duy nhất (định vị 1D). Việc thiếu cơ sở dữ liệu Góc đến (Angle of Arrival - AoA) khiến hệ thống mới chỉ dừng lại ở việc đo khoảng cách (ToF) mà chưa thể định vị chính xác tọa độ không gian của người dùng để kích hoạt các hành động mở cửa cục bộ (ví dụ: phân biệt người dùng đứng ở cửa tài xế hay cốp xe).
+    \end{itemize}
+
+    \item \textbf{Mức độ triển khai Hạ tầng khóa công khai (PKI):}
+    \begin{itemize}
+        \item Một hệ thống thương mại chuẩn CCC yêu cầu phải có Hạ tầng quản lý chứng chỉ số (PKI) hoàn chỉnh. Trong phạm vi đồ án, quy trình cấp quyền (Provisioning) mới dừng ở mức mô phỏng cục bộ thông qua thẻ vật lý (Master Card) thay vì xác thực đám mây thông qua các máy chủ OEM chuyên dụng.
+    \end{itemize}
+
+    \item \textbf{Tiến độ nhúng mô hình học máy chuỗi thời gian (Time-series ML):}
+    \begin{itemize}
+        \item Hệ thống đã trích xuất thành công đặc trưng vật lý và tối ưu hóa quỹ đạo bằng bộ lọc Kalman, đồng thời nhúng thành công mô hình tĩnh Conv1D. Tuy nhiên, việc lượng tử hóa (Quantization) các mạng nơ-ron phức tạp như LSTM để suy luận thời gian thực trên ESP32-S3 vẫn đòi hỏi nhiều chi phí tài nguyên. Do đó, để đảm bảo tính an toàn cơ học tuyệt đối, logic ra quyết định mở cửa hiện tại vẫn ưu tiên sử dụng thuật toán Hysteresis kết hợp bộ lọc Kalman làm cốt lõi.
+    \end{itemize}
+
+    \item \textbf{Độ phủ của dữ liệu huấn luyện (Model Coverage):}
+    \begin{itemize}
+        \item Dù mô hình phân loại hành vi đạt độ chính xác khá tốt, bộ dữ liệu hiện tại chưa bao quát hết mọi kịch bản môi trường phức tạp (như bãi đỗ xe có nhiều vật cản kim loại gây nhiễu đa đường mạnh). Để đạt độ tin cậy cấp độ thương mại ($>95\%$), hệ thống cần thu thập lượng dữ liệu đa dạng hơn từ nhiều mẫu hành vi và thiết bị di động khác nhau.
+    \end{itemize}
+\end{itemize}
+
+\section*{Định hướng phát triển}
+\addcontentsline{toc}{section}{Định hướng phát triển}
+
+Từ những kết quả và hạn chế đã phân tích, nhóm nghiên cứu đề xuất các hướng phát triển tiếp theo nhằm hoàn thiện và nâng cao tính ứng dụng của hệ thống:
+
+\begin{enumerate}
+    \item \textbf{Nâng cấp định vị không gian đa chiều (AoA):} Tích hợp mảng ăng-ten (Antenna Array) nhằm khai thác tham số Góc đến. Việc kết hợp giữa Khoảng cách và Góc sẽ cho phép hệ thống xác định chính xác vị trí người dùng trên mặt phẳng 2D, hỗ trợ các tính năng cao cấp như "Welcome Light" hay "Smart Trunk" (Mở cốp thông minh).
+    
+    \item \textbf{Tối ưu hóa độ chính xác mô hình học máy:} Áp dụng các kỹ thuật Tăng cường dữ liệu (Data Augmentation) và thử nghiệm các kiến trúc lai (Hybrid CNN-LSTM) phù hợp với tài nguyên thiết bị biên. Mục tiêu là tối đa hóa tỷ lệ nhận diện hành vi và giảm thiểu triệt để sai số định vị trong môi trường nhiễu sóng mạnh.
+    
+    \item \textbf{Tiêu chuẩn hóa phần cứng và hệ sinh thái:} Chuyển đổi kiến trúc trung tâm sang các dòng vi điều khiển đạt chuẩn Automotive (như NXP S32K) đáp ứng tiêu chuẩn an toàn ASIL-B. Đồng thời, nghiên cứu tích hợp hệ thống lên hệ điều hành iOS thông qua nền tảng Apple CarKey API.
+    
+    \item \textbf{Hoàn thiện hạ tầng PKI trên nền tảng Đám mây:} Xây dựng máy chủ mô phỏng Vehicle OEM để quản lý vòng đời khóa kỹ thuật số, từ đó hiện thực hóa quy trình đăng ký chìa khóa (Owner Provisioning) và chia sẻ chìa khóa (Key Sharing) từ xa an toàn theo đúng đặc tả kỹ thuật của CCC.
+\end{enumerate}
