@@ -14,8 +14,8 @@
 namespace AccessController {
 
 // ===== Configuration =====
-// Driver-door unlock point in car-frame metres (near anchor A1 / left side).
-constexpr double kUnlockPointX = -0.85;
+// Driver-door unlock point in car-frame metres (left B-pillar, anchor 2).
+constexpr double kUnlockPointX = -0.95;
 constexpr double kUnlockPointY = 0.0;
 constexpr double UNLOCK_RADIUS_M = 2.0;   // fire relay inside this radius
 constexpr double RESET_RADIUS_M = 3.0;    // re-arm after leaving this radius
