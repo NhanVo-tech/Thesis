@@ -1,45 +1,99 @@
 #include "uwb/access_controller.h"
+#include "uwb/geofence.h"
 #include <Arduino.h>
 #include <cmath>
 
 namespace AccessController {
+namespace {
 
-// ===== State Trackers =====
-static int consecutive_close_reads = 0;
-static bool is_door_unlocked = false;
-static double last_x_m = 0.0;
-static double last_y_m = 0.0;
-static double last_distance_m = 0.0;
-static double last_radial_mps = 0.0;
-static uint32_t relay_deactivate_time_ms = 0;
-static bool relay_active = false;
+State g_state = State::LOCKED;
 
-static double distanceToUnlockPoint(double x, double y) {
-  const double dx = x - kUnlockPointX;
-  const double dy = y - kUnlockPointY;
+// Unlock / leave debounce counters.
+int consecutive_close_reads = 0;
+int leave_hits = 0;
+
+// Seat-settle timer (DOOR_UNLOCKED -> OCCUPIED).
+bool seat_timer_running = false;
+uint32_t seat_settle_start_ms = 0;
+
+// Telemetry.
+double last_x_m = 0.0;
+double last_y_m = 0.0;
+double last_distance_m = 0.0;
+double last_radial_mps = 0.0;
+double last_speed_mps = 0.0;
+
+// Relay + ignition.
+uint32_t relay_deactivate_time_ms = 0;
+bool relay_active = false;
+bool ignition_authorized = false;
+
+// Geofence hysteresis (feeds [ZONE] logging + transitions).
+Geofence::Hysteresis zone_hyst;
+Geofence::Zone last_zone = Geofence::Zone::OUTSIDE;
+
+double dist(double x, double y, double cx, double cy) {
+  const double dx = x - cx;
+  const double dy = y - cy;
   return std::sqrt(dx * dx + dy * dy);
 }
 
-void begin() {
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);
-  consecutive_close_reads = 0;
-  is_door_unlocked = false;
-  last_x_m = 0.0;
-  last_y_m = 0.0;
-  last_distance_m = 0.0;
-  relay_active = false;
-  Serial.printf(
-    "[DOOR] Initialized: unlock_point=(%.2f,%.2f) radius=%.1fm reset=%.1fm hits=%d relay_pin=%d\n",
-    kUnlockPointX, kUnlockPointY, UNLOCK_RADIUS_M, RESET_RADIUS_M,
-    REQUIRED_CONSECUTIVE_HITS, RELAY_PIN);
+const char* stateName(State s) {
+  switch (s) {
+    case State::DOOR_UNLOCKED: return "DOOR_UNLOCKED";
+    case State::OCCUPIED:      return "OCCUPIED";
+    default:                   return "LOCKED";
+  }
 }
 
-static void fireRelayPulse() {
+void setState(State s) {
+  if (s == g_state) return;
+  g_state = s;
+  Serial.printf("[STATE] %s\n", stateName(s));
+}
+
+void fireRelayPulse() {
   Serial.println("[DOOR] *** FIRING UNLOCK RELAY ***");
   digitalWrite(RELAY_PIN, HIGH);
   relay_active = true;
   relay_deactivate_time_ms = millis() + RELAY_PULSE_MS;
+}
+
+void lockDoor() {
+  if (relay_active) {
+    digitalWrite(RELAY_PIN, LOW);
+    relay_active = false;
+  }
+}
+
+void setIgnition(bool on) {
+  if (on == ignition_authorized) return;
+  ignition_authorized = on;
+  digitalWrite(IGNITION_PIN, on ? HIGH : LOW);
+  Serial.printf("[IGNITION] %s\n", on ? "ON" : "OFF");
+}
+
+}  // namespace
+
+void begin() {
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(IGNITION_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(IGNITION_PIN, LOW);
+  g_state = State::LOCKED;
+  consecutive_close_reads = 0;
+  leave_hits = 0;
+  seat_timer_running = false;
+  ignition_authorized = false;
+  relay_active = false;
+  zone_hyst.reset();
+  last_zone = Geofence::Zone::OUTSIDE;
+  Serial.printf("[DOOR] Init: door=(%.2f,%.2f) seat=(%.2f,%.2f) doorR=%.1f seatR=%.2f still=%.2f settle=%ums relay=%d ign=%d\n",
+                Geofence::kDoorX, Geofence::kDoorY,
+                Geofence::kSeatX, Geofence::kSeatY,
+                Geofence::kDoorRadiusM, Geofence::kSeatRadiusM,
+                STILL_SPEED_MPS, (unsigned)SEAT_SETTLE_MS,
+                RELAY_PIN, IGNITION_PIN);
 }
 
 void handlePosition(double x, double y) {
@@ -49,69 +103,90 @@ void handlePosition(double x, double y) {
 void handlePosition(double x, double y, double vx, double vy) {
   last_x_m = x;
   last_y_m = y;
-  last_distance_m = distanceToUnlockPoint(x, y);
+  last_distance_m = dist(x, y, Geofence::kDoorX, Geofence::kDoorY);
+  last_speed_mps = std::hypot(vx, vy);
 
-  // Radial velocity along the door line: >0 moving away, <0 approaching.
-  const double dx = x - kUnlockPointX;
-  const double dy = y - kUnlockPointY;
+  const double dx = x - Geofence::kDoorX;
+  const double dy = y - Geofence::kDoorY;
   last_radial_mps =
       (last_distance_m > 1e-6) ? (vx * dx + vy * dy) / last_distance_m : 0.0;
 
-  // 1. User walked away -> re-arm the lock state
-  if (last_distance_m > RESET_RADIUS_M) {
-    if (is_door_unlocked) {
-      Serial.printf(
-        "[DOOR] User left the zone (d=%.2fm > reset=%.2fm). Re-arming.\n",
-        last_distance_m, RESET_RADIUS_M);
-      is_door_unlocked = false;  // Ready to unlock again on next approach
-    }
-    consecutive_close_reads = 0;
-    return;
+  // Stable zone (debounced) — drives transitions and the [ZONE] log.
+  const Geofence::Zone zone = zone_hyst.update(x, y, 3);
+  if (zone != last_zone) {
+    last_zone = zone;
+    Serial.printf("[ZONE] %s\n", Geofence::zoneName(zone));
   }
 
-  // 2. Already unlocked and standing near the car -> do nothing
-  if (is_door_unlocked) {
-    Serial.printf("[DOOR] Already unlocked. Ignoring (d=%.2fm)\n", last_distance_m);
-    return;
-  }
+  const bool moving_away = ENABLE_APPROACH_GATE &&
+                           last_radial_mps > APPROACH_SPEED_MIN_MPS;
 
-  // 3. Approach gate: reject readings while the user is moving away.
-  if (ENABLE_APPROACH_GATE && last_radial_mps > APPROACH_SPEED_MIN_MPS) {
-    if (consecutive_close_reads > 0) {
-      Serial.printf(
-        "[DOOR] Moving away (vr=%.2fm/s). Resetting counter.\n",
-        last_radial_mps);
-      consecutive_close_reads = 0;
+  switch (g_state) {
+    case State::LOCKED: {
+      if (zone == Geofence::Zone::OUTSIDE) {
+        consecutive_close_reads = 0;
+        return;
+      }
+      if (moving_away) {
+        consecutive_close_reads = 0;
+        return;
+      }
+      const bool near_door = (zone == Geofence::Zone::DRIVER_DOOR ||
+                              zone == Geofence::Zone::DRIVER_SEAT);
+      if (near_door && last_speed_mps < STILL_SPEED_MPS) {
+        if (++consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
+          fireRelayPulse();
+          setState(State::DOOR_UNLOCKED);
+          consecutive_close_reads = 0;
+        }
+      } else {
+        consecutive_close_reads = 0;
+      }
+      break;
     }
-    return;
-  }
 
-  // 4. Approaching. Count consecutive in-zone hits.
-  if (last_distance_m <= UNLOCK_RADIUS_M) {
-    consecutive_close_reads++;
-    Serial.printf("[DOOR] In zone! Hit count: %d/%d (d=%.2fm vr=%.2fm/s)\n",
-                  consecutive_close_reads, REQUIRED_CONSECUTIVE_HITS,
-                  last_distance_m, last_radial_mps);
-
-    if (consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
-      // --- FIRE THE DOOR RELAY ---
-      fireRelayPulse();
-      is_door_unlocked = true;
-      consecutive_close_reads = 0;
+    case State::DOOR_UNLOCKED: {
+      // Sit still at the driver seat -> lock + authorize ignition.
+      if (zone == Geofence::Zone::DRIVER_SEAT &&
+          last_speed_mps < STILL_SPEED_MPS) {
+        if (!seat_timer_running) {
+          seat_timer_running = true;
+          seat_settle_start_ms = millis();
+        } else if (millis() - seat_settle_start_ms >= SEAT_SETTLE_MS) {
+          lockDoor();
+          setIgnition(true);
+          setState(State::OCCUPIED);
+          seat_timer_running = false;
+        }
+      } else {
+        seat_timer_running = false;
+      }
+      // Walk away without sitting -> re-lock.
+      if (zone == Geofence::Zone::OUTSIDE && moving_away) {
+        lockDoor();
+        setState(State::LOCKED);
+      }
+      break;
     }
-  } else {
-    // Bounce between zones -> reset the counter
-    if (consecutive_close_reads > 0) {
-      Serial.printf(
-        "[DOOR] Distance bounced out of zone (%.2fm). Resetting counter.\n",
-        last_distance_m);
-      consecutive_close_reads = 0;
+
+    case State::OCCUPIED: {
+      // User leaves the car -> revoke ignition + lock.
+      if (zone == Geofence::Zone::OUTSIDE && moving_away) {
+        if (++leave_hits >= LEAVE_CONSECUTIVE_HITS) {
+          setIgnition(false);
+          lockDoor();
+          setState(State::LOCKED);
+          leave_hits = 0;
+        }
+      } else {
+        leave_hits = 0;
+      }
+      break;
     }
   }
 }
 
 void tick() {
-  // Deactivate relay after pulse duration
   if (relay_active && millis() >= relay_deactivate_time_ms) {
     digitalWrite(RELAY_PIN, LOW);
     relay_active = false;
@@ -119,48 +194,34 @@ void tick() {
   }
 }
 
-bool isDoorUnlocked() {
-  return is_door_unlocked;
-}
+State state() { return g_state; }
+bool isIgnitionAuthorized() { return ignition_authorized; }
+bool isDoorUnlocked() { return g_state == State::DOOR_UNLOCKED; }
 
-int getConsecutiveReadCount() {
-  return consecutive_close_reads;
-}
-
-double getLastDistance() {
-  return last_distance_m;
-}
-
-double getLastX() {
-  return last_x_m;
-}
-
-double getLastY() {
-  return last_y_m;
-}
-
-double getLastRadialSpeed() {
-  return last_radial_mps;
-}
+int getConsecutiveReadCount() { return consecutive_close_reads; }
+double getLastDistance() { return last_distance_m; }
+double getLastX() { return last_x_m; }
+double getLastY() { return last_y_m; }
+double getLastRadialSpeed() { return last_radial_mps; }
+double getLastSpeed() { return last_speed_mps; }
 
 void manualUnlock() {
   Serial.println("[DOOR] Manual unlock triggered");
   fireRelayPulse();
-  is_door_unlocked = true;
+  setState(State::DOOR_UNLOCKED);
+  consecutive_close_reads = 0;
 }
 
 void resetDoorState() {
   Serial.println("[DOOR] Door state reset");
+  lockDoor();
+  setIgnition(false);
+  setState(State::LOCKED);
   consecutive_close_reads = 0;
-  is_door_unlocked = false;
-  last_x_m = 0.0;
-  last_y_m = 0.0;
-  last_distance_m = 0.0;
-  last_radial_mps = 0.0;
-  if (relay_active) {
-    digitalWrite(RELAY_PIN, LOW);
-    relay_active = false;
-  }
+  leave_hits = 0;
+  seat_timer_running = false;
+  zone_hyst.reset();
+  last_zone = Geofence::Zone::OUTSIDE;
 }
 
 }  // namespace AccessController

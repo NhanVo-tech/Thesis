@@ -65,6 +65,8 @@ CAR_LENGTH = 4.0
 CAR_WIDTH = 2.0
 UNLOCK_POINT = ANCHORS[2]   # left B-pillar (driver door)
 UNLOCK_RADIUS = 2.0
+SEAT_POINT = (-0.35, 0.0)   # driver seat (slightly inside the door)
+SEAT_RADIUS = 0.45
 
 RAW_KEEP = 50      # dim raw dots kept on screen
 EKF_KEEP = 120     # blue EKF trail length
@@ -81,6 +83,8 @@ EKF_RE = re.compile(
     r"\[EKF\]\s+(?:t=\d+\s+)?x=(-?[\d.]+)\s+y=(-?[\d.]+)\s+"
     r"vx=(-?[\d.]+)\s+vy=(-?[\d.]+)\s+v=(-?[\d.]+)"
 )
+STATE_RE = re.compile(r"\[STATE\]\s+(LOCKED|DOOR_UNLOCKED|OCCUPIED)")
+IGNITION_RE = re.compile(r"\[IGNITION\]\s+(ON|OFF)")
 
 
 # -----------------------------------------------------------------------------
@@ -255,6 +259,14 @@ class DemoBridge:
             self._ingest(line)
 
     def _ingest(self, line):
+        m = STATE_RE.search(line)
+        if m:
+            self._viz.put(("state", m.group(1)))
+            return
+        m = IGNITION_RE.search(line)
+        if m:
+            self._viz.put(("ignition", m.group(1) == "ON"))
+            return
         m = EKF_RE.search(line)
         if m:
             self._viz.put(("ekf", float(m.group(1)), float(m.group(2)),
@@ -343,6 +355,13 @@ def build_figure():
     ax.add_patch(Circle(UNLOCK_POINT, UNLOCK_RADIUS, fill=False,
                         ec="#27ae60", ls=":", lw=1.1, alpha=0.7))
 
+    # Driver seat point + zone (target for the "seated" state).
+    ax.add_patch(Circle(SEAT_POINT, SEAT_RADIUS, fill=True,
+                        facecolor="#ffb74d", alpha=0.18, ec="#e65100",
+                        ls="--", lw=1.0))
+    ax.plot(SEAT_POINT[0], SEAT_POINT[1], marker="s", ms=8,
+            color="#ef6c00", mec="#bf360c", mew=1.2, zorder=6)
+
     # Dynamic artists.
     raw_sc = ax.scatter([], [], s=14, color="#9aa3ad", alpha=0.30, zorder=3)
     ekf_line, = ax.plot([], [], color="#1e88e5", lw=1.8, zorder=4)
@@ -351,6 +370,11 @@ def build_figure():
     cone = Wedge((0, 0), CONE_LENGTH, 0, 360, color="#1e88e5", alpha=0.0,
                  zorder=3)
     ax.add_patch(cone)
+
+    # Access-state status banner (top-left of the map).
+    status_text = ax.text(-4.0, 3.9, "", fontsize=11, weight="bold",
+                          va="top", ha="left", color="#273671",
+                          family="monospace")
 
     # Legend at bottom edge of the map.
     ax.plot(0.5, -3.95, marker="o", ms=7, color="#43a047", mec="#1b5e20",
@@ -377,7 +401,7 @@ def build_figure():
             a.text(0.5, 0.22, METRIC_LABELS[i][j], ha="center", va="center",
                    fontsize=11, color="#8a8f98")
 
-    return fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes
+    return fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text
 
 
 def main():
@@ -407,7 +431,7 @@ def main():
     if args.log is None and (not args.ports or not args.esp_port):
         ap.error("provide --log (replay) or -p PORTS --esp-port (live)")
 
-    fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes = build_figure()
+    fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text = build_figure()
 
     viz = queue.Queue()
     bridge = None
@@ -418,6 +442,14 @@ def main():
         def replay():
             with open(args.log, "r", encoding="utf-8", errors="ignore") as fh:
                 for line in fh:
+                    m = STATE_RE.search(line)
+                    if m:
+                        viz.put(("state", m.group(1)))
+                        continue
+                    m = IGNITION_RE.search(line)
+                    if m:
+                        viz.put(("ignition", m.group(1) == "ON"))
+                        continue
                     m = EKF_RE.search(line)
                     if m:
                         viz.put(("ekf", float(m.group(1)), float(m.group(2)),
@@ -467,6 +499,7 @@ def main():
     raw_hist = collections.deque(maxlen=RAW_KEEP)
     ekf_hist = collections.deque(maxlen=EKF_KEEP)
     state = {"x": None, "y": None, "vx": 0.0, "vy": 0.0, "n": 0}
+    access = {"door": "LOCKED", "ignition": False}
 
     def update(_frame):
         while True:
@@ -476,6 +509,10 @@ def main():
                 break
             if ev[0] == "raw":
                 raw_hist.append((ev[1], ev[2]))
+            elif ev[0] == "state":
+                access["door"] = ev[1]
+            elif ev[0] == "ignition":
+                access["ignition"] = ev[1]
             else:
                 _, x, y, vx, vy = ev
                 state["x"], state["y"] = x, y
@@ -516,7 +553,13 @@ def main():
             for j in range(2):
                 metric_axes[i][j].texts[0].set_text(values[i * 2 + j])
                 metric_axes[i][j].texts[1].set_text(METRIC_LABELS[i][j])
-        return [raw_sc, ekf_line, ekf_pt, cone]
+
+        # Access-state banner.
+        door = access["door"].replace("_", " ")
+        ign = "AUTHORIZED" if access["ignition"] else "OFF"
+        status_text.set_text(f"DOOR: {door}\nIGNITION: {ign}")
+
+        return [raw_sc, ekf_line, ekf_pt, cone, status_text]
 
     anim = FuncAnimation(fig, update, interval=50, blit=False,
                          cache_frame_data=False)
