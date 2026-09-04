@@ -186,26 +186,26 @@
 % \newpage
 
 
-%============================phieu nhiem vu=========================
-\newpage
-\includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Nv_signed.pdf}
-\clearpage
+% %============================phieu nhiem vu=========================
+% \newpage
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Nv_signed.pdf}
+% \clearpage
 
 
-%============================phieu huong dan=========================
-\newpage
-\includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
-\clearpage
+% %============================phieu huong dan=========================
+% \newpage
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
+% \clearpage
 
-\newpage
-\includepdf[pages=2,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
-\clearpage
+% \newpage
+% \includepdf[pages=2,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/Hd_signed.pdf}
+% \clearpage
 
 
-%============================phieu phan bien=========================
-\newpage
-\includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/PB_signed.pdf}
-\clearpage
+% %============================phieu phan bien=========================
+% \newpage
+% \includepdf[pages=1,pagecommand={},width=\paperwidth,height=\paperheight]{pdf files/PB_signed.pdf}
+% \clearpage
 
 
 \iffalse
@@ -229,9 +229,10 @@
 
 \hline
 \\
-\textbf{\huge Nghiên cứu và Phát triển giải pháp}\\
-\textbf{\huge Smart Car Access đa công nghệ}\\
-\textbf{\huge trên nền tảng Devkit và mô phỏng ECU}\\
+\textbf{\huge Nghiên cứu và Phát triển hệ thống}\\
+\textbf{\huge Định vị đa điểm (Multi-anchor) và}\\
+\textbf{\huge Nhận diện ý định hành vi dựa trên TinyML}\\
+\textbf{\huge cho giải pháp Smart Car Access}\\
 \\
 \hline
 \end{tabular}
@@ -247,8 +248,7 @@
 \hspace{2.5 cm} \textbf{Ủy viên hội đồng:} & ThS. Nguyễn Cao Trí \\
 \hspace{2.5 cm} \textbf{Thư ký hội đồng:} & CN. Trần Nguyễn Minh Duy \\
 \\
-\hspace{2.5 cm} \textbf{Sinh viên thực hiện:} & Nguyễn Kim Thuận -- 2213357 \\
-\hspace{2.5 cm}  & Hoàng Minh Quân -- 2011909 \\
+\hspace{2.5 cm} \textbf{Sinh viên thực hiện:} & Võ Thành Nhân -- 2111914 \\
 \end{tabular}
 \end{table}
 
@@ -267,7 +267,7 @@
 \addcontentsline{toc}{chapter}{LỜI CAM ĐOAN}
 \section*{\MakeUppercase{LỜI CAM ĐOAN}}
 \begin{quotation}
-Chúng tôi xin cam đoan toàn bộ nội dung và kết quả của đề tài “Nghiên cứu và Phát triển giải pháp Smart Car Access đa công nghệ trên nền tảng Devkit và mô phỏng ECU” là sản phẩm nghiên cứu, tìm hiểu và phát triển của riêng nhóm chúng tôi dưới sự hướng dẫn khoa học của TS. Lê Trọng Nhân.
+Chúng tôi xin cam đoan toàn bộ nội dung và kết quả của đề tài “Nghiên cứu và Phát triển hệ thống Định vị đa điểm (Multi-anchor) và Nhận diện ý định hành vi dựa trên TinyML cho giải pháp Smart Car Access” là sản phẩm nghiên cứu, tìm hiểu và phát triển của riêng nhóm chúng tôi dưới sự hướng dẫn khoa học của TS. Lê Trọng Nhân.
 
 Các kết quả, số liệu và mã nguồn được trình bày trong báo cáo là hoàn toàn trung thực, phản ánh đúng kết quả thực nghiệm của nhóm và chưa từng được công bố trong bất kỳ công trình nghiên cứu nào khác của các tác giả khác hay tại các cơ sở đào tạo khác.
 
@@ -278,10 +278,9 @@ Nếu phát hiện có bất kỳ sự gian lận, sao chép không hợp lệ h
 
 \begin{flushright}
 \begin{tabular}{c}
-Tp. Hồ Chí Minh, tháng 06/2026\\
+Tp. Hồ Chí Minh, tháng 09/2026\\
 \textbf{Nhóm sinh viên thực hiện}\\
-Nguyễn Kim Thuận\\
-Hoàng Minh Quân
+Võ Thành Nhân
 \end{tabular}
 \end{flushright}
 
@@ -291,7 +290,7 @@ Hoàng Minh Quân
 \addcontentsline{toc}{chapter}{LỜI CẢM ƠN}
 \section*{\MakeUppercase{LỜI CẢM ƠN}}
 \begin{quotation}
-Trong suốt quá trình thực hiện luận văn tốt nghiệp với đề tài: “Nghiên cứu và Phát triển giải pháp Smart Car Access đa công nghệ trên nền tảng devkit và mô phỏng ECU”, nhóm chúng em đã có cơ hội kế thừa và phát triển từ đồ án chuyên ngành trước đó. Đây là một quá trình đòi hỏi sự đầu tư nghiêm túc cả về kiến thức chuyên môn lẫn kỹ năng nghiên cứu, qua đó giúp chúng em từng bước hoàn thiện năng lực học thuật và thực tiễn. Để hoàn thành luận văn này, bên cạnh sự nỗ lực của bản thân, chúng em đã nhận được rất nhiều sự hỗ trợ quý báu từ quý thầy cô, gia đình và bạn bè.
+Trong suốt quá trình thực hiện luận văn tốt nghiệp với đề tài: “Nghiên cứu và Phát triển hệ thống Định vị đa điểm (Multi-anchor) và Nhận diện ý định hành vi dựa trên TinyML cho giải pháp Smart Car Access”, nhóm chúng em đã có cơ hội kế thừa và phát triển từ đồ án chuyên ngành trước đó. Đây là một quá trình đòi hỏi sự đầu tư nghiêm túc cả về kiến thức chuyên môn lẫn kỹ năng nghiên cứu, qua đó giúp chúng em từng bước hoàn thiện năng lực học thuật và thực tiễn. Để hoàn thành luận văn này, bên cạnh sự nỗ lực của bản thân, chúng em đã nhận được rất nhiều sự hỗ trợ quý báu từ quý thầy cô, gia đình và bạn bè.
 \singlespacing 
 Trước hết, chúng em xin bày tỏ lòng biết ơn chân thành đến toàn thể quý thầy cô giảng viên Trường \textit{Đại học Bách Khoa - Đại học Quốc gia Thành phố Hồ Chí Minh}, những người đã tận tâm giảng dạy, truyền đạt kiến thức và định hướng tư duy nghiên cứu trong suốt quá trình học tập. Những kiến thức nền tảng từ các môn học cơ sở đến chuyên ngành chính là tiền đề quan trọng giúp chúng em có thể tiếp cận, phát triển và hoàn thiện đề tài luận văn này.
 \singlespacing 
@@ -306,10 +305,9 @@ Xin chân thành cảm ơn!
 
 \begin{flushright}
 \begin{tabular}{c}
-Tp. Hồ Chí Minh, tháng 06/2026\\
+Tp. Hồ Chí Minh, tháng 09/2026\\
 \textbf{Nhóm sinh viên thực hiện}\\
-Nguyễn Kim Thuận\\
-Hoàng Minh Quân
+Võ Thành Nhân
 \end{tabular}
 \end{flushright}
 
@@ -325,7 +323,7 @@ Hoàng Minh Quân
 \addcontentsline{toc}{chapter}{TÓM TẮT}
 \section*{\MakeUppercase{TÓM TẮT}}
 
-Đề tài \textbf{``Nghiên cứu và Phát triển giải pháp Smart Car Access đa công nghệ trên nền tảng devkit và mô phỏng ECU''} tập trung xây dựng một giải pháp xác thực an toàn và tiện dụng cho hệ thống truy cập không chìa khóa (Keyless Entry) trên ô tô hiện đại. Trước nhu cầu ngày càng cao về khả năng mở khóa nhanh, an toàn và thân thiện với người dùng, đề tài hướng đến việc thiết kế một hệ thống truy cập thông minh tuân thủ các tiêu chuẩn công nghiệp, đồng thời đảm bảo khả năng triển khai thực tế với chi phí hợp lý.
+Đề tài \textbf{``Nghiên cứu và Phát triển hệ thống Định vị đa điểm (Multi-anchor) và Nhận diện ý định hành vi dựa trên TinyML cho giải pháp Smart Car Access''} tập trung xây dựng một giải pháp xác thực an toàn và tiện dụng cho hệ thống truy cập không chìa khóa (Keyless Entry) trên ô tô hiện đại. Trước nhu cầu ngày càng cao về khả năng mở khóa nhanh, an toàn và thân thiện với người dùng, đề tài hướng đến việc thiết kế một hệ thống truy cập thông minh tuân thủ các tiêu chuẩn công nghiệp, đồng thời đảm bảo khả năng triển khai thực tế với chi phí hợp lý.
 
 Trong phiên bản hoàn thiện của luận văn, hệ thống được thiết kế và phát triển bám sát theo chuẩn \textit{Car Connectivity Consortium (CCC)}, thay vì chỉ dừng ở mức tham khảo như các giai đoạn trước. Kiến trúc xác thực được xây dựng theo hướng đa công nghệ, kết hợp Bluetooth Low Energy (BLE), Near Field Communication (NFC) và Ultra-Wideband (UWB). Trong đó, BLE được sử dụng cho giao tiếp tầm trung, NFC phục vụ xác thực cự ly gần với độ bảo mật cao, và UWB được tích hợp như một thành phần bắt buộc trong phiên xác thực nhằm tăng độ chính xác định vị và chống tấn công relay.
 
@@ -384,10 +382,12 @@ BLE & Bluetooth Low Energy \\
 CCC & Car Connectivity Consortium \\
 DS-TWR & Double-Sided Two-Way Ranging \\
 ECU & Electronic Control Unit \\
+EKF & Extended Kalman Filter \\
 ESP32-S3 & Espressif ESP32-S3 Microcontroller \\
 EV & Electric Vehicle \\
 FSM & Finite State Machine \\
 GATT & Generic Attribute Profile \\
+GDOP & Geometric Dilution of Precision \\
 GPIO & General Purpose Input/Output \\
 HMAC & Hash-based Message Authentication Code \\
 HMAC-SHA256 & HMAC using SHA-256 \\
@@ -403,9 +403,12 @@ PKE & Passive Keyless Entry \\
 RF & Radio Frequency \\
 RFID & Radio Frequency Identification \\
 RKE & Remote Keyless Entry \\
+RMS & Root Mean Square \\
 SDV & Software-Defined Vehicles \\
 STS & Scrambled Timestamp Sequence \\
+ToF & Time of Flight \\
 UART & Universal Asynchronous Receiver-Transmitter \\
+UCI & UWB Command Interface \\
 UWB & Ultra-Wideband \\
 V2X & Vehicle-to-Everything \\
 \end{longtable}

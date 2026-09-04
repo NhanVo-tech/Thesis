@@ -24,7 +24,7 @@ Mặc dù hệ thống đã hiện thực hóa thành công luồng truy cập P
     \item \textbf{Giới hạn về nền tảng phần cứng và định vị không gian (Spatial Resolution):}
     \begin{itemize}
         \item Hệ thống hiện tại sử dụng vi điều khiển đa dụng ESP32-S3. Mặc dù có hiệu năng xử lý tốt, đây chưa phải là dòng vi điều khiển đạt chuẩn ô tô (Automotive-Grade MCU) và chưa đáp ứng các tiêu chuẩn an toàn chức năng khắt khe như ISO 26262 hay kiến trúc phần mềm AUTOSAR.
-        \item Về mặt định vị, hệ thống mới chỉ sử dụng một vi mạch UWB (DWM3000) duy nhất (định vị 1D). Việc thiếu cơ sở dữ liệu Góc đến (Angle of Arrival - AoA) khiến hệ thống mới chỉ dừng lại ở việc đo khoảng cách (ToF) mà chưa thể định vị chính xác tọa độ không gian của người dùng để kích hoạt các hành động mở cửa cục bộ (ví dụ: phân biệt người dùng đứng ở cửa tài xế hay cốp xe).
+        \item Về mặt định vị, hệ thống giai đoạn hai đã nâng cấp từ đo khoảng cách đơn mỏ neo (1D) lên định vị đa mỏ neo với ba mỏ neo UWB, cho phép giải tọa độ phẳng $(x, y)$ của người dùng thông qua Trilateration kết hợp bộ lọc Kalman. Tuy nhiên, các mỏ neo hiện được kết nối với xe gián tiếp qua một cầu nối PC (mang tính nghiên cứu, chưa phải cấu trúc liên kết sản xuất), tọa độ mỏ neo được cố định trong mã nguồn và hệ thống chưa khai thác tham số Góc đến (Angle of Arrival - AoA). Do đó, định vị mới dừng ở mặt phẳng hai chiều và chưa đủ cơ sở để phân biệt các vùng kích hoạt cục bộ một cách tinh tế (ví dụ: mở cốp khi người dùng đứng chính giữa sau đuôi xe so với lệch một bên).
     \end{itemize}
 
     \item \textbf{Mức độ triển khai Hạ tầng khóa công khai (PKI):}
@@ -49,7 +49,7 @@ Mặc dù hệ thống đã hiện thực hóa thành công luồng truy cập P
 Từ những kết quả và hạn chế đã phân tích, nhóm nghiên cứu đề xuất các hướng phát triển tiếp theo nhằm hoàn thiện và nâng cao tính ứng dụng của hệ thống:
 
 \begin{enumerate}
-    \item \textbf{Nâng cấp định vị không gian đa chiều (AoA):} Tích hợp mảng ăng-ten (Antenna Array) nhằm khai thác tham số Góc đến. Việc kết hợp giữa Khoảng cách và Góc sẽ cho phép hệ thống xác định chính xác vị trí người dùng trên mặt phẳng 2D, hỗ trợ các tính năng cao cấp như "Welcome Light" hay "Smart Trunk" (Mở cốp thông minh).
+    \item \textbf{Nâng cấp định vị không gian đa chiều (AoA và nhúng trực tiếp):} Tích hợp mảng ăng-ten (Antenna Array) nhằm khai thác tham số Góc đến, đồng thời nhúng các bộ thu phát UWB trực tiếp lên ECU để loại bỏ cầu nối PC. Việc kết hợp giữa Khoảng cách (nhiều mỏ neo) và Góc sẽ cho phép hệ thống xác định chính xác vị trí người dùng trong không gian, hỗ trợ các tính năng cao cấp như "Welcome Light" hay "Smart Trunk" (Mở cốp thông minh) theo vùng (geofencing).
     
     \item \textbf{Tối ưu hóa độ chính xác mô hình học máy:} Áp dụng các kỹ thuật Tăng cường dữ liệu (Data Augmentation) và thử nghiệm các kiến trúc lai (Hybrid CNN-LSTM) phù hợp với tài nguyên thiết bị biên. Mục tiêu là tối đa hóa tỷ lệ nhận diện hành vi và giảm thiểu triệt để sai số định vị trong môi trường nhiễu sóng mạnh.
     

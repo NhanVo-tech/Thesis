@@ -25,14 +25,14 @@ Sau quá trình nghiên cứu và triển khai, hệ thống đã đáp ứng đ
 Hệ thống phần cứng và firmware đóng vai trò là xương sống của toàn bộ đồ án, đảm bảo tính ổn định và khả năng phản hồi thời gian thực:
 
 \begin{itemize}
-    \item \textbf{Giao tiếp đa vô tuyến tốc độ cao:} Nhóm đã cấu hình thành công ma trận UART của ESP32-S3 để điều khiển đồng thời module NFC (UART2 - HSU 115200 bps) và module UWB (UART1 - UCI 115200 bps). Thiết kế này loại bỏ hiện tượng nghẽn cổ chai vật lý khi đọc thẻ NFC hoặc nhận luồng dữ liệu Ranging liên tục từ UWB.
+    \item \textbf{Giao tiếp đa vô tuyến tốc độ cao:} Nhóm đã cấu hình thành công kênh UART2 (HSU 115200 bps) cho module NFC (PN532) và kênh \textbf{USB-CDC} bản địa để nhận luồng khung \texttt{RANGE} từ cầu nối PC. Thiết kế này tách bạch hoàn toàn tải xử lý UWB khỏi vi điều khiển, loại bỏ hiện tượng nghẽn cổ chai vật lý khi đọc thẻ NFC hoặc nhận luồng dữ liệu Ranging liên tục.
     \item \textbf{Đa nhiệm với FreeRTOS:} Để giải quyết bài toán "nghẽn cổ chai" khi thực hiện các phép toán mật mã nặng (ECC Multiplication) đồng thời với việc duy trì sóng vô tuyến, firmware được chia thành các tác vụ (Tasks) độc lập:
     \begin{itemize}
-        \item \textit{Core Task (Priority High):} Duy trì quảng bá BLE, xử lý NFC và giao thức UCI của UWB để đảm bảo phản hồi nhanh nhất.
+        \item \textit{Core Task (Priority High):} Duy trì quảng bá BLE, xử lý NFC và phân tích khung \texttt{RANGE} của UWB để đảm bảo phản hồi nhanh nhất.
         \item \textit{Crypto Worker Task (Priority Medium):} Chuyên biệt xử lý tính toán ECDH/ECDSA và HKDF. Việc tách biệt này giúp luồng giao tiếp không bị chặn (non-blocking) trong suốt thời gian tính toán khóa.
     \end{itemize}
     \item \textbf{Cơ chế lưu trữ an toàn (Secure Storage):} Tận dụng phân vùng NVS (Non-Volatile Storage) của ESP32 để lưu trữ các thông tin nhạy cảm (Public Key của điện thoại, Fast Path Artifacts, CCC Mailbox). Dữ liệu được bảo vệ bởi cơ chế check-sum, đảm bảo toàn vẹn dữ liệu ngay cả khi mất điện đột ngột.
-    \item \textbf{Bộ lọc Hysteresis mở cửa:} Module \texttt{UwbDoorUnlock} đã áp dụng thành công màng lọc độ trễ trạng thái đối với dữ liệu UWB. Rơ-le chỉ mở khi liên tiếp 3 chu kỳ đo UWB đều cho khoảng cách an toàn, triệt tiêu hoàn toàn hiện tượng rơ-le đóng/ngắt liên tục do dao động sóng.
+    \item \textbf{Định vị Trilateration và Bộ lọc Hysteresis mở cửa:} Module \texttt{Trilateration} hợp nhất ba khoảng cách thành tọa độ $(x, y)$, bộ lọc Kalman hai chiều (EKF) làm mượt quỹ đạo, và module \texttt{AccessController} áp dụng màng lọc độ trễ trạng thái trên khoảng cách Euclid đến điểm mở khóa. Rơ-le chỉ mở khi liên tiếp 3 chu kỳ đều cho khoảng cách an toàn đồng thời cổng vận tốc hướng tâm xác nhận người dùng đang tiến lại gần, triệt tiêu hoàn toàn hiện tượng rơ-le đóng/ngắt liên tục do dao động sóng.
 \end{itemize}
 
 \subsection{Kết quả về giao thức bảo mật và mật mã}
@@ -171,11 +171,11 @@ Bên cạnh thời gian giao dịch tổng thể, một chỉ số đặc biệt
         \hline
         \textbf{Giai đoạn} & \textbf{Sự kiện / Tác vụ} & \textbf{Độ trễ} & \textbf{Phân tích \& Nguyên nhân} \\
         \hline
-        1 & Nhận cấu hình OOB \& Chờ Hệ điều hành của điện thoại & $\approx 584$ ms & Thời gian chờ hệ điều hành (Android) khởi động chip UWB, cấp phát tài nguyên dịch vụ FiRa/CCC và chuẩn bị ăng-ten. \\
+        1 & Nhận lệnh RANGING\_START \& Chờ Hệ điều hành của điện thoại & $\approx 584$ ms & Thời gian chờ hệ điều hành (Android) khởi động chip UWB, cấp phát tài nguyên dịch vụ FiRa/CCC và chuẩn bị ăng-ten. \\
         \hline
-        2 & ESP32 thực thi cấu hình UCI (Firmware Execution) & $\approx 30$ ms & ESP32 thiết lập FSM và truyền toàn bộ chuỗi lệnh cấu hình UCI (Session, App, Ranging) xuống DWM3000 qua UART. \\
+        2 & ESP32 phát lệnh điều khiển \& cầu nối PC khởi tạo phiên & $\approx 30$ ms & ESP32 gửi \texttt{CMD:START\_RANGING} qua USB-CDC; cầu nối PC thiết lập phiên DS-TWR trên ba mỏ neo. \\
         \hline
-        3 & Bắt khung hình UWB đầu tiên (Time-to-First-Fix) & $\approx 16$ ms & DWM3000 hoàn tất khởi động, bắt sóng từ điện thoại và trả về khung dữ liệu đo khoảng cách (Ranging) đầu tiên. \\
+        3 & Bắt khung dữ liệu RANGE đầu tiên (Time-to-First-Fix) & $\approx 16$ ms & Ba mỏ neo hoàn tất khởi động, bắt sóng từ điện thoại và cầu nối PC trả về khung \texttt{RANGE} đầu tiên. \\
         \hline
         \multicolumn{2}{|r|}{\textbf{Tổng độ trễ chuyển giao:}} & \textbf{$\approx 630$ ms} & \textbf{Đạt chuẩn CCC ($< 1.5$s)} \\
         \hline
@@ -251,7 +251,7 @@ Trong môi trường ứng dụng ô tô, việc kiểm soát dòng tiêu thụ 
     
     \item \textbf{Độ tin cậy hệ thống:} Thực hiện 10 lần đóng/mở khóa liên tục, kết hợp giả lập ngắt kết nối đột ngột. Hệ thống tự phục hồi trạng thái FSM 10/10 lần, không xảy ra hiện tượng treo (hang).
     
-    \item \textbf{Độ ổn định của dữ liệu Ranging sau khi áp dụng Kalman Filter:} Dữ liệu khoảng cách gốc từ vi mạch DWM3000 thường tồn tại các dao động nhiễu tĩnh ($\pm 10\sim20$ cm) hoặc các bước nhảy vọt do hiện tượng phản xạ đa đường (multipath). Nhóm đã tích hợp thành công \textbf{Bộ lọc Kalman 1D} trực tiếp vào tầng Parse gói tin UCI (với ma trận hiệp phương sai được tinh chỉnh riêng cho bước đi của người: Process Noise $Q=0.05$, Sensor Noise $R=0.2$). Kết quả cho thấy đường cong quỹ đạo (trajectory) của người dùng trở nên cực kỳ mượt mà. Kỹ thuật này không chỉ giúp bộ đệm Hysteresis ra quyết định mở cửa chính xác tuyệt đối mà còn tạo ra giá trị thặng dư (Residual) chất lượng cao, phục vụ làm đầu vào (Input feature) cho mạng nơ-ron LSTM nhận diện hành vi giả mạo trong tương lai.
+    \item \textbf{Độ ổn định của quỹ đạo sau khi áp dụng Trilateration và Kalman Filter:} Dữ liệu khoảng cách gốc từ ba mỏ neo DWM3001CDK thường tồn tại các dao động nhiễu tĩnh ($\pm 10\sim20$ cm) hoặc các bước nhảy vọt do hiện tượng phản xạ đa đường (multipath), dẫn đến tọa độ $(x, y)$ thô từ Trilateration bị rung lắc. Nhóm đã tích hợp thành công \textbf{Bộ lọc Kalman hai chiều (EKF)} ngay sau tầng Trilateration (nhiễu đo $R$ được dẫn xuất trực tiếp từ chất lượng lời giải RMS, cường độ nhiễu gia tốc $\sigma_a = 1.2$ m/s$^2$). Kết quả cho thấy đường cong quỹ đạo (trajectory) của người dùng trở nên cực kỳ mượt mà, đồng thời ước lượng được vector vận tốc $(v_x, v_y)$ phục vụ cổng vận tốc hướng tâm. Kỹ thuật này không chỉ giúp bộ đệm Hysteresis ra quyết định mở cửa chính xác tuyệt đối mà còn tạo ra chuỗi trạng thái $(x, y, v_x, v_y)$ chất lượng cao, phục vụ làm đầu vào (Input feature) cho mô hình học sâu nhận diện hành vi trong tương lai.
 \end{itemize}
 
 

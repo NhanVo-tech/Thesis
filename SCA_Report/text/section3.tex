@@ -23,10 +23,10 @@ Dựa trên bối cảnh ứng dụng thực tế và tiêu chuẩn công nghi�
         \item Áp dụng cơ chế trao đổi khóa ECDH Ephemeral kết hợp thuật toán hàm băm HKDF để thiết lập các khóa phiên (Session Keys) dùng một lần, đảm bảo tính bí mật chuyển tiếp (Forward Secrecy).
     \end{itemize}
 
-    \item \textbf{Secure Ranging (Đo khoảng cách an toàn - Phase C)}
+    \item \textbf{Secure Ranging \& Localization (Đo khoảng cách và định vị an toàn - Phase C)}
     \begin{itemize}
-        \item Hệ thống tự động kích hoạt phiên đo khoảng cách UWB ngay sau khi xác thực BLE thành công thông qua cấu hình Out-of-Band (OOB).
-        \item Sử dụng giao thức Symmetrical Double-Sided Two-Way Ranging (DS-TWR) thông qua tập lệnh UCI (UWB Command Interface) để loại bỏ sai số trôi đồng hồ (Clock drift) giữa thiết bị di động và ECU.
+        \item Hệ thống tự động kích hoạt phiên đo khoảng cách UWB \textbf{đa mỏ neo} (ba mỏ neo) ngay sau khi xác thực BLE thành công, thông qua lệnh điều khiển trên đường hầm CCC (\texttt{RANGING\_START/STOP}).
+        \item Sử dụng giao thức Symmetrical Double-Sided Two-Way Ranging (DS-TWR) chế độ \textbf{multicast} (một bộ khởi tạo, ba bộ đáp ứng) để loại bỏ sai số trôi đồng hồ (Clock drift) giữa thiết bị di động và các mỏ neo. Ba khoảng cách đồng thời $d_0, d_1, d_2$ được hợp nhất bằng thuật toán Trilateration để xác định tọa độ phẳng $(x, y)$ của thiết bị trong hệ quy chiếu xe.
     \end{itemize}
 
     \item \textbf{Access Decision (Quyết định mở khóa - Phase D)}
@@ -111,7 +111,7 @@ Hệ thống phần cứng trên xe được thiết kế module hóa nhằm t�
 \begin{itemize}
     \item \textbf{Core Microcontroller:} Vi điều khiển ESP32-S3 (Dual-core, tích hợp phần cứng mã hóa và BLE 5.0).
     \item \textbf{NFC Subsystem:} Sử dụng module PN532 phục vụ quá trình cấp quyền (Provisioning). Giao tiếp với ESP32 qua UART2 (RX=Pin 44, TX=Pin 43) sử dụng chế độ High Speed UART (HSU) ở tốc độ baud 115200.
-    \item \textbf{UWB Subsystem:} Sử dụng vi mạch DWM3000 (được điều khiển bởi chip nRF52840 chạy UCI protocol firmware) để đo khoảng cách an toàn (Distance Bounding). Giao tiếp với ESP32 qua UART1 (RX=Pin 17, TX=Pin 18) thông qua giao thức UWB Command Interface (UCI).
+    \item \textbf{UWB Subsystem:} Sử dụng \textbf{ba mỏ neo UWB} cố định (ba bo mạch DWM3001CDK chạy vi mạch Qorvo DW3000) gắn trên thân xe tại các vị trí $A_0$ (cản sau), $A_1$ (bên phải) và $A_2$ (cột B trái). Các mỏ neo hoạt động ở chế độ Responder, thực hiện đo khoảng cách an toàn (Distance Bounding) với điện thoại (Controller) theo giao thức DS-TWR multicast. Dữ liệu khoảng cách được một \textbf{cầu nối PC} (chạy script Python) thu thập qua USB/UART từ ba mỏ neo, đóng gói thành khung \texttt{RANGE} và truyền sang ESP32 qua kênh USB-CDC. Toàn bộ tải tính toán UWB được đẩy khỏi vi điều khiển, ESP32 chỉ đảm nhận việc hợp nhất dữ liệu (Trilateration + EKF) và ra quyết định.
     \item \textbf{Actuator (Cơ cấu chấp hành):} Module Relay khóa cửa, được điều khiển trực tiếp bởi chân GPIO (Digital Output) của ESP32.
 \end{itemize}
 
@@ -121,7 +121,7 @@ Hệ thống phần cứng trên xe được thiết kế module hóa nhằm t�
 
 \begin{itemize}
     \item \textbf{Background Isolate (Luồng chạy ngầm):} Quản lý bởi \texttt{PkeBackgroundService}. Nhiệm vụ của luồng này là liên tục quét (Scan) tín hiệu BLE dưới nền. Khi phát hiện xe, luồng tự động thiết lập kênh truyền an toàn và thực hiện Xác thực mật mã (Phase B). Điểm mấu chốt là sau khi xác thực, luồng này \textit{không ngắt kết nối} mà tiến hành "Giữ trạng thái" (Hold Connection) để bàn giao cho luồng Foreground.
-    \item \textbf{Foreground Isolate (Luồng giao diện \& UWB Handoff):} Xử lý dịch vụ \texttt{UwbService} thông qua Native Android MethodChannel (\texttt{smartcar/uwb}). Kế thừa kết nối BLE từ Background, luồng này tạo gói tin OOB (Out-of-band Payload), gửi qua BLE Admin Characteristic (0x0005) cho ESP32, sau đó kích hoạt chip UWB trên điện thoại để bắt đầu phiên đo khoảng cách (Ranging).
+    \item \textbf{Foreground Isolate (Luồng giao diện \& UWB Ranging):} Xử lý dịch vụ \texttt{UwbMultiService} thông qua Native Android MethodChannel (\texttt{smartcar/uwb}). Kế thừa kết nối BLE từ Background, luồng này gửi lệnh \texttt{RANGING\_START/STOP} qua đường hầm CCC đã mã hóa cho ESP32, đồng thời kích hoạt chip UWB trên điện thoại (API \texttt{android.ranging}, địa chỉ Controller \texttt{0x06C1}) để bắt đầu phiên đo khoảng cách \textbf{DS-TWR multicast} với ba mỏ neo trên xe.
     \item \textbf{Security \& ML Module:} Chứa thuật toán \textit{Kalman-LSTM Detector}. Tích hợp chức năng lọc nhiễu tọa độ UWB và phát hiện tấn công tiếp sóng (Relay Attack) dựa trên phân tích sự lạm phát khoảng cách trong chuỗi thời gian (Distance Inflation).
 \end{itemize}
 
@@ -133,8 +133,8 @@ Firmware của ECU được thiết kế theo kiến trúc Event-Driven \& Multi
     \item \textbf{Core State Machine (Bộ não trung tâm - FSM Task):} Chạy trên một luồng riêng biệt, FSM quản lý toàn bộ vòng đời hệ thống (\texttt{INIT} $\rightarrow$ \texttt{IDLE} $\rightarrow$ \texttt{PROVISIONING} $\rightarrow$ \texttt{AUTH} $\rightarrow$ \texttt{UWB\_RANGING} $\rightarrow$ \texttt{UNLOCK}). FSM thu thập các sự kiện từ các task phần cứng và đưa ra quyết định chuyển trạng thái xuyên tầng (Cross-layer Security).
     \item \textbf{NFC Task:} Quản lý giao tiếp APDU với điện thoại trong Phase A, trao đổi khóa công khai và thiết lập các tham số Fast Path Artifact.
     \item \textbf{BLE Task (Crypto Engine):} Hoạt động trên nền thư viện NimBLE, cung cấp CCC Auth Service và Admin Service. Task này chịu trách nhiệm tính toán mật mã (mbedTLS): tạo cặp khóa ECDH Ephemeral, tính Shared Secret, băm HKDF-SHA256 sinh Session Keys, và xác thực chữ ký ECDSA.
-    \item \textbf{UWB Task:} Quản lý giao thức UCI qua UART1 để cấu hình chip DWM3000, liên tục phân tích gói tin UCI Ranging Notification để trích xuất giá trị khoảng cách (\texttt{distanceM}) và trạng thái.
-    \item \textbf{Door Unlock Module (Hysteresis Logic):} Đảm nhiệm quyết định mở cửa. Thuật toán yêu cầu khoảng cách đo được phải $\le 2.0$m trong 3 chu kỳ đo liên tiếp (Debounce) mới kích hoạt GPIO, và chỉ reset khi điện thoại ra khỏi vùng an toàn ($> 3.0$m).
+    \item \textbf{UWB Task:} Đọc luồng khung dữ liệu \texttt{RANGE:d0,d1,d2,valid} từ kênh USB-CDC do cầu nối PC gửi sang, phân tích cú pháp, đưa qua thuật toán \textbf{Trilateration} để giải tọa độ $(x, y)$, cập nhật \textbf{Bộ lọc Kalman hai chiều (EKF)} để ước lượng trạng thái $(x, y, v_x, v_y)$, rồi bàn giao cho khối quyết định truy cập \texttt{AccessController}.
+    \item \textbf{Door Unlock Module (Geometric Hysteresis Logic):} Đảm nhiệm quyết định mở cửa. Thuật toán yêu cầu khoảng cách Euclid từ vị trí $(x, y)$ đến điểm mở khóa phải $\le 2.0$m trong 3 chu kỳ liên tiếp (Debounce) kết hợp cổng vận tốc hướng tâm (approach gate, từ chối người đang rời xa), mới kích hoạt GPIO, và chỉ reset khi điện thoại ra khỏi vùng an toàn ($> 3.0$m).
     \item \textbf{CCC Mailbox:} Quản lý bộ nhớ Non-Volatile Storage (NVS) để lưu trữ tĩnh ID Xe, Public Key của điện thoại và các thông số cài đặt.
 \end{itemize}
 
@@ -144,7 +144,7 @@ Firmware của ECU được thiết kế theo kiến trúc Event-Driven \& Multi
 \hline
 \textbf{Mobile App (Flutter Dual-Isolate)} & \textbf{Vehicle Controller (C/C++ FreeRTOS)} \\ \hline
 \textbf{Background Isolate:} Quét BLE ngầm, tự động kết nối và chạy Phase B (Crypto) không cần mở màn hình. & \textbf{FSM Core:} Máy trạng thái hữu hạn kiểm soát tính nhất quán xuyên tầng (Cross-layer). \\ \hline
-\textbf{Foreground Isolate:} Nhận Handoff, gọi API Native Android cấu hình chip UWB và gửi OOB. & \textbf{Tasks \& Protocol Layer:} NFC Task (APDU), BLE Task (GATT/Crypto), UWB Task (UCI Protocol). \\ \hline
+\textbf{Foreground Isolate:} Nhận Handoff, gọi API Native Android cấu hình chip UWB và gửi lệnh Ranging. & \textbf{Tasks \& Protocol Layer:} NFC Task (APDU), BLE Task (GATT/Crypto), UWB Task (Trilateration + EKF). \\ \hline
 \textbf{ML Layer:} Bộ lọc Kalman-LSTM phát hiện Relay Attack từ dữ liệu thô. & \textbf{Access Logic:} Thuật toán Hysteresis kết hợp dữ liệu Ranging để điều khiển GPIO Relay. \\ \hline
 \end{tabular}
 \caption{Tương quan kiến trúc phần mềm giữa Mobile App và ECU}
@@ -162,11 +162,11 @@ Firmware của ECU được thiết kế theo kiến trúc Event-Driven \& Multi
     \item \textbf{Phase B: Xác thực bảo mật (Cryptographic Session Binding) - BLE} \\
     Khi người dùng tiến vào vùng Welcome Zone ($\sim 10$m), \texttt{PkeBackgroundService} tự động kết nối BLE. ESP32 chuyển FSM sang \texttt{AUTH}. Hai bên sinh khóa tạm thời ECDH, ký xác nhận bằng khóa NFC đã lưu, dẫn xuất ra các Khóa phiên (Session Keys).
     
-    \item \textbf{Phase C: Xác thực khoảng cách (Physical Distance Bounding) - UWB} \\
-    Sau khi Phase B thành công, điện thoại gửi cấu hình UWB (OOB Payload) qua đường hầm BLE. ESP32 đẩy OOB sang \texttt{UWBTask} để bật vi mạch DWM3000. Giao thức DS-TWR (Double-Sided Two-Way Ranging) hoạt động, liên tục trả về các thông số khoảng cách ($1.5$m, $1.3$m, $0.8$m...).
+    \item \textbf{Phase C: Xác thực khoảng cách và định vị (Physical Distance Bounding \& Localization) - UWB} \\
+    Sau khi Phase B thành công, điện thoại gửi lệnh \texttt{RANGING\_START} qua đường hầm CCC. ESP32 ra lệnh cho cầu nối PC khởi động phiên đo trên ba mỏ neo. Giao thức DS-TWR (Double-Sided Two-Way Ranging) multicast hoạt động, liên tục trả về ba khoảng cách ($d_0, d_1, d_2$) được hợp nhất thành tọa độ $(x, y)$ qua Trilateration và làm mượt bằng EKF.
     
     \item \textbf{Phase D: Quyết định mở cửa (Conjunctive Access Decision)} \\
-    Dữ liệu khoảng cách từ Phase C được đẩy vào mạng lọc Hysteresis. Nếu hệ thống ghi nhận 3 lần liên tiếp khoảng cách $< 2.0$m \textbf{VÀ} FSM đang ở trạng thái \texttt{AUTH\_SECURE\_CHANNEL\_READY} (Đã xác thực BLE), ESP32 mới cấp điện cho GPIO kích hoạt Relay mở cửa.
+    Vị trí $(x, y)$ sau EKF được đẩy vào khối quyết định truy cập \texttt{AccessController}. Nếu khoảng cách Euclid đến điểm mở khóa cửa tài xế $< 2.0$m trong 3 chu kỳ liên tiếp, cổng vận tốc hướng tâm xác nhận người dùng đang tiến lại gần \textbf{VÀ} FSM đang ở trạng thái \texttt{AUTH\_SECURE\_CHANNEL\_READY} (Đã xác thực BLE), ESP32 mới cấp điện cho GPIO kích hoạt Relay mở cửa.
 \end{enumerate}
 
 
@@ -208,7 +208,7 @@ Nhóm quyết định sử dụng ESP32-S3 làm nền tảng phát triển Proof
     \item \textbf{MCU:} Xtensa LX7 dual-core hoạt động ở xung nhịp 240 MHz, cung cấp năng lực xử lý vượt trội.
     \item \textbf{Crypto Engine:} Tích hợp bộ tăng tốc phần cứng cho AES, SHA, RSA, RNG.
     \item \textbf{Wireless:} Tích hợp sẵn Wi-Fi và BLE 5.0 Native.
-    \item \textbf{Peripherals:} Hỗ trợ ma trận phần cứng linh hoạt, cho phép cấu hình 2 luồng UART độc lập (UART1 cho DWM3000, UART2 cho PN532) không xung đột.
+    \item \textbf{Peripherals:} Hỗ trợ ma trận phần cứng linh hoạt, cho phép cấu hình UART độc lập (UART2 cho PN532) và kênh USB-CDC bản địa (native USB) để nhận luồng dữ liệu UWB từ cầu nối PC mà không xung đột tài nguyên.
 \end{itemize}
 
 \textbf{B. So sánh kỹ thuật chi tiết:}
@@ -244,7 +244,7 @@ Development & Phức tạp (AUTOSAR) & Linh hoạt (FreeRTOS/C++) & ESP32 dễ t
 
 \begin{itemize}
     \item \textbf{Application Layer:} Chứa logic FSM, Access Control. Tầng này độc lập với phần cứng.
-    \item \textbf{Protocol Layer:} Xử lý APDU, BLE GATT, UCI Parser. Tuân thủ tiêu chuẩn quốc tế.
+    \item \textbf{Protocol Layer:} Xử lý APDU, BLE GATT, RANGE Parser (USB-CDC). Tuân thủ tiêu chuẩn quốc tế.
     \item \textbf{Hardware Abstraction Layer (HAL):} Tầng trung gian quản lý UART/GPIO. Hiện tại HAL map vào ESP-IDF, trong tương lai có thể map vào AUTOSAR BSW \cite{iso26262}.
 \end{itemize}
 
@@ -339,8 +339,8 @@ Trong đó:
 
 Việc sử dụng Ephemeral Keys đảm bảo tính \textbf{Bảo mật chuyển tiếp (Forward Secrecy)}: Dù kẻ gian có giải mã được khóa của một phiên kết nối cũ, chúng cũng không thể can thiệp vào các phiên kết nối hiện tại hay tương lai.
 
-\subsection{Phase C - Xác thực khoảng cách an toàn với UWB}
-Khác với các hệ thống Smart Key truyền thống dùng RSSI của Bluetooth để đo khoảng cách (vốn dễ bị khuyếch đại bởi các bộ lặp Relay), hệ thống sử dụng công nghệ UWB (Ultra-Wideband) làm thước đo vật lý chính xác tuyệt đối.
+\subsection{Phase C - Xác thực khoảng cách và định vị an toàn với UWB}
+Khác với các hệ thống Smart Key truyền thống dùng RSSI của Bluetooth để đo khoảng cách (vốn dễ bị khuyếch đại bởi các bộ lặp Relay), hệ thống sử dụng công nghệ UWB (Ultra-Wideband) làm thước đo vật lý chính xác tuyệt đối. Giai đoạn hai nâng cấp Phase C từ đo khoảng cách đơn mỏ neo lên \textbf{định vị đa mỏ neo}: ba khoảng cách đồng thời được hợp nhất thành tọa độ phẳng $(x, y)$, cho phép xác định chính xác vị trí tương đối của người dùng quanh xe.
 
 \leavevmode
 \begin{figure}[htbp]
@@ -351,15 +351,16 @@ Khác với các hệ thống Smart Key truyền thống dùng RSSI của Blueto
 \end{figure}
 
 \begin{enumerate}
-    \item \textbf{Truyền OOB Payload:} Thông qua đường hầm BLE đã được bảo mật ở Phase B, điện thoại gửi một gói \textit{Out-Of-Band (OOB) Payload} (37 bytes) chứa cấu hình phiên UWB (Session ID, MAC Address, Channel, Preamble Index) đến ESP32.
-    \item \textbf{Khởi động phiên UCI:} ESP32 (lớp \texttt{UciSessionManager}) dịch OOB Payload thành các lệnh UWB Command Interface (UCI) và đẩy xuống vi mạch nRF52840 gắn shield DWM3000 thông qua giao tiếp UART1. Từ đó Ranging session sẽ được thiết lập.
-    \item \textbf{Đo khoảng cách (Secure Ranging):} Vi mạch UWB hai bên bắt đầu phát xung. Giao thức \textbf{Symmetrical Double-Sided Two-Way Ranging (DS-TWR)} được sử dụng nhằm triệt tiêu hoàn toàn sai số trôi đồng hồ (Clock drift) giữa điện thoại và xe.
+    \item \textbf{Kích hoạt phiên Ranging:} Sau khi Phase B hoàn tất, điện thoại gửi lệnh \texttt{RANGING\_START} (INS \texttt{0x84}) qua đường hầm CCC đã mã hóa. ESP32 (lớp \texttt{UwbBridge}) dịch thành lệnh \texttt{CMD:START\_RANGING} gửi sang cầu nối PC qua kênh USB-CDC.
+    \item \textbf{Khởi động phiên đa mỏ neo:} Cầu nối PC (script \texttt{run\_fira\_bridge.py}) khởi tạo phiên DS-TWR multicast trên cả ba mỏ neo DWM3001CDK ($A_0, A_1, A_2$) với bộ tham số FiRa chung (kênh 9, preamble 9, DS-TWR deferred, static STS). Điện thoại đóng vai trò Controller duy nhất (địa chỉ \texttt{0x06C1}), ba mỏ neo là Responder.
+    \item \textbf{Đo khoảng cách đồng thời (Secure Ranging):} Trong mỗi vòng đo, điện thoại thực hiện giao thức \textbf{Symmetrical Double-Sided Two-Way Ranging (DS-TWR)} đồng thời với cả ba mỏ neo. Giao thức này triệt tiêu hoàn toàn sai số trôi đồng hồ (Clock drift) giữa điện thoại và từng mỏ neo. Cầu nối PC thu thập ba khoảng cách $d_0, d_1, d_2$, kiểm tra tính tươi (freshness) và phạm vi hợp lệ, rồi đóng gói thành khung \texttt{RANGE:d0,d1,d2,valid} gửi sang ESP32.
+    \item \textbf{Định vị Trilateration và lọc Kalman:} ESP32 giải tọa độ $(x, y)$ từ ba khoảng cách bằng thuật toán \textbf{Trilateration} (nghiệm tuyến tính + tinh chỉnh Gauss-Newton), sau đó cập nhật \textbf{Bộ lọc Kalman hai chiều} để thu được trạng thái mượt $(x, y, v_x, v_y)$ ở nhịp 10 Hz.
     \item \textbf{Chống Relay Attack:} Để ngăn chặn kẻ gian thu phát lại tín hiệu xung UWB, một chuỗi dấu thời gian bị xáo trộn (Scrambled Timestamp Sequence - STS) được áp dụng vào tầng vật lý (MAC layer) \cite{ccc_digikey3, nxp_ncj29d5, neirynck2016overview}. STS được mã hóa bằng chính khóa $K_{ursk}$ đã sinh ra từ Phase B \cite{neirynck2016overview}. Nhờ đó, gói tin UWB bị ràng buộc chặt chẽ với phiên BLE, triệt tiêu mọi khả năng chèn ép hoặc làm giả thời gian bay (Time-of-Flight).
 \end{enumerate}
 
 \subsection{Phase D - Quyết định truy cập thông minh dựa trên học sâu}
 
-Đây là giai đoạn thực thi cuối cùng và quan trọng nhất của hệ thống. Việc kích hoạt rơ-le mở cửa (Door Unlock Actuator) không còn phụ thuộc vào các ngưỡng khoảng cách tĩnh đơn lẻ, mà là kết quả của sự \textbf{quyết định kết hợp} giữa trạng thái giao thức, dữ liệu vật lý thời gian thực và kết quả suy luận từ mô hình học sâu chuỗi thời gian.
+Đây là giai đoạn thực thi cuối cùng và quan trọng nhất của hệ thống. Việc kích hoạt rơ-le mở cửa (Door Unlock Actuator) không còn phụ thuộc vào ngưỡng khoảng cách vô hướng đơn lẻ từ một mỏ neo, mà là kết quả của sự \textbf{quyết định kết hợp} giữa trạng thái giao thức, vị trí không gian $(x, y)$ và vận tốc $(v_x, v_y)$ được hợp nhất từ ba mỏ neo, cùng với kết quả suy luận từ mô hình học sâu chuỗi thời gian.
 
 \leavevmode
 \begin{figure}[htbp]
@@ -369,7 +370,7 @@ Khác với các hệ thống Smart Key truyền thống dùng RSSI của Blueto
     \label{fig:phaseD}
 \end{figure}
 
-Dữ liệu UWB sau khi đi qua bộ lọc Kalman sẽ được đưa vào module \texttt{LstmInference}. Tại đây, một cửa sổ trượt (Sliding Window) lưu trữ $25$ khung hình gần nhất sẽ thực hiện tính toán đặc trưng và suy luận ngay trên vi điều khiển (On-device Inference). Quy trình ra quyết định được thực hiện qua hai lớp bảo mật:
+Trạng thái $(x, y, v_x, v_y)$ sau khi đi qua bộ lọc Kalman hai chiều (EKF) sẽ được bàn giao cho module \texttt{AccessController} để thực hiện quyết định truy cập hình học, đồng thời được đưa vào module \texttt{LstmInference}. Tại đây, một cửa sổ trượt (Sliding Window) lưu trữ $25$ khung hình gần nhất sẽ thực hiện tính toán đặc trưng và suy luận ngay trên vi điều khiển (On-device Inference). Quy trình ra quyết định được thực hiện qua hai lớp bảo mật:
 
 \begin{enumerate}
     \item \textbf{Lớp lọc an ninh AI (Security Inference Layer):}
@@ -382,13 +383,13 @@ Dữ liệu UWB sau khi đi qua bộ lọc Kalman sẽ được đưa vào modul
     Rơ-le cửa chỉ được phép kích hoạt \textbf{NẾU VÀ CHỈ NẾU} thỏa mãn đồng thời ba điều kiện sau:
     \begin{itemize}
         \item \textbf{Giao thức:} FSM đang ở trạng thái \texttt{AUTH\_SECURE\_CHANNEL\_READY} (Đã xác thực BLE thành công).
-        \item \textbf{Vật lý:} Khoảng cách UWB đã lọc ($d$) nằm trong ngưỡng tiệm cận ($\le 2.0$ mét) trong ít nhất \textbf{3 chu kỳ đo liên tiếp}.
+        \item \textbf{Vật lý:} Khoảng cách Euclid từ vị trí đã lọc $(x, y)$ đến điểm mở khóa (cửa tài xế) nằm trong ngưỡng tiệm cận ($\le 2.0$ mét) trong ít nhất \textbf{3 chu kỳ đo liên tiếp}, đồng thời vận tốc hướng tâm không cho thấy người dùng đang rời xa (approach gate).
         \item \textbf{Hành vi:} Mô hình AI xác nhận ý định người dùng với độ tin cậy $P_{walk} > 0.80$. Điều này giúp loại bỏ hoàn toàn các trường hợp người dùng vô tình đi ngang qua vùng nhận diện hoặc dừng lại ở ranh giới 2m nhưng không có ý định vào xe.
     \end{itemize}
 \end{enumerate}
 
 \paragraph*{Điều kiện phục hồi (Cooldown):} 
-Sau khi thực hiện lệnh mở cửa, hệ thống sẽ đi vào trạng thái cooldown. Cơ chế Reset chỉ được kích hoạt khi người dùng rời khỏi vùng thiết lập lại (Reset Zone, ví dụ $d > 3.0$ mét), đảm bảo tính ổn định và tránh việc rơ-le hoạt động thừa thãi.
+Sau khi thực hiện lệnh mở cửa, hệ thống sẽ đi vào trạng thái cooldown. Cơ chế Reset chỉ được kích hoạt khi người dùng rời khỏi vùng thiết lập lại (Reset Zone, ví dụ khoảng cách Euclid đến điểm mở khóa $> 3.0$ mét), đảm bảo tính ổn định và tránh việc rơ-le hoạt động thừa thãi.
 
 Sự kết hợp giữa lý thuyết điều khiển truyền thống (Hysteresis) và trí tuệ nhân tạo (TinyML) giúp hệ thống Smart Car Access đạt được độ tin cậy vượt trội, mang lại trải nghiệm mở khóa thụ động (PKE) mượt mà nhưng vẫn đảm bảo tính an toàn tuyệt đối trước các hình thức tấn công công nghệ cao hiện nay.
 
@@ -499,13 +500,13 @@ Quản lý quá trình bắt tay mật mã (Cryptographic Handshake) tầm xa:
 \begin{itemize}
   \item \textbf{AUTH\_WAIT\_AUTH0 / AUTH\_WAIT\_CONNECT}: Chờ điện thoại gửi yêu cầu kết nối sau khi đã qua bước kiểm tra \texttt{guardProvisioned}.
   \item \textbf{AUTH\_HANDSHAKE \& VERIFY\_KEYS}: Trạng thái tính toán chuyên sâu (chạy trên \texttt{AuthWorker} task). Thực hiện ECDH Key Exchange và băm HKDF để sinh Session Keys.
-  \item \textbf{AUTH\_SECURE\_CHANNEL\_READY}: Kênh BLE bảo mật đã thiết lập. Ở trạng thái này, hệ thống sẵn sàng nhận tải trọng cấu hình UWB (OOB Payload), nhưng \textbf{chưa được phép} bật rơ-le mở cửa.
+  \item \textbf{AUTH\_SECURE\_CHANNEL\_READY}: Kênh BLE bảo mật đã thiết lập. Ở trạng thái này, hệ thống sẵn sàng nhận lệnh kích hoạt phiên UWB (\texttt{RANGING\_START} qua đường hầm CCC), nhưng \textbf{chưa được phép} bật rơ-le mở cửa.
 \end{itemize}
 
-\subsubsection{Nhóm trạng thái C\&D - Đo khoảng cách và Kích hoạt relay}
+\subsubsection{Nhóm trạng thái C\&D - Định vị và Kích hoạt relay}
 Tiếp quản phiên làm việc từ Phase B để quyết định mở khóa:
 \begin{itemize}
-  \item \textbf{UWB\_RANGING\_ACTIVE}: Kích hoạt sau khi nhận được sự kiện \texttt{UWB\_OOB\_RECEIVED}. ESP32 liên tục giao tiếp chuẩn UCI với chip DW3000 để đo khoảng cách theo giao thức DS-TWR.
-  \item \textbf{UNLOCKING\_CHECK\_PROXIMITY}: Module \texttt{UwbDoorUnlock} thực hiện kiểm tra Hysteresis. Nếu dữ liệu khoảng cách UWB thỏa mãn điều kiện an toàn (ví dụ: $< 2.0$m trong 3 chu kỳ liên tiếp), kích hoạt sự kiện \texttt{PROXIMITY\_OK}.
+  \item \textbf{UWB\_RANGING\_ACTIVE}: Kích hoạt sau khi nhận được lệnh \texttt{RANGING\_START}. ESP32 gửi \texttt{CMD:START\_RANGING} sang cầu nối PC và liên tục nhận các khung \texttt{RANGE:d0,d1,d2,valid}, thực hiện Trilateration và cập nhật EKF để thu được vị trí $(x, y)$ theo giao thức DS-TWR đa mỏ neo.
+  \item \textbf{UNLOCKING\_CHECK\_PROXIMITY}: Module \texttt{AccessController} thực hiện kiểm tra Hysteresis hình học trên vị trí $(x, y)$. Nếu khoảng cách Euclid đến điểm mở khóa thỏa mãn điều kiện an toàn (ví dụ: $\le 2.0$m trong 3 chu kỳ liên tiếp, kết hợp cổng vận tốc hướng tâm), kích hoạt sự kiện \texttt{PROXIMITY\_OK}.
   \item \textbf{UNLOCKING\_EXECUTE \& COMPLETE}: FSM gọi hàm cấp điện áp High cho chân GPIO điều khiển Rơ-le cửa, sau đó ghi nhận hoàn tất và đưa hệ thống vào trạng thái \textit{Cooldown} (khóa logic tạm thời).
 \end{itemize}

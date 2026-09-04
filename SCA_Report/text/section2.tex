@@ -701,6 +701,70 @@ Nhờ việc lấy tích chéo và chia cho tổng thời gian của cả hai v�
 \par\vspace{0.3em}
 UWB có thể xác định góc đến của tín hiệu thông qua hệ thống nhiều anten (\textit{Antenna array}), cho phép thực hiện chức năng \textbf{xác định hướng} (\textit{Direction finding}) \cite{bharadwaj2020accurate}. Khi kết hợp với đo khoảng cách, hệ thống có thể thực hiện \textbf{định vị chính xác} (\textit{Precise positioning}) trong không gian ba chiều.
 
+\subsubsection{Đo khoảng cách đa điểm (One-to-Many Ranging)}
+
+Để định vị được thiết bị trong mặt phẳng quanh xe (như mục Định vị đa mỏ neo và Trilateration trình bày), hệ thống cần thu thập \textbf{đồng thời} nhiều khoảng cách $d_0, d_1, d_2$ từ một điện thoại đến nhiều mỏ neo trong \textbf{cùng một vòng đo} (ranging round). Việc lặp tuần tự nhiều phiên đo một–một (one-to-one DS-TWR) không đáp ứng được yêu cầu này vì hai lý do: (i) mỗi phiên DS-TWR riêng lẻ tiêu tốn một khoảng thời gian cố định nên tổng thời gian để đo lần lượt $N$ mỏ neo tăng tuyến tính theo $N$, làm giảm tần suất cập nhật vị trí; và (ii) các khoảng cách thu được tại các thời điểm khác nhau sẽ không đồng bộ về mặt thời gian, dẫn đến sai số đáng kể khi thiết bị đang chuyển động và làm suy giảm tính nhất quán của bài toán Trilateration.
+
+Để giải quyết vấn đề trên, chuẩn FiRa (FiRa Consortium) định nghĩa các chế độ đo khoảng cách theo số lượng thiết bị tham gia trong một phiên \cite{fira_uwb_ranging}:
+\begin{itemize}
+    \item \textbf{One-to-One (O2O):} Một bộ khởi tạo (Initiator/Controller) đo khoảng cách với đúng một bộ đáp ứng (Responder/Controlee). Đây là chế độ cơ bản nhất, được dùng cho bài toán đo khoảng cách đơn lẻ.
+    \item \textbf{One-to-Many (O2M):} Một bộ khởi tạo đo khoảng cách \textbf{đồng thời} với nhiều bộ đáp ứng (tối đa 8 responder trong một phiên theo đặc tả FiRa) \cite{qorvo_o2m}. Chế độ này còn được gọi là \textbf{DS-TWR multicast}, trong đó bộ khởi tạo phát một thông điệp khởi tạo và các responder lần lượt phản hồi trong các khe thời gian (slots) được phân bổ trước của cùng một vòng đo.
+    \item \textbf{Many-to-Many (M2M):} Nhiều bộ khởi tạo đo khoảng cách với nhiều bộ đáp ứng trong cùng một phiên, phục vụ các ứng dụng quy mô lớn như định vị đội thiết bị trong nhà máy.
+\end{itemize}
+
+\par\vspace{0.5em}
+\textbf{Nguyên lý hoạt động của DS-TWR multicast:}
+\par\vspace{0.3em}
+Trong chế độ O2M, điện thoại (Controller) phát một thông điệp khởi tạo vòng đo (\textit{Ranging Initiation Message} -- RIM) hướng tới tất cả các mỏ neo. Mỗi mỏ neo (Responder) sau đó phản hồi bằng một thông điệp đáp ứng (\textit{Ranging Response Message} -- RRM) trong khe thời gian riêng của nó, và Controller chốt vòng đo bằng thông điệp kết thúc (\textit{Ranging Final Message} -- RFM). Quá trình trao đổi ba gói tin \textit{Poll -- Response -- Final} vẫn tuân theo đúng giao thức DS-TWR đã trình bày, nhưng được ghép kênh theo thời gian (time-slotted) cho nhiều responder trong cùng một vòng đo, nhờ đó bộ khởi tạo thu được $N$ khoảng cách $d_0, d_1, \dots, d_{N-1}$ gần như đồng thời với chi phí thời gian chỉ tương đương một phiên đo \cite{neirynck2016overview,fira_uwb_ranging}.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[scale=0.9, every node/.style={font=\small}]
+        % Initiator (controller)
+        \node[draw, circle, fill=red!10, minimum size=1.7cm, align=center] (C) at (0,0) {Controller\\ \textit{(Phone)}};
+
+        % Responders (anchors)
+        \node[draw, circle, fill=blue!8, minimum size=1.4cm, align=center] (R0) at (0,2.7)   {Anchor $A_0$};
+        \node[draw, circle, fill=blue!8, minimum size=1.4cm, align=center] (R1) at (-2.4,-1.4) {Anchor $A_1$};
+        \node[draw, circle, fill=blue!8, minimum size=1.4cm, align=center] (R2) at (2.4,-1.4)  {Anchor $A_2$};
+
+        % DS-TWR links
+        \draw[<->, very thick, blue!60] (C) -- (R0) node[midway, right] {\scriptsize DS-TWR $d_0$};
+        \draw[<->, very thick, blue!60] (C) -- (R1) node[midway, above left]  {\scriptsize DS-TWR $d_1$};
+        \draw[<->, very thick, blue!60] (C) -- (R2) node[midway, above right] {\scriptsize DS-TWR $d_2$};
+
+        \node[align=center, font=\scriptsize\itshape] at (0,-2.7) {Một vòng đo duy nhất -- ba khoảng cách\\ được thu thập đồng thời};
+    \end{tikzpicture}
+    \caption[Nguyên lý đo khoảng cách một–nhiều (One-to-Many Ranging)]{Nguyên lý đo khoảng cách \textbf{một–nhiều} (One-to-Many Ranging / DS-TWR multicast): một bộ khởi tạo (Controller -- điện thoại) thực hiện DS-TWR đồng thời với ba bộ đáp ứng (Anchor) trong cùng một vòng đo, thu được ba khoảng cách $d_0, d_1, d_2$ phục vụ giải thuật Trilateration.}
+    \label{fig:one_to_many_ranging}
+\end{figure}
+
+\par\vspace{0.5em}
+\textbf{Vai trò của O2M trong hệ thống định vị đa điểm:}
+\par\vspace{0.3em}
+Chế độ one-to-many chính là nền tảng cho kiến trúc định vị đa mỏ neo của đề tài: điện thoại chỉ cần duy trì một phiên UWB duy nhất nhưng vẫn thu được đồng thời ba khoảng cách $d_0, d_1, d_2$ để giải tọa độ $(x, y)$ bằng Trilateration. Trên hệ điều hành Android, chế độ này tương ứng với cấu hình \texttt{CONFIG\_MULTICAST\_DS\_TWR} trong API \texttt{androidx.core.uwb.RangingParameters} -- cấu hình \textit{one-to-many STATIC STS DS-TWR} với tần suất vòng đo khoảng 200\,ms và mỗi vòng đo phân bổ tối đa 20 khe thời gian cho các responder \cite{android_ranging}. Nhờ tính đồng bộ về thời gian của các khoảng cách, dữ liệu đầu vào cho bộ lọc Kalman và tầng quyết định truy cập luôn nhất quán về mặt hình học, tránh được hiện tượng lệch pha gây rung lắc quỹ đạo khi thiết bị di chuyển.
+
+\subsubsection{Đo khoảng cách đồng thời (Concurrent Ranging)}
+
+Bên cạnh chế độ one-to-many (O2M) chuẩn FiRa vừa trình bày --- vốn tách các phản hồi của các responder theo các khe thời gian riêng biệt trong cùng một vòng đo --- các nghiên cứu gần đây còn đề xuất một hướng tiếp cận triệt để hơn về mặt hiệu quả truyền thông: \textbf{đo khoảng cách đồng thời} (\textit{Concurrent Ranging}), được giới thiệu bởi Corbalán và Picco \cite{corbalan2020concurrent}. Kỹ thuật này cho phép bộ khởi tạo đo khoảng cách tới $N$ responder bằng đúng \textbf{hai gói tin} duy nhất, thay vì $2N$ gói tin của SS-TWR hay tối đa $4N$ gói tin của DS-TWR truyền thống, qua đó giảm mạnh chi phí mạng, độ trễ và năng lượng tiêu thụ trong khi vẫn giữ nguyên tần suất cập nhật vị trí.
+
+\par\vspace{0.5em}
+\textbf{Nguyên lý hoạt động:}
+\par\vspace{0.3em}
+Trong đo khoảng cách đồng thời, bộ khởi tạo phát duy nhất một gói \textit{poll} dạng \textbf{quảng bá} (broadcast). Khi nhận được poll, \textbf{tất cả} các responder trong phạm vi phủ sóng phản hồi \textbf{cùng lúc} --- thay vì lần lượt theo khe thời gian như DS-TWR multicast --- khiến các tín hiệu phản hồi chồng lấn lên nhau trên kênh truyền. Nhờ đặc tính xung cực ngắn (dưới $2$\,ns) của UWB, các đường truyền ứng với từng responder vẫn phân biệt được với nhau trong miền thời gian thông qua \textbf{đáp ứng xung kênh truyền} (\textit{Channel Impulse Response} -- CIR) mà vi mạch thu phát (DW1000/DW3000) cung cấp: chênh lệch khoảng cách giữa hai responder sinh ra độ dịch thời gian $\Delta t = \Delta d / c$ giữa hai đường đi trực tiếp (direct path) tương ứng, cho phép bộ khởi tạo ước lượng thời gian đến (Time of Arrival -- ToA) của từng tín hiệu và suy ra đồng thời nhiều khoảng cách $d_0, d_1, \dots, d_{N-1}$ \cite{corbalan2020concurrent}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\textwidth]{image/section3/concurrent_ranging.png}
+    \caption[Nguyên lý đo khoảng cách đồng thời (Concurrent Ranging)]{Nguyên lý đo khoảng cách đồng thời (Concurrent Ranging): bộ khởi tạo phát một gói poll quảng bá duy nhất, các responder phản hồi chồng lấn theo thời gian; các đường truyền được phân biệt qua đáp ứng xung kênh truyền (CIR). (\textbf{Nguồn:} Corbalán \& Picco, 2020 \cite{corbalan2020concurrent})}
+    \label{fig:concurrent_ranging}
+\end{figure}
+
+\par\vspace{0.5em}
+\textbf{Liên hệ với đề tài:}
+\par\vspace{0.3em}
+Đo khoảng cách đồng thời mở ra một hướng tối ưu quan trọng cho kiến trúc định vị đa mỏ neo của đề tài: nếu loại bỏ được nhu cầu giải mã từng gói phản hồi riêng lẻ và chỉ dựa vào CIR (vốn được vi mạch DW1000/DW3000 cung cấp sẵn cho tầng ứng dụng), chi phí mạng và năng lượng của một vòng đo $N$ mỏ neo có thể giảm đáng kể, đồng thời tăng tần suất cập nhật vị trí. Tuy nhiên, kỹ thuật này đặt ra các thách thức về độ chính xác lập lịch phát (TX scheduling) và nhận dạng responder mà hệ thống hiện tại chưa khai thác; do đó, trong phạm vi đề tài, nhóm lựa chọn chế độ DS-TWR multicast chuẩn FiRa (các responder trả lời tuần tự theo khe thời gian) để đảm bảo độ tin cậy và khả năng tích hợp với API chuẩn của hệ điều hành, đồng thời ghi nhận concurrent ranging như một định hướng nâng cấp tiềm năng trong tương lai.
+
 
 
 
@@ -758,85 +822,303 @@ FiRa Consortium là liên minh gồm nhiều tập đoàn công nghệ và ô t�
 
 
 
-\subsection{Bộ lọc Kalman một chiều}
+\subsection{Định vị đa mỏ neo và Trilateration}
 
+\subsubsection{Giới hạn của kiến trúc đo khoảng cách đơn mỏ neo}
 
+Trong giai đoạn một (Stage 1), hệ thống chỉ sử dụng duy nhất một mỏ neo (single anchor) UWB và do đó chỉ trích xuất được một giá trị khoảng cách vô hướng $d$ giữa điện thoại và xe. Về mặt hình học, một phép đo khoảng cách đơn lẻ chỉ cho biết thiết bị nằm đâu đó trên một \textbf{đường tròn} (trong không gian hai chiều) hoặc một \textbf{mặt cầu} (trong không gian ba chiều) bán kính $d$ bao quanh mỏ neo, mà không cung cấp bất kỳ thông tin nào về \textbf{hướng} (bearing) của thiết bị. Hệ quả trực tiếp là: hệ thống chỉ có thể trả lời câu hỏi \textit{``người dùng đang ở xa hay gần xe?''} (khoảng cách, 1D) mà không thể trả lời câu hỏi \textit{``người dùng đang đứng ở vị trí nào quanh xe?''} (tọa độ, 2D/3D).
 
-Dữ liệu đo khoảng cách từ vi mạch UWB DWM3000 thường tồn tại các thành phần nhiễu trắng và nhiễu do hiện tượng phản xạ đa đường (multipath). Nếu sử dụng trực tiếp dữ liệu thô, hệ thống sẽ gặp hiện tượng dao động (chattering) khi ra quyết định mở cửa. Bộ lọc Kalman, được phát triển bởi Rudolf E. Kalman, là một thuật toán ước lượng trạng thái tối ưu theo đệ quy cho các hệ thống tuyến tính bị tác động bởi nhiễu Gauss.
-
-
-
-Trong phạm vi đề tài, bộ lọc Kalman 1D được ứng dụng để ước lượng khoảng cách thực tế giữa xe và người dùng, đồng thời trích xuất giá trị thặng dư (Residual) phục vụ cho quá trình nhận diện tấn công Relay.
-
-
-
-\subsubsection{Mô hình toán học của bộ lọc Kalman}
-
-Bộ lọc Kalman vận hành thông qua hai giai đoạn lặp đi lặp lại: giai đoạn dự báo (Prediction) và giai đoạn cập nhật (Update). Đối với hệ thống đo khoảng cách đơn biến, trạng thái tại thời điểm $k$ được biểu diễn qua các phương trình sau:
-
-\paragraph*{A. Giai đoạn dự báo (Time Update)}
-
-Ở giai đoạn này, bộ lọc dự đoán trạng thái hiện tại dựa trên trạng thái ở thời điểm trước đó:
+Hạn chế này dẫn đến hai bất cập lớn đối với một hệ thống Smart Car Access thực thụ:
 \begin{itemize}
-    \item \textbf{Dự báo trạng thái:}
-    \begin{equation}
-        \hat{x}_{k|k-1} = \hat{x}_{k-1|k-1}
-    \end{equation}
-    \item \textbf{Dự báo hiệp phương sai sai số (Error Covariance):}
-    \begin{equation}
-        P_{k|k-1} = P_{k-1|k-1} + Q
-    \end{equation}
+    \item \textbf{Không thể định vị cục bộ:} Hệ thống không phân biệt được người dùng đang tiến về phía \textbf{cửa tài xế}, \textbf{cốp xe} hay \textbf{cửa phụ}, do đó không thể kích hoạt các chức năng mở khóa theo vùng (zone-based actuation) như ``mở cửa tài xế khi người dùng đến gần cột B bên trái'' hay ``mở cốp thông minh khi người dùng đứng sau đuôi xe''.
+    \item \textbf{Nhạy cảm với nhiễu biên:} Quyết định mở khóa chỉ dựa trên một ngưỡng khoảng cách vô hướng ($d \le 2.0$m) rất dễ bị tác động bởi nhiễu đa đường (multipath) và nhiễu phi tuyến (NLOS), vì không có thông tin hình học nào để kiểm chứng chéo tính nhất quán của phép đo.
 \end{itemize}
 
-Trong đó, $Q$ là hiệp phương sai nhiễu của quá trình (Process Noise Covariance), đại diện cho sự biến động không chắc chắn trong chuyển động của người dùng.
+Để giải quyết triệt để bài toán trên, giai đoạn hai (Stage 2) nâng cấp hệ thống lên kiến trúc \textbf{định vị đa mỏ neo} (multi-anchor localization): bố trí \textbf{ba mỏ neo UWB} cố định trên thân xe, thu thập đồng thời ba khoảng cách $d_0, d_1, d_2$ và thực hiện \textbf{Trilateration} để giải ra tọa độ phẳng $(x, y)$ của thiết bị trong hệ quy chiếu gắn với xe, sau đó hợp nhất quỹ đạo bằng \textbf{Bộ lọc Kalman} hai chiều để ước lượng cả vị trí lẫn vận tốc $(x, y, v_x, v_y)$.
 
+\subsubsection{Nguyên lý Trilateration}
 
+Trilateration là kỹ thuật định vị dựa trên việc giao cắt các mặt hình học khoảng cách. Xét một tập $n$ mỏ neo có tọa độ đã biết $\mathbf{a}_i = (x_i, y_i)$ (trong hệ quy chiếu xe) và thiết bị cần định vị có tọa độ chưa biết $\mathbf{p} = (x, y)$. Khoảng cách đo được từ thiết bị đến mỏ neo thứ $i$ là $d_i$. Với giả thiết các mỏ neo và thiết bị cùng nằm trên một mặt phẳng ngang (độ cao xấp xỉ bằng nhau), ta có hệ phương trình phi tuyến:
 
-\paragraph*{B. Giai đoạn cập nhật (Measurement Update)}
+\begin{equation}
+    \lVert \mathbf{p} - \mathbf{a}_i \rVert = \sqrt{(x - x_i)^2 + (y - y_i)^2} = d_i, \qquad i = 0, 1, \dots, n-1
+\end{equation}
 
-Khi nhận được giá trị đo mới $z_k$ từ cảm biến UWB, bộ lọc sẽ hiệu chỉnh dự báo để tìm ra trạng thái tối ưu:
-
+Ý nghĩa hình học của từng phương trình:
 \begin{itemize}
-    \item \textbf{Tính toán độ lợi Kalman (Kalman Gain):}
+    \item \textbf{Một mỏ neo:} Tập nghiệm là một đường tròn tâm $\mathbf{a}_0$ bán kính $d_0$ --- vô số vị trí khả dĩ (bài toán 1D, không xác định được hướng).
+    \item \textbf{Hai mỏ neo:} Giao của hai đường tròn cho tối đa \textbf{hai} nghiệm đối xứng nhau qua đoạn thẳng nối hai tâm --- bài toán vẫn còn tính lưỡng trị (ambiguity).
+    \item \textbf{Ba mỏ neo (không thẳng hàng):} Giao của ba đường tròn xác định \textbf{duy nhất một điểm} trên mặt phẳng --- đây là cấu hình tối thiểu để định vị 2D không lưỡng trị.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[scale=0.52, every node/.style={font=\small}]
+        \coordinate (A0) at (0,3.0);
+        \coordinate (A1) at (-2.598,-1.5);
+        \coordinate (A2) at (2.598,-1.5);
+        \coordinate (P)  at (0,0);
+
+        \draw[blue!55, very thick, fill=blue!6, fill opacity=0.55] (A0) circle (3.0);
+        \draw[blue!55, very thick, fill=blue!5, fill opacity=0.45] (A1) circle (3.0);
+        \draw[blue!55, very thick, fill=blue!5, fill opacity=0.45] (A2) circle (3.0);
+
+        \draw[dashed, gray] (A0) -- (P);
+        \draw[dashed, gray] (A1) -- (P);
+        \draw[dashed, gray] (A2) -- (P);
+
+        \filldraw[red!70] (A0) circle (4pt) node[above=3pt] {$A_0(x_0,y_0)$};
+        \filldraw[red!70] (A1) circle (4pt) node[below left=3pt] {$A_1(x_1,y_1)$};
+        \filldraw[red!70] (A2) circle (4pt) node[below right=3pt] {$A_2(x_2,y_2)$};
+
+        \node at (0.5,1.55) {$d_0$};
+        \node at (-1.45,-0.85) {$d_1$};
+        \node at (1.45,-0.85) {$d_2$};
+
+        \filldraw[green!55!black] (P) circle (4pt) node[below=4pt] {$P(x,y)$};
+    \end{tikzpicture}
+    \caption[Nguyên lý Trilateration với ba mỏ neo]{Nguyên lý Trilateration: giao của ba đường tròn bán kính $d_0, d_1, d_2$ (tâm là ba mỏ neo $A_0, A_1, A_2$) xác định duy nhất vị trí $P(x,y)$ của thiết bị.}
+    \label{fig:trilateration_principle}
+\end{figure}
+
+\textbf{Mở rộng sang không gian ba chiều:} Trong trường hợp tổng quát, mỗi phép đo $d_i$ mô tả một \textbf{mặt cầu} bán kính $d_i$ trong không gian 3D, và cần tối thiểu \textbf{bốn} mỏ neo không đồng phẳng để giải ra tọa độ $(x, y, z)$ một cách duy nhất. Trong phạm vi đề tài, các mỏ neo được gắn trên cùng một mặt phẳng ngang của thân xe và bài toán điều khiển truy cập chỉ cần đến tọa độ mặt phẳng $(x, y)$ (độ cao thiết bị cầm tay được xem là hằng số), do đó hệ ba phương trình mặt cầu được rút gọn về hệ ba phương trình đường tròn nêu trên. Công thức và thuật toán trình bày dưới đây hoàn toàn có thể mở rộng lên ba chiều bằng cách bổ sung thêm biến $z$ và ít nhất một mỏ neo thứ tư \cite{murphy1995trilateration}.
+
+\subsubsection{Nghiệm đại số tuyến tính (Linear Least Squares)}
+
+Để giải hệ phương trình phi tuyến trên một cách hiệu quả trên vi điều khiển, bước đầu tiên là \textbf{tuyến tính hóa} bằng phép trừ phương trình. Bình phương hai vế của từng phương trình:
+
+\begin{equation}
+    (x - x_i)^2 + (y - y_i)^2 = d_i^2
+\end{equation}
+
+Khai triển và trừ phương trình thứ $i$ cho một phương trình tham chiếu (chọn mỏ neo $A_0$):
+
+\begin{equation}
+    -2x(x_i - x_0) - 2y(y_i - y_0) = d_i^2 - d_0^2 - (x_i^2 + y_i^2) + (x_0^2 + y_0^2)
+\end{equation}
+
+Viết lại dưới dạng ma trận $\mathbf{A}\mathbf{p} = \mathbf{b}$:
+
+\begin{equation}
+    \mathbf{A} =
+    \begin{bmatrix}
+        x_1 - x_0 & y_1 - y_0 \\
+        x_2 - x_0 & y_2 - y_0 \\
+        \vdots & \vdots \\
+        x_{n-1} - x_0 & y_{n-1} - y_0
+    \end{bmatrix}, \qquad
+    \mathbf{b} = -\frac{1}{2}
+    \begin{bmatrix}
+        d_1^2 - d_0^2 - \lVert \mathbf{a}_1 \rVert^2 + \lVert \mathbf{a}_0 \rVert^2 \\
+        d_2^2 - d_0^2 - \lVert \mathbf{a}_2 \rVert^2 + \lVert \mathbf{a}_0 \rVert^2 \\
+        \vdots
+    \end{bmatrix}
+\end{equation}
+
+Với ba mỏ neo, hệ gồm hai phương trình độc lập và hai ẩn số, giải trực tiếp bằng phép nghịch đảo. Trong trường hợp có nhiều hơn ba mỏ neo (hệ quá xác định --- overdetermined), nghiệm bình phương tối thiểu (Least Squares) được tính bằng công thức chuẩn tắc:
+
+\begin{equation}
+    \hat{\mathbf{p}} = (\mathbf{A}^T \mathbf{A})^{-1} \mathbf{A}^T \mathbf{b}
+\end{equation}
+
+Nghiệm đại số này đóng vai trò \textbf{hạt giống khởi tạo} (initial seed) cho bước tối ưu phi tuyến bên dưới, giúp vòng lặp hội tụ nhanh và tránh rơi vào cực tiểu cục bộ sai.
+
+\subsubsection{Trường hợp hai mỏ neo và sự lưỡng trị}
+
+Khi chỉ có hai mỏ neo hợp lệ (ví dụ một mỏ neo bị mất gói tin hoặc nhiễu nặng), giao của hai đường tròn cho hai nghiệm đối xứng. Đặt $D = \lVert \mathbf{a}_1 - \mathbf{a}_0 \rVert$ là khoảng cách giữa hai tâm. Tồn tại nghiệm khi và chỉ khi bất đẳng thức tam giác được thỏa mãn: $|d_0 - d_1| \le D \le d_0 + d_1$. Khi đó:
+\begin{itemize}
+    \item \textbf{Nếu $D = d_0 + d_1$ hoặc $D = |d_0 - d_1|$:} Hai đường tròn tiếp xúc tại đúng một điểm.
+    \item \textbf{Nếu các đường tròn không giao nhau (do nhiễu):} Thuật toán suy biến về điểm nằm trên đoạn thẳng nối hai tâm, tỷ lệ theo trọng số khoảng cách, đảm bảo luôn trả về một ước lượng hợp lý thay vì báo lỗi.
+\end{itemize}
+
+Trong hệ thống thực tế, hai nghiệm lưỡng trị được giải quyết bằng cách dùng \textbf{ước lượng vị trí của chu kỳ trước} (do bộ lọc Kalman duy trì) làm tham chiếu để chọn nghiệm gần nhất, hoặc bỏ qua khung dữ liệu đó nếu độ tin cậy thấp.
+
+\subsubsection{Phương pháp Gauss-Newton}
+
+Nghiệm tuyến tính hóa ở trên bỏ qua thành phần bậc hai nên có thể thiếu chính xác khi nhiễu lớn. Do đó, hệ thống sử dụng thêm một vòng lặp \textbf{Gauss-Newton} để tối ưu phi tuyến. Định nghĩa vector thặng dư (residual):
+
+\begin{equation}
+    \mathbf{r}(\mathbf{p}) =
+    \begin{bmatrix}
+        \lVert \mathbf{p} - \mathbf{a}_0 \rVert - d_0 \\
+        \lVert \mathbf{p} - \mathbf{a}_1 \rVert - d_1 \\
+        \lVert \mathbf{p} - \mathbf{a}_2 \rVert - d_2
+    \end{bmatrix}
+\end{equation}
+
+Mục tiêu là cực tiểu hóa hàm chi phí bình phương tối thiểu phi tuyến $f(\mathbf{p}) = \tfrac{1}{2} \lVert \mathbf{r}(\mathbf{p}) \rVert^2$. Ma trận Jacobian của vector thặng dư theo $\mathbf{p}$:
+
+\begin{equation}
+    \mathbf{J}(\mathbf{p}) =
+    \begin{bmatrix}
+        \dfrac{x - x_0}{\lVert \mathbf{p} - \mathbf{a}_0 \rVert} & \dfrac{y - y_0}{\lVert \mathbf{p} - \mathbf{a}_0 \rVert} \\[1.2em]
+        \dfrac{x - x_1}{\lVert \mathbf{p} - \mathbf{a}_1 \rVert} & \dfrac{y - y_1}{\lVert \mathbf{p} - \mathbf{a}_1 \rVert} \\[1.2em]
+        \dfrac{x - x_2}{\lVert \mathbf{p} - \mathbf{a}_2 \rVert} & \dfrac{y - y_2}{\lVert \mathbf{p} - \mathbf{a}_2 \rVert}
+    \end{bmatrix}
+\end{equation}
+
+Mỗi bước lặp cập nhật nghiệm theo phương trình chuẩn tắc:
+
+\begin{equation}
+    \mathbf{p}^{(k+1)} = \mathbf{p}^{(k)} - \left(\mathbf{J}^T \mathbf{J}\right)^{-1} \mathbf{J}^T\, \mathbf{r}(\mathbf{p}^{(k)})
+\end{equation}
+
+Vòng lặp kết thúc khi bước dịch chuyển nhỏ hơn ngưỡng hội tụ hoặc đạt số lần lặp tối đa (trong đề tài giới hạn 10 vòng). Điểm khởi tạo $\mathbf{p}^{(0)}$ được lấy từ nghiệm tuyến tính ở trên hoặc từ vị trí ước lượng của chu kỳ trước. Bên cạnh tọa độ, thuật toán còn trả về \textbf{giá trị RMS của thặng dư}:
+
+\begin{equation}
+    \text{RMS} = \sqrt{\frac{1}{n}\sum_{i=0}^{n-1} \left(\lVert \hat{\mathbf{p}} - \mathbf{a}_i \rVert - d_i\right)^2}
+\end{equation}
+
+Đại lượng RMS này là một thước đo \textbf{chất lượng lời giải} (fix quality): RMS nhỏ cho thấy ba khoảng cách nhất quán về mặt hình học, trong khi RMS lớn là dấu hiệu của nhiễu đa đường, che khuất tầm nhìn (NLOS) hoặc dữ liệu nhiễu. Giá trị này được nạp trực tiếp vào ma trận hiệp phương sai nhiễu đo $R$ của bộ lọc Kalman ở mục tiếp theo, giúp bộ lọc \textbf{tự động giảm mức tin cậy} đối với các khung dữ liệu kém chất lượng.
+
+\subsubsection{Độ suy giảm chính xác hình học (GDOP)}
+
+Độ chính xác của kết quả định vị không chỉ phụ thuộc vào nhiễu của phép đo khoảng cách mà còn phụ thuộc mạnh vào \textbf{hình học bố trí} của các mỏ neo. Mối quan hệ này được lượng hóa bằng chỉ số \textbf{Geometric Dilution of Precision (GDOP)} \cite{langley1999gdop}: cùng một mức nhiễu khoảng cách, nếu các mỏ neo bố trí gần như thẳng hàng hoặc cụm sát nhau, sai số vị trí sẽ bị \textbf{khuếch đại} lên rất lớn, đặc biệt tại các vùng nằm xa tam giác mỏ neo. Ngược lại, một cấu hình tam giác bao trùm vùng hoạt động sẽ cho GDOP thấp và sai số được kiểm soát \cite{ridolfi2018analysis}.
+
+Trong đề tài, ba mỏ neo được bố trí theo một tam giác không thẳng hàng ôm lấy thân xe (Hình \ref{fig:anchor_geometry}): $A_0$ ở trung tâm cản sau, $A_1$ ở bên phải thân xe và $A_2$ ở cột B bên trái (đồng thời là điểm mở khóa cửa tài xế). Cấu hình này đảm bảo GDOP thấp ngay tại vùng cửa tài xế --- vùng quyết định mở khóa quan trọng nhất --- đồng thời hạn chế sai số tại vùng cốp xe.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[scale=0.72, every node/.style={font=\small}]
+        % Car body (X right, Y forward)
+        \draw[fill=gray!12, thick] (-1.0,-2.0) rectangle (1.0,2.0);
+        \node[gray!70] at (0,0.0) {\textit{Thân xe}};
+
+        % Coordinate axes
+        \draw[->, thick] (0,-2.6) -- (0,2.9) node[above] {$y$ (tiến)};
+        \draw[->, thick] (-1.7,0) -- (1.6,0) node[right] {$x$ (phải)};
+
+        % Anchors
+        \filldraw[red!70] (0,-2.0)  circle (3.5pt) node[below=3pt] {$A_0\,(0,\,-2.0)$};
+        \filldraw[red!70] (0.95,0)  circle (3.5pt) node[right=3pt] {$A_1\,(0.95,\,0)$};
+        \filldraw[red!70] (-0.95,0) circle (3.5pt) node[left=3pt]  {$A_2\,(-0.95,\,0)$};
+
+        % Unlock point (driver door B-pillar = A2)
+        \filldraw[green!55!black] (-0.95,0) circle (3.5pt);
+        \node[green!45!black, right=3pt, align=left] at (-0.95,0.15) {Điểm mở khóa\\ (cửa tài xế)};
+    \end{tikzpicture}
+    \caption[Hệ tọa độ xe và bố trí ba mỏ neo UWB]{Hệ tọa độ gắn với xe và bố trí ba mỏ neo UWB: $A_0$ (trung tâm cản sau), $A_1$ (bên phải thân xe), $A_2$ (cột B bên trái --- đồng thời là điểm mở khóa cửa tài xế). Đơn vị: mét.}
+    \label{fig:anchor_geometry}
+\end{figure}
+
+\subsection{Bộ lọc Kalman hai chiều (EKF) cho bám quỹ đạo}
+
+Dữ liệu tọa độ $(x, y)$ thu được từ Trilateration vẫn chứa các thành phần nhiễu trắng và nhiễu do hiện tượng phản xạ đa đường (multipath), đặc biệt là các ``bước nhảy'' vị trí khi tín hiệu bị che khuất (NLOS). Nếu sử dụng trực tiếp kết quả thô, hệ thống sẽ gặp hiện tượng dao động (chattering) khi ra quyết định mở cửa. Bộ lọc Kalman --- được phát triển bởi Rudolf E. Kalman năm 1960 \cite{kalman1960} --- là một thuật toán ước lượng trạng thái tối ưu theo đệ quy cho các hệ thống tuyến tính chịu tác động của nhiễu Gauss \cite{welch2001kalman}. Trong đề tài, bộ lọc được sử dụng để \textbf{hợp nhất} chuỗi tọa độ đo từ Trilateration thành quỹ đạo mượt, đồng thời ước lượng cả vector vận tốc $(v_x, v_y)$ phục vụ cho cổng logic hướng tiếp cận (approach gate) ở tầng quyết định truy cập.
+
+\textbf{Lưu ý về tính phi tuyến:} Phép đo khoảng cách $\rightarrow$ tọa độ vốn là bài toán phi tuyến, nhưng phần phi tuyến đã được xử lý triệt để ngay tại tầng Trilateration (Gauss-Newton). Do đó, tầng lọc chỉ làm việc với quan hệ đo tuyến tính $z = Hx + v$ và mô hình vận tốc hằng tuyến tính; bộ lọc Kalman mở rộng (Extended Kalman Filter) trong trường hợp này suy biến về đúng bộ lọc Kalman tuyến tính chuẩn.
+
+\subsubsection{Mô hình trạng thái}
+
+Vector trạng thái gồm bốn thành phần:
+
+\begin{equation}
+    \mathbf{x}_k = \begin{bmatrix} p_x & p_y & v_x & v_y \end{bmatrix}^T
+\end{equation}
+
+trong đó $(p_x, p_y)$ là vị trí (mét) và $(v_x, v_y)$ là vận tốc (mét/giây) của thiết bị trong hệ quy chiếu xe. Giả thiết chuyển động của người đi bộ được mô tả bởi mô hình \textbf{vận tốc hằng} (constant velocity) với nhiễu gia tốc ngẫu nhiên (manoeuvre noise):
+
+\begin{equation}
+    \mathbf{x}_{k} = \mathbf{F}(\Delta t)\, \mathbf{x}_{k-1} + \mathbf{w}_{k-1}, \qquad
+    \mathbf{F}(\Delta t) =
+    \begin{bmatrix}
+        1 & 0 & \Delta t & 0 \\
+        0 & 1 & 0 & \Delta t \\
+        0 & 0 & 1 & 0 \\
+        0 & 0 & 0 & 1
+    \end{bmatrix}
+\end{equation}
+
+với $\Delta t$ là khoảng thời gian giữa hai chu kỳ xử lý, $\mathbf{w} \sim \mathcal{N}(0, \mathbf{Q})$ là nhiễu quá trình. Sử dụng mô hình nhiễu gia tốc trắng liên tục với cường độ $\sigma_a$, ma trận hiệp phương sai nhiễu quá trình có dạng:
+
+\begin{equation}
+    \mathbf{Q} = \sigma_a^2
+    \begin{bmatrix}
+        \tfrac{\Delta t^4}{4} & 0 & \tfrac{\Delta t^3}{2} & 0 \\[0.3em]
+        0 & \tfrac{\Delta t^4}{4} & 0 & \tfrac{\Delta t^3}{2} \\[0.3em]
+        \tfrac{\Delta t^3}{2} & 0 & \Delta t^2 & 0 \\[0.3em]
+        0 & \tfrac{\Delta t^3}{2} & 0 & \Delta t^2
+    \end{bmatrix}
+\end{equation}
+
+\subsubsection{Mô hình đo lường}
+
+Phép đo ở mỗi chu kỳ là tọa độ $(x_{meas}, y_{meas})$ do Trilateration trả về:
+
+\begin{equation}
+    \mathbf{z}_k = \begin{bmatrix} x_{meas} \\ y_{meas} \end{bmatrix} = \mathbf{H}\, \mathbf{x}_k + \mathbf{v}_k, \qquad
+    \mathbf{H} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix}, \qquad \mathbf{v} \sim \mathcal{N}(0, \mathbf{R})
+\end{equation}
+
+Ma trận hiệp phương sai nhiễu đo được xây dựng từ chất lượng lời giải Trilateration:
+
+\begin{equation}
+    \mathbf{R} = \sigma_{meas}^2 \, \mathbf{I}_{2\times 2}, \qquad
+    \sigma_{meas} = \operatorname{clamp}(\text{RMS},\; 0.05,\; 1.0)
+\end{equation}
+
+Việc ràng buộc $\sigma_{meas}$ trong khoảng $[0.05,\,1.0]$ m đảm bảo bộ lọc không bao giờ tin tưởng mù quáng một khung dữ liệu ``quá tốt'' (nhiều khả năng là ngẫu nhiên) và cũng không loại bỏ hoàn toàn một khung dữ liệu nhiễu lớn.
+
+\subsubsection{Hai giai đoạn của bộ lọc}
+
+\paragraph*{A. Giai đoạn dự báo (Time Update / Predict)}
+
+\begin{align}
+    \hat{\mathbf{x}}_{k|k-1} &= \mathbf{F}(\Delta t)\, \hat{\mathbf{x}}_{k-1|k-1} \\
+    \mathbf{P}_{k|k-1} &= \mathbf{F}\, \mathbf{P}_{k-1|k-1}\, \mathbf{F}^T + \mathbf{Q}
+\end{align}
+
+Giai đoạn dự báo được thực thi ở một nhịp cố định \textbf{10 Hz} ($\Delta t = 100$ ms), độc lập với nhịp nhận dữ liệu thô từ cầu nối (bridge). Điều này mang lại hai lợi ích: (i) đồng hồ ra quyết định mở khóa được giữ ổn định; (ii) khi một vài khung dữ liệu bị mất (dropped frames), bộ lọc vẫn \textbf{dự báo bù} (coasting) để lấp đầy khoảng trống quỹ đạo, miễn là khoảng trống không vượt quá ngưỡng cho phép (trong đề tài là 2 giây; nếu quá ngưỡng, quỹ đạo được khởi tạo lại từ đầu).
+
+\paragraph*{B. Giai đoạn cập nhật (Measurement Update / Correct)}
+
+Khi nhận được phép đo mới $\mathbf{z}_k$, bộ lọc tính toán:
+\begin{itemize}
+    \item \textbf{Vector đổi mới (Innovation):}
     \begin{equation}
-        K_k = \frac{P_{k|k-1}}{P_{k|k-1} + R}
+        \tilde{\mathbf{y}}_k = \mathbf{z}_k - \mathbf{H}\, \hat{\mathbf{x}}_{k|k-1}
     \end{equation}
-    Trong đó, $R$ là hiệp phương sai nhiễu của phép đo (Measurement Noise Covariance), phụ thuộc vào độ chính xác vật lý của vi mạch DWM3000.
+    \item \textbf{Ma trận hiệp phương sai đổi mới:}
+    \begin{equation}
+        \mathbf{S}_k = \mathbf{H}\, \mathbf{P}_{k|k-1}\, \mathbf{H}^T + \mathbf{R}
+    \end{equation}
+    \item \textbf{Độ lợi Kalman (Kalman Gain):}
+    \begin{equation}
+        \mathbf{K}_k = \mathbf{P}_{k|k-1}\, \mathbf{H}^T\, \mathbf{S}_k^{-1}
+    \end{equation}
     \item \textbf{Cập nhật trạng thái ước lượng:}
     \begin{equation}
-        \hat{x}_{k|k} = \hat{x}_{k|k-1} + K_k (z_k - \hat{x}_{k|k-1})
+        \hat{\mathbf{x}}_{k|k} = \hat{\mathbf{x}}_{k|k-1} + \mathbf{K}_k\, \tilde{\mathbf{y}}_k
     \end{equation}
-
-    Thành phần $(z_k - \hat{x}_{k|k-1})$ được gọi là \textbf{Giá trị thặng dư (Residual)}. Trong hệ thống Smart Car Access, giá trị này cực kỳ quan trọng vì khi có tấn công Relay, sai lệch giữa giá trị đo thô và giá trị ước lượng sẽ tăng đột biến, giúp mô hình AI nhận diện hành vi giả mạo.
-
     \item \textbf{Cập nhật hiệp phương sai sai số:}
     \begin{equation}
-        P_{k|k} = (1 - K_k) P_{k|k-1}
+        \mathbf{P}_{k|k} = (\mathbf{I} - \mathbf{K}_k\, \mathbf{H})\, \mathbf{P}_{k|k-1}
     \end{equation}
 \end{itemize}
 
+\paragraph*{C. Cổng lọc đổi mới (Innovation Gating)}
+
+Để chống lại các xung nhiễu NLOS/multipath khiến tọa độ đo bị ``nhảy vọt'' xa khỏi quỹ đạo dự báo, bộ lọc áp dụng cơ chế \textbf{lọc ngưỡng đổi mới} (innovation gating): nếu chuẩn của vector đổi mới vượt quá bội số $k$ của độ lệch chuẩn dự báo ($\lVert \tilde{\mathbf{y}}_k \rVert > k\, \sqrt{\operatorname{tr}(\mathbf{S}_k)}$), phép đo được hạ cấp hoặc bỏ qua trong chu kỳ đó. Cơ chế này giúp quỹ đạo bám mượt ngay cả khi người dùng đi qua vùng che khuất, đồng thời vẫn giữ được phản hồi nhanh khi chuyển động là hợp lý.
 
 \subsubsection{Cấu hình tham số thực nghiệm}
 
-Hiệu quả của bộ lọc Kalman phụ thuộc vào việc cân bằng giữa hai thông số $Q$ và $R$. Trong thực nghiệm triển khai trên ESP32-S3:
-
+Hiệu quả của bộ lọc phụ thuộc vào việc cân bằng giữa hai ma trận $\mathbf{Q}$ (nhiễu quá trình) và $\mathbf{R}$ (nhiễu đo). Trong thực nghiệm triển khai trên ESP32-S3, cường độ nhiễu gia tốc được chọn $\sigma_a = 1.2$ m/s$^2$ --- đủ lớn để bộ lọc bám theo sự đổi hướng đột ngột của người đi bộ, nhưng đủ nhỏ để làm mượt nhiễu đo:
 \begin{itemize}
-    \item Nếu chọn $Q$ lớn và $R$ nhỏ: Bộ lọc sẽ tin vào cảm biến hơn, đáp ứng nhanh với thay đổi nhưng dữ liệu sẽ bị nhiễu.
-
-    \item Nếu chọn $Q$ nhỏ và $R$ lớn: Bộ lọc sẽ tin vào dự đoán của chính nó hơn, dữ liệu mượt hơn nhưng sẽ có độ trễ lớn (lag) so với bước đi thực tế.
+    \item Nếu chọn $\mathbf{Q}$ lớn và $\mathbf{R}$ nhỏ: Bộ lọc tin vào cảm biến hơn, đáp ứng nhanh với thay đổi nhưng quỹ đạo bị nhiễu và dễ bị kéo lệch bởi xung NLOS.
+    \item Nếu chọn $\mathbf{Q}$ nhỏ và $\mathbf{R}$ lớn: Bộ lọc tin vào mô hình chuyển động hơn, quỹ đạo rất mượt nhưng trễ (lag) so với bước đi thực tế và phản ứng chậm khi người dùng đổi hướng.
 \end{itemize}
 
-Dựa trên đặc tính chuyển động của con người (tốc độ đi bộ $\approx 1.2$ m/s) và tần số lấy mẫu của UWB (10Hz), các thông số đã được tinh chỉnh tối ưu để đảm bảo quỹ đạo khoảng cách mượt mà trước khi đưa vào mô hình phân loại hành vi.
+Dựa trên đặc tính chuyển động của con người (tốc độ đi bộ $\approx 1.2$ m/s) và nhịp xử lý 10Hz, bộ tham số trên đã được tinh chỉnh để quỹ đạo $(x, y)$ và vận tốc $(v_x, v_y)$ vừa mượt mà vừa phản hồi kịp thời, làm đầu vào cho tầng quyết định truy cập hình học (geometric access control) ở giai đoạn hai.
 
 
 
-\subsubsection{Triển khai UWB – Phần cứng trong hệ thống}
+\subsection{Triển khai UWB – Phần cứng trong hệ thống}
 
-\textbf{Trong đề tài này:} Công nghệ UWB đã được \textbf{hiện thực hóa hoàn toàn} và đóng vai trò là chốt chặn bảo mật vật lý cốt lõi của hệ thống. Sự kết hợp giữa vi điều khiển ESP32-S3 và module UWB (sử dụng các vi mạch tiêu chuẩn như DW3000) giúp hệ thống đo lường khoảng cách theo thời gian thực (Real-time Secure Ranging).
+\textbf{Trong đề tài này:} Công nghệ UWB đã được \textbf{hiện thực hóa hoàn toàn} và đóng vai trò là chốt chặn bảo mật vật lý cốt lõi của hệ thống. Sự kết hợp giữa vi điều khiển ESP32-S3 và \textbf{ba mỏ neo UWB} (sử dụng vi mạch tiêu chuẩn DW3000) giúp hệ thống đo lường khoảng cách theo thời gian thực (Real-time Secure Ranging), đồng thời hợp nhất ba khoảng cách thành tọa độ phẳng $(x, y)$ để định vị không gian (Real-time Localization).
 
 Việc triển khai UWB thực tế giải quyết triệt để các hạn chế của bảo mật BLE thông thường:
 \begin{itemize}
     \item \textbf{Đo khoảng cách chính xác (ToF):} Xác minh người dùng đang thực sự ở cạnh xe (với sai số chỉ ở mức centimet) thay vì chỉ dựa vào cường độ tín hiệu RSSI vốn dễ bị làm giả.
+    \item \textbf{Định vị đa mỏ neo (Trilateration):} Xác định vị trí tương đối $(x, y)$ của người dùng quanh xe, làm nền tảng cho việc kích hoạt mở khóa theo vùng (cửa tài xế, cốp xe) thay vì chỉ so sánh một ngưỡng khoảng cách đơn lẻ.
     \item \textbf{Bảo vệ bằng STS (Scrambled Timestamp Sequence):} Kích hoạt cơ chế mã hóa xung UWB ở lớp vật lý, giúp loại bỏ hoàn toàn rủi ro tấn công tiếp sóng (Relay Attack).
 \end{itemize}
 
@@ -847,7 +1129,7 @@ Việc triển khai UWB thực tế giải quyết triệt để các hạn ch�
 \hline
 \textbf{Vi mạch} & \textbf{Nhà sản xuất} & \textbf{Chuẩn IEEE} & \textbf{Ứng dụng trong đề tài} \\
 \hline
-DW3000 & Qorvo (Decawave) & 802.15.4a/z & Node xử lý UWB trung tâm \\
+DW3000 & Qorvo (Decawave) & 802.15.4a/z & Vi mạch thu phát cho ba mỏ neo UWB \\
 SR040 / SR150 & NXP Trimension & 802.15.4z & Tham chiếu kiến trúc \\
 U1 & Apple (độc quyền) & 802.15.4z & Tương tác từ phía Mobile \\
 \hline

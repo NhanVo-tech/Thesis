@@ -75,10 +75,16 @@ Các giao thức vô tuyến và giao tiếp nội mạch được cấu hình t
         On-board \\
         \hline
 
-        UART1 &
-        Giao tiếp ESP32 $\leftrightarrow$ DW3000 &
-        115200 bps (UCI Command) &
+        USB-CDC (Native USB) &
+        Nhận khung RANGE từ cầu nối PC &
+        115200 bps (ASCII line) &
         On-board \\
+        \hline
+
+        USB/UART (x3) &
+        PC $\leftrightarrow$ ba mỏ neo DWM3001CDK &
+        Vài Mbaud (COM) &
+        Ngoại vi \\
         \hline
 
         GPIO &
@@ -120,7 +126,7 @@ Firmware nhúng được phát triển bằng ngôn ngữ C/C++ trên nền tả
         \hline
         Preferences & 2.1.0 & Quản lý lưu trữ Key-Value (Khóa, ID) trong vùng nhớ tĩnh NVS. \\
         \hline
-        UCI Protocol Parser & Tự phát triển & Trình phân tích các gói tin UWB Command Interface (UCI) từ chip DWM3000. \\
+        RANGE Protocol Parser & Tự phát triển & Trình phân tích khung dữ liệu \texttt{RANGE:d0,d1,d2,valid} nhận từ cầu nối PC qua USB-CDC. \\
         \hline
         FreeRTOS & Tích hợp sẵn & Quản lý tác vụ đa luồng (NFC Task, BLE Task, UWB Task) và Đồng bộ hóa. \\
         \hline
@@ -187,30 +193,31 @@ Hệ thống tận dụng nền tảng kiến trúc phi máy chủ (Serverless) 
 \section{Triển khai phần nhúng (ESP32)}
 
 \subsection{Thiết lập phần cứng}
-Hệ thống sử dụng vi điều khiển ESP32-S3 (trên bo mạch Yolo Uno) làm bộ xử lý trung tâm. Điểm mấu chốt trong thiết kế phần cứng là việc giao tiếp đồng thời với module NFC (PN532) và module UWB (DWM3000) mà không gây xung đột tài nguyên. Để giải quyết vấn đề này, hệ thống cấu hình hai bộ điều khiển UART độc lập (Hardware UART) trên ESP32.
+Hệ thống sử dụng vi điều khiển ESP32-S3 (trên bo mạch Yolo Uno) làm bộ xử lý trung tâm. Điểm mấu chốt trong thiết kế phần cứng giai đoạn hai là việc tách bạch hoàn toàn khối thu phát UWB (đẩy sang ba mỏ neo độc lập và cầu nối PC) khỏi vi điều khiển trung tâm, để ESP32-S3 chỉ tập trung vào điều phối bảo mật (NFC, BLE) và hợp nhất dữ liệu định vị mà không gây xung đột tài nguyên.
 
 \begin{itemize}
     \item \textbf{Module NFC (PN532):} Giao tiếp qua \textbf{UART2} sử dụng chế độ High-Speed UART (HSU) với tốc độ baud 115200. Trên module PN532, hai công tắc gạt (DIP switch) được cấu hình ở vị trí \texttt{0-0} để chọn chế độ HSU. Do nhãn in trên bo mạch Yolo Uno bị ngược, chân RX của PN532 được nối với chân TX (Pin 43) của ESP32, và chân TX của PN532 được nối với chân RX (Pin 44) của ESP32 \cite{nxp_pn532}.
-    \item \textbf{Module UWB (DWM3000):} Sử dụng mạch DWM3000EVB shield. Module này giao tiếp với ESP32 qua \textbf{UART1} ở tốc độ baud 115200 để truyền nhận các lệnh theo chuẩn UWB Command Interface (UCI). Chân RX (Pin 17) và TX (Pin 18) của ESP32 được cấu hình riêng cho luồng dữ liệu này.
-    \item \textbf{Cơ cấu chấp hành (Door Relay):} Điều khiển qua chân Digital Output (GPIO).
 
-    \item \textbf{Module DWM3000EVB:} Đây là bo mạch phát triển (dạng Arduino Shield) chứa vi mạch Qorvo DW3000, đảm nhiệm vai trò thu phát sóng vô tuyến ở lớp vật lý (UWB PHY). Vi mạch này chịu trách nhiệm truyền/nhận các xung UWB cực ngắn và ghi nhận chính xác thời gian nhận tín hiệu (Timestamp) phục vụ cho thuật toán đo khoảng cách ToF (Time of Flight).
-    
-    \item \textbf{Vi điều khiển Nordic nRF52840 (UWB Co-processor):} Module DWM3000EVB được ghép nối trực tiếp lên bo mạch phát triển nRF52840 DK thông qua giao diện SPI tốc độ cao. Trong kiến trúc này, nRF52840 đóng vai trò là bộ đồng xử lý (Co-processor) chuyên trách quản lý lớp MAC của UWB. Khối nRF52840 thực thi các firmware chuẩn FiRa, quản lý chuỗi mã hóa STS (Scrambled Timestamp Sequence) và đóng gói dữ liệu đo đạc.
-    
-    \item \textbf{Giao tiếp UCI qua ma trận UART:} Vi xử lý trung tâm ESP32-S3 (Host) sẽ không can thiệp vào các ngắt (interrupts) mức thấp của sóng UWB. Thay vào đó, ESP32-S3 giao tiếp với nRF52840 thông qua giao diện UART1 sử dụng \textbf{Giao thức lệnh UWB (UCI - UWB Command Interface)}. Kiến trúc này giúp ESP32-S3 giải phóng hoàn toàn tài nguyên CPU để tập trung vào việc duy trì kết nối BLE, phân tích bộ lọc Kalman và chạy mô hình học máy (TinyML) nhận diện hành vi mà không lo ngại về vấn đề nghẽn cổ chai (bottleneck) hệ thống.
+    \item \textbf{Ba mỏ neo UWB (DWM3001CDK):} Mỗi mỏ neo là một bo mạch phát triển chứa vi mạch Qorvo DW3000, đảm nhiệm vai trò thu phát sóng vô tuyến ở lớp vật lý (UWB PHY) và đóng vai trò \textbf{Responder} trong phiên đo. Vi mạch DW3000 truyền/nhận các xung UWB cực ngắn và ghi nhận chính xác thời gian nhận tín hiệu (Timestamp) phục vụ cho thuật toán đo khoảng cách ToF (Time of Flight). Ba mỏ neo được gắn cố định trên thân xe tại $A_0$ (cản sau), $A_1$ (bên phải) và $A_2$ (cột B trái), mỗi mỏ neo kết nối với PC qua một cổng USB/UART riêng.
+
+    \item \textbf{Cầu nối PC (Ranging Bridge):} Một máy tính chạy script \texttt{run\_fira\_bridge.py} mở đồng thời ba cổng COM, thu thập khoảng cách $d_0, d_1, d_2$ từ ba mỏ neo, kiểm tra tính tươi và phạm vi hợp lệ, rồi đóng gói thành khung \texttt{RANGE:d0,d1,d2,valid} gửi sang ESP32 qua kênh \textbf{USB-CDC} (native USB). Cầu nối PC cũng nhận các lệnh \texttt{CMD:START/STOP\_RANGING} từ ESP32 để điều khiển vòng đời phiên đo.
+
+    \item \textbf{Cơ cấu chấp hành (Door Relay):} Điều khiển qua chân Digital Output \texttt{GPIO26} của ESP32 (xung kích hoạt 500 ms).
+
+    \item \textbf{Điện thoại (UWB Controller):} Điện thoại đóng vai trò bộ khởi tạo duy nhất (\texttt{0x06C1}), thực hiện DS-TWR multicast đồng thời với cả ba mỏ neo thông qua API \texttt{android.ranging} (Android 16+).
 \end{itemize}
 
+Kiến trúc này giúp ESP32-S3 giải phóng hoàn toàn tài nguyên CPU khỏi các ngắt (interrupts) mức thấp của sóng UWB, để tập trung vào việc duy trì kết nối BLE, thực thi thuật toán Trilateration, cập nhật bộ lọc Kalman và ra quyết định truy cập mà không lo ngại về vấn đề nghẽn cổ chai (bottleneck) hệ thống.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{image/section5/hardware.jpg} 
-    \caption{Sơ đồ ghép nối ESP32-S3, nRF52840 và DWM3000EVB}
+    \caption[Sơ đồ ghép nối hệ thống UWB đa mỏ neo]{Sơ đồ ghép nối hệ thống UWB đa mỏ neo: ESP32-S3 (trung tâm), ba mỏ neo DWM3001CDK, cầu nối PC và điện thoại Controller. \textit{(Sinh viên lưu ý cập nhật hình minh họa cho đúng cấu trúc liên kết mới.)}}
     \label{fig:uwb_hardware_arch}
 \end{figure}
 
 
-Sự kết hợp giữa ESP32-S3 (chuyên xử lý ứng dụng/AI) và cụm nRF52840 + DWM3000EVB (chuyên xử lý tín hiệu UWB) tạo ra một hệ thống nhúng có độ tin cậy cao, mang đậm tính thực tiễn và tuân thủ chặt chẽ các thiết kế tham chiếu (Reference Design) của ngành công nghiệp ô tô hiện đại.
+Sự kết hợp giữa ESP32-S3 (chuyên xử lý ứng dụng và hợp nhất dữ liệu) với ba mỏ neo DW3000 (chuyên xử lý tín hiệu UWB) và cầu nối PC (chuyên thu thập/đóng gói dữ liệu) tạo ra một hệ thống nhúng có độ tin cậy cao, mang đậm tính thực tiễn và tuân thủ chặt chẽ các thiết kế tham chiếu (Reference Design) của ngành công nghiệp ô tô hiện đại.
 
 \begin{figure}[H]
     \centering
@@ -240,8 +247,8 @@ Sự kết hợp giữa ESP32-S3 (chuyên xử lý ứng dụng/AI) và cụm nR
     \hfill
     \begin{minipage}{0.48\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{image/section5/DWM3000EVB.png} % Cập nhật tên file ảnh DWM3000EVB nếu cần
-        \caption[Module UWB DWM3000EVB]{Module UWB DWM3000EVB (\textbf{Nguồn:} \href{https://www.digikey.tw/en/products/detail/qorvo/DWM3000EVB/24367408}{DWM3000EVB Qorvo - DigiKey})}
+        \includegraphics[width=\linewidth]{image/section5/DWM3000EVB.png} % Cập nhật tên file ảnh mỏ neo UWB nếu cần
+        \caption[Mỏ neo UWB DWM3001CDK (vi mạch DW3000)]{Mỏ neo UWB DWM3001CDK (vi mạch Qorvo DW3000) (\textbf{Nguồn:} \href{https://www.qorvo.com/products/p/DWM3001CDK}{DWM3001CDK Qorvo})}
         \label{fig:spec_dwm3000}
     \end{minipage}
 \end{figure}
@@ -313,52 +320,88 @@ mbedtls_hkdf(md_info, salt, saltLen, ikm, ikmLen, info, infoLen, output, 32);
 
 Hàm HKDF sẽ tách Shared Secret thành hai khóa độc lập: Session Encryption Key (để mã hóa AES-GCM) và Session MAC Key (để xác thực HMAC).
 
-\subsection{Đo khoảng cách UWB và Quản lý phiên UCI (Phase C)}
-Đây là trọng tâm vật lý của hệ thống. Sau khi xác thực BLE (Phase B), điện thoại gửi gói cấu hình \textit{Out-Of-Band (OOB) Payload} qua đường hầm BLE.
+\subsection{Đo khoảng cách đa mỏ neo và Định vị Trilateration (Phase C)}
+Đây là trọng tâm vật lý của hệ thống. Sau khi xác thực BLE (Phase B), điện thoại gửi lệnh \texttt{RANGING\_START} qua đường hầm CCC. ESP32 (lớp \texttt{UwbBridge}) chuyển thành lệnh \texttt{CMD:START\_RANGING} gửi sang cầu nối PC, cầu nối này khởi tạo phiên DS-TWR multicast trên ba mỏ neo.
 
-Trên ESP32, module \texttt{UciHostBridge} tiếp nhận OOB Payload, trích xuất cấu hình (Session ID, địa chỉ MAC, kênh truyền), và chuyển cho \texttt{UciSessionManager}. \texttt{UciSessionManager} sẽ dịch các cấu hình này thành các khung lệnh theo chuẩn UWB Command Interface (UCI) và gửi đến module DWM3000 qua \textbf{UART1}.
-
-Ngay khi phiên đo khoảng cách bắt đầu, module DWM3000 thực hiện giao thức \textbf{Symmetrical Double-Sided Two-Way Ranging (DS-TWR)} và liên tục trả về các thông báo \texttt{RangingData}. Hàm phân tích (Parser) được thiết kế đặc biệt để phân tích gói tin UCI, lọc bỏ các phép đo không hợp lệ (ví dụ: giai đoạn hiệu chuẩn có Status = 0x1B) bằng cách kiểm tra Byte Trạng thái tại độ dời (offset) 27. Nếu Status là \texttt{0x00} (Thành công), khoảng cách chính xác tính bằng centimet được trích xuất tại offset 29-30.
-
-\subsection{Quyết định mở cửa bằng Hysteresis (Phase D)}
-Dữ liệu khoảng cách UWB thô luôn có độ dao động tự nhiên (Fluctuation) do cơ thể người dùng cản sóng. Nếu hệ thống kích hoạt Relay mở cửa ngay tại khoảnh khắc khoảng cách đạt giới hạn an toàn (ví dụ: $2.0$ mét), rơ-le sẽ bị đóng/ngắt liên tục (Relay Chattering).
-
-Để giải quyết, đề tài triển khai module \texttt{UwbDoorUnlock} sử dụng màng lọc độ trễ trạng thái (Hysteresis/Debouncing logic) nhằm đưa ra quyết định truy cập kết hợp (Conjunctive Access Decision) cuối cùng.
+Trong mỗi vòng đo, điện thoại (Controller) trao đổi xung với cả ba mỏ neo (Responder) theo giao thức \textbf{Symmetrical Double-Sided Two-Way Ranging (DS-TWR)}. Cầu nối PC thu thập ba khoảng cách $d_0, d_1, d_2$, kiểm tra tính tươi (freshness) và phạm vi hợp lệ $[0.1,\,30]$ m, rồi đóng gói thành một dòng văn bản gửi sang ESP32 qua USB-CDC:
 
 \noindent\begin{minipage}{\linewidth}
-\begin{lstlisting}[language=C++, caption={Logic Hysteresis chống nhiễu đóng ngắt rơ-le}]
-void handleRangingDistance(double distanceM) {
-  // 1. Reset state if user steps out of the Cooldown area (> 3.0m)
-  if (distanceM > RESET_THRESHOLD_M) {
+\begin{lstlisting}[language=C++, caption={Khung dữ liệu RANGE và hàm phân tích trên ESP32}]
+// Frame received from PC bridge over USB-CDC:
+//   RANGE:d0=1.82,d1=0.97,d2=3.14,valid=1
+bool UwbBridge::parseRange(const char* line, RangingFrame& frame) {
+    double d0, d1, d2; int valid;
+    if (sscanf(line, "RANGE:d0=%lf,d1=%lf,d2=%lf,valid=%d",
+               &d0, &d1, &d2, &valid) != 4) return false;
+    frame.d[0] = d0; frame.d[1] = d1; frame.d[2] = d2;
+    frame.valid_mask = valid ? 0x07 : 0x00;   // 0b111 when all three are valid
+    frame.t_ms = millis();
+    return true;
+}
+\end{lstlisting}
+\end{minipage}
+
+Cờ \texttt{valid} chỉ được bật khi \textbf{cả ba} khoảng cách đều tươi và nằm trong phạm vi hợp lệ. Khi đủ điều kiện, ESP32 tiến hành định vị hai bước: \texttt{Trilateration::solve} trả về tọa độ $(x, y)$ kèm chất lượng lời giải RMS, sau đó \texttt{Ekf::update} hợp nhất phép đo vào quỹ đạo:
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=C++, caption={Định vị Trilateration và cập nhật EKF}]
+// 1. Trilateration: 3 khoang cach -> toa do (x, y) + chat luong RMS
+Trilateration::Result fix = Trilateration::solve(frame.d, frame.valid_mask);
+
+// 2. EKF: cap nhat vi tri, uoc luong van toc (x, y, vx, vy)
+if (fix.valid) {
+    double sigma = clamp(fix.rms, 0.05, 1.0);   // nhieu do ~ chat luong loi giai
+    ekf.update(fix.x, fix.y, frame.t_ms, sigma);
+}
+ekf.predictTo(millis());   // du bao bu khi mat khung du lieu
+\end{lstlisting}
+\end{minipage}
+
+Bộ lọc Kalman hai chiều chạy ở nhịp cố định 10 Hz, độc lập với nhịp nhận khung dữ liệu, và tự động dự báo bù khi một vài khung bị mất (tối đa 2 giây).
+
+\subsection{Quyết định mở cửa theo vùng hình học (Phase D)}
+Tọa độ $(x, y)$ sau EKF vẫn chứa dao động tự nhiên (Fluctuation) do cơ thể người dùng cản sóng. Nếu hệ thống kích hoạt Relay mở cửa ngay tại khoảnh khắc vị trí chạm giới hạn an toàn (ví dụ: cách điểm mở khóa $2.0$ mét), rơ-le sẽ bị đóng/ngắt liên tục (Relay Chattering).
+
+Để giải quyết, đề tài triển khai module \texttt{AccessController} sử dụng màng lọc độ trễ trạng thái (Hysteresis/Debouncing logic) trên \textbf{khoảng cách Euclid} từ vị trí $(x, y)$ đến điểm mở khóa cửa tài xế $(-0.95, 0)$ (cột B bên trái, trùng với mỏ neo $A_2$), kết hợp thêm \textbf{cổng vận tốc hướng tâm} (radial-velocity approach gate) để từ chối các trường hợp người dùng đang rời xa hoặc đi ngang qua:
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=C++, caption={Logic quyết định mở cửa theo vùng hình học (2D)}]
+void AccessController::handlePosition(double x, double y,
+                                      double vx, double vy) {
+  double dx = x - kUnlockX, dy = y - kUnlockY;      // vector -> diem mo khoa
+  double d  = sqrt(dx*dx + dy*dy);                  // khoang cach Euclid
+  double vr = (vx*dx + vy*dy) / d;                  // van toc huong tam
+
+  // 1. Reset neu nguoi dung buoc ra khoi vung Cooldown (> 3.0 m)
+  if (d > RESET_RADIUS_M) {
     is_door_unlocked = false;
     consecutive_close_reads = 0;
     return;
   }
+  // 2. Cua da mo thi giu nguyen trang thai
+  if (is_door_unlocked) return;
 
-  // 2. If the door is already open, maintain that state; not process further.
-  if (is_door_unlocked) {
+  // 3. Cong van toc huong tam: dang roi xa -> huy bo dem
+  if (vr > APPROACH_SPEED_MIN_MPS) {   // vr > 0.10 m/s = dang di ra xa
+    consecutive_close_reads = 0;
     return;
   }
 
-  // 3. Check the opening area (<= 2.0m)
-  if (distanceM <= UNLOCK_THRESHOLD_M) {
-    consecutive_close_reads++;
-    
-   // Request 3 consecutive valid UWB tests to filter out multiple RF signals
-    if (consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
-      fireRelayPulse(); // Kich hoat GPIO Mo ro-le
+  // 4. Kiem tra vung mo khoa (<= 2.0 m)
+  if (d <= UNLOCK_RADIUS_M) {
+    if (++consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
+      fireRelayPulse();               // kich hoat GPIO26 trong 500 ms
       is_door_unlocked = true;
       consecutive_close_reads = 0;
     }
   } else {
-    // Reset counter if oscillation distance is abnormal
     consecutive_close_reads = 0;
   }
 }
 \end{lstlisting}
 \end{minipage}
 
-Thuật toán yêu cầu khoảng cách đo được phải $\le 2.0$ mét trong $3$ chu kỳ đọc UWB liên tiếp mới kích hoạt Relay. Sau khi cửa đã mở, hệ thống đi vào trạng thái nghỉ (Cooldown) để không lặp lại lệnh mở. Cửa chỉ quay về trạng thái khóa sẵn sàng phục vụ lần mở tiếp theo khi người dùng đã bước ra xa quá giới hạn $3.0$ mét. Logic này tạo ra trải nghiệm \textit{Passive Keyless Entry} mượt mà và an toàn.
+Thuật toán yêu cầu khoảng cách Euclid từ vị trí đã lọc đến điểm mở khóa phải $\le 2.0$ mét trong $3$ chu kỳ liên tiếp, đồng thời vận tốc hướng tâm không được cho thấy người dùng đang rời xa, mới kích hoạt Relay. Sau khi cửa đã mở, hệ thống đi vào trạng thái nghỉ (Cooldown) để không lặp lại lệnh mở. Cửa chỉ quay về trạng thái khóa sẵn sàng phục vụ lần mở tiếp theo khi người dùng đã bước ra xa quá giới hạn $3.0$ mét. Nhờ thông tin vị trí hai chiều, cổng vận tốc hướng tâm còn giúp phân biệt người dùng \textit{thực sự tiến về cửa tài xế} với người \textit{vô tình đi ngang qua vùng 2 mét}, triệt tiêu hiện tượng mở cửa sai (False Positive). Logic này tạo ra trải nghiệm \textit{Passive Keyless Entry} mượt mà và an toàn.
 
 
 
@@ -415,7 +458,7 @@ Khác với các ứng dụng thông thường, giao diện hệ thống này đ
     Chuyên dùng để kiểm tra tính toàn vẹn của Android Keystore và luồng BLE. Màn hình này mô phỏng lại các bước của dịch vụ HCE, kiểm tra sự tồn tại của khóa Identity P-256. Trong Phase B, giao diện cho phép chọn thiết bị, thực hiện luồng bắt tay ECDH và in trực tiếp các log mật mã (Shared Secret, Session Keys, Challenge) ra màn hình Console nội bộ nhằm đối chiếu với log trên ESP32.
     
     \item \textbf{Giao diện Kiểm thử UWB (\texttt{TestUwbScreen}):} 
-    Được thiết kế chuyên biệt để gỡ lỗi quá trình Handoff và đo khoảng cách. Màn hình cho phép các nhà phát triển tự định nghĩa các tham số của \textit{UWB OOB Payload} (Session ID, Phone MAC, Channel), gửi thủ công qua hầm BLE Admin (\texttt{0x0005}) để ra lệnh cho ECU cấu hình chip DWM3000. Ngay khi luồng Ranging kích hoạt, giao diện sẽ cập nhật trực tiếp dữ liệu đo đạc (Khoảng cách, Góc phương vị - Azimuth/Elevation) từ API Native UWB với tần số làm mới cao.
+    Được thiết kế chuyên biệt để gỡ lỗi quá trình Ranging đa mỏ neo. Màn hình cho phép các nhà phát triển kích hoạt phiên đo (Start/Stop Ranging), gửi lệnh qua đường hầm CCC, đồng thời hiển thị trực tiếp ba khoảng cách $d_0, d_1, d_2$ và trạng thái phiên từ API Native UWB (\texttt{android.ranging}) với tần số làm mới cao.
 \end{itemize}
 
 Việc tách biệt hai màn hình kiểm thử này giúp rút ngắn đáng kể thời gian gỡ lỗi phần cứng, đồng thời cung cấp công cụ trực quan để minh chứng sự hoạt động độc lập và liền mạch của các giao thức NFC, BLE và UWB trong hệ thống.
@@ -441,7 +484,7 @@ Việc tách biệt hai màn hình kiểm thử này giúp rút ngắn đáng k�
     \hfill
     \begin{minipage}{0.25\textwidth}
         \includegraphics[width=\linewidth]{image/section5/uwb_screen_1.jpg}
-        \caption{Giao diện gửi oob UWB Ranging (Phase C) (1)}
+        \caption{Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}
         \label{fig:uwb_test1}
     \end{minipage}
     \hfill
@@ -454,7 +497,7 @@ Việc tách biệt hai màn hình kiểm thử này giúp rút ngắn đáng k�
 
 Trong bài kiểm thử Phase B (Hình \ref{fig:ble_test}), ứng dụng tiến hành quét thiết bị BLE, thiết lập kênh an toàn và thực hiện quy trình bắt tay mật mã ECDH. Màn hình Debug hiển thị minh bạch các tham số dẫn xuất như Shared Secret và Session Keys, khẳng định kênh liên lạc đã được mã hóa an toàn.
 
-Ngay sau khi quá trình Hand-off hoàn tất, giao diện chuyển sang bài kiểm thử Phase C (Hình \ref{fig:esp32_log}). Vi mạch UWB liên tục đo lường và trả về khoảng cách vật lý thực tế với độ trễ thấp. Khoảng cách (ví dụ: $1.25$m, $0.8$m...) được cập nhật liên tục trên màn hình điện thoại, chứng minh sự đồng bộ hoàn hảo giữa Android UWB API và vi mạch DWM3000 trên ESP32 thông qua chuẩn lệnh UCI.
+Ngay sau khi quá trình Hand-off hoàn tất, giao diện chuyển sang bài kiểm thử Phase C (Hình \ref{fig:esp32_log}). Điện thoại thực hiện DS-TWR đồng thời với ba mỏ neo, ba khoảng cách (ví dụ: $d_0 = 1.82$m, $d_1 = 0.97$m, $d_2 = 3.14$m) được cập nhật liên tục trên màn hình, chứng minh sự đồng bộ giữa Android UWB API (\texttt{android.ranging}) và ba mỏ neo DWM3001CDK qua cầu nối PC.
 
 \leavevmode
 \begin{figure}[htbp]
@@ -467,10 +510,10 @@ Ngay sau khi quá trình Hand-off hoàn tất, giao diện chuyển sang bài ki
 Đối chứng từ phía vi điều khiển, log từ Serial Monitor của ESP32 (Hình \ref{fig:esp32_log}) xác nhận sự kết hợp chính xác của toàn bộ quy trình. Luồng log ghi nhận các sự kiện theo đúng thứ tự thiết kế:
 \begin{enumerate}
     \item \textbf{Xác thực BLE:} Sinh khóa ephemeral, nhận Handshake, xác minh chữ ký điện thoại, tính toán ECDH và dùng HKDF sinh ra Session Keys.
-    \item \textbf{Cấu hình OOB:} Tiếp nhận payload cấu hình từ đường hầm BLE, khởi động DW3000.
-    \item \textbf{Xử lý tín hiệu thời gian thực (Kalman Filtering):} Dữ liệu khoảng cách thô (Raw Distance) từ chip DW3000 được đưa qua bộ lọc Kalman 1D. Log hệ thống ghi nhận quá trình làm mượt quỹ đạo, triệt tiêu các xung nhiễu vật lý và trích xuất giá trị thặng dư (Residual). Đây là bước tiền xử lý quan trọng để tạo ra bộ dữ liệu đầu vào ổn định cho tầng suy luận AI.
+    \item \textbf{Kích hoạt phiên Ranging:} Tiếp nhận lệnh \texttt{RANGING\_START} qua đường hầm CCC, ESP32 phát lệnh \texttt{CMD:START\_RANGING} sang cầu nối PC để khởi động ba mỏ neo.
+    \item \textbf{Xử lý định vị thời gian thực (Trilateration + Kalman Filtering):} Ba khoảng cách thô $d_0, d_1, d_2$ từ cầu nối PC được đưa qua thuật toán Trilateration để giải tọa độ $(x, y)$, sau đó cập nhật bộ lọc Kalman hai chiều. Log hệ thống ghi nhận quá trình làm mượt quỹ đạo, triệt tiêu các xung nhiễu vật lý và ước lượng vận tốc $(v_x, v_y)$. Đây là bước tiền xử lý quan trọng để tạo ra bộ dữ liệu đầu vào ổn định cho tầng quyết định truy cập.
     \item \textbf{Suy luận hành vi (On-device Inference):} Sau khi tích lũy đủ cửa sổ thời gian 25 frames, module \texttt{LstmInference} bắt đầu thực hiện dự báo. Log Console hiển thị chi tiết các xác suất phân loại: $P_{walk}$ (người dùng tiến lại gần), $P_{loiter}$ (lảng vảng) và $P_{attack}$ (tấn công tiếp sóng). Kết quả thực nghiệm cho thấy mô hình phản hồi xác suất $P_{walk} > 0.85$ khi người dùng di chuyển ổn định về phía xe.
-    \item \textbf{Quyết định truy cập thông minh (AI-driven Decision):} Thay vì chỉ dựa vào ngưỡng khoảng cách, log thực thi cho thấy lệnh mở GPIO rơ-le chỉ được phát ra khi đồng thời thỏa mãn: Khoảng cách sau lọc $\le 2.0$m VÀ xác suất $P_{walk}$ đạt ngưỡng tin cậy cao. Điều này minh chứng cho khả năng chống mở cửa sai (False Positive) khi người dùng chỉ đứng lảng vảng gần xe.
+    \item \textbf{Quyết định truy cập thông minh (AI-driven Decision):} Thay vì chỉ dựa vào ngưỡng khoảng cách vô hướng, log thực thi cho thấy lệnh mở GPIO rơ-le chỉ được phát ra khi đồng thời thỏa mãn: Khoảng cách Euclid từ vị trí $(x, y)$ đến điểm mở khóa $\le 2.0$m, cổng vận tốc hướng tâm xác nhận người dùng đang tiến lại gần VÀ xác suất $P_{walk}$ đạt ngưỡng tin cậy cao. Điều này minh chứng cho khả năng chống mở cửa sai (False Positive) khi người dùng chỉ đứng lảng vảng gần xe.
 \end{enumerate}
 
 Để trực quan hóa hiệu quả của tầng xử lý thông minh, đồ thị thực nghiệm dưới đây so sánh sự khác biệt giữa dữ liệu thô và dữ liệu sau xử lý:
