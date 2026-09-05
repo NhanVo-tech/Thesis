@@ -196,7 +196,8 @@ class EspLink:
 class DemoBridge:
     """Starts/stops the anchors and forwards distances to the ESP32."""
 
-    def __init__(self, clients, macs, states, dest_mac, esp, args, viz_queue):
+    def __init__(self, clients, macs, states, dest_mac, esp, args, viz_queue,
+                 capture=None):
         self._clients = clients
         self._macs = macs
         self._states = states
@@ -204,6 +205,7 @@ class DemoBridge:
         self._esp = esp
         self._args = args
         self._viz = viz_queue
+        self._capture = capture
         self._sessions = [None] * len(clients)
         self._ranging = False
         self._lock = threading.Lock()
@@ -248,6 +250,9 @@ class DemoBridge:
                 continue
             if self._args.esp_debug:
                 print(f"[ESP] {line}")
+            if self._capture is not None:
+                self._capture.write(line + "\n")
+                self._capture.flush()
             if line == "CMD:START_RANGING":
                 print("[ESP] CMD:START_RANGING")
                 self.start_ranging()
@@ -426,6 +431,8 @@ def main():
     ap.add_argument("--esp-debug", action="store_true",
                     help="echo every ESP32 line to the console (like run_fira_bridge.py)")
     ap.add_argument("--log", default=None, help="replay a captured log file")
+    ap.add_argument("--capture", default=None,
+                    help="tee raw ESP32 lines to this file (for collect_traj.py)")
     args = ap.parse_args()
 
     if args.log is None and (not args.ports or not args.esp_port):
@@ -436,6 +443,7 @@ def main():
     viz = queue.Queue()
     bridge = None
     bridge_threads = []
+    capture_fh = None
 
     if args.log:
         # Replay: parse the log in a background thread at a gentle pace.
@@ -487,7 +495,13 @@ def main():
                 c.close()
             sys.exit(1)
 
-        bridge = DemoBridge(clients, macs, states, dest_mac, esp, args, viz)
+        capture_fh = None
+        if args.capture:
+            capture_fh = open(args.capture, "a", encoding="utf-8")
+            print(f"Capturing raw ESP32 lines -> {args.capture}")
+
+        bridge = DemoBridge(clients, macs, states, dest_mac, esp, args, viz,
+                            capture=capture_fh)
         bridge_threads = [
             threading.Thread(target=bridge.command_loop, daemon=True),
             threading.Thread(target=bridge.forward_loop, daemon=True),
@@ -571,6 +585,11 @@ def main():
     finally:
         if bridge:
             bridge.close()
+        if args.capture and capture_fh is not None:
+            try:
+                capture_fh.close()
+            except Exception:
+                pass
         print("Stopped.")
 
 
