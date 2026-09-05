@@ -33,7 +33,15 @@ bool parseRange(const char* line, RangingFrame* out) {
   out->d[0] = d0;
   out->d[1] = d1;
   out->d[2] = d2;
-  out->valid_mask = valid ? 0x07 : 0x00;
+  // Per-anchor mask: keep a channel only if the bridge reported the round
+  // valid AND that channel has a positive distance. This lets solve() fall
+  // back to its 2-anchor path when one anchor is lost/corrupted (d == 0).
+  out->valid_mask = 0;
+  if (valid) {
+    if (d0 > 0.0) out->valid_mask |= 1u << 0;
+    if (d1 > 0.0) out->valid_mask |= 1u << 1;
+    if (d2 > 0.0) out->valid_mask |= 1u << 2;
+  }
   return true;
 }
 

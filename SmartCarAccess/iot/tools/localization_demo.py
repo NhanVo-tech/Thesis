@@ -22,6 +22,12 @@ Replay a previously captured log instead of running live:
 
     python localization_demo.py --log capture.log
 
+Simulate a lost anchor (default: right-side anchor, index 1) without touching
+hardware — its distance is forced to 0 so the ESP32 falls back to its 2-anchor
+trilateration path:
+
+    python localization_demo.py ... --drop-anchor 1   # -1 disables
+
 Parsed ESP32 lines (same format as analyze_ekf.py):
     [POS2D] t=<ms> x=.. y=.. rms=..
     [EKF]   t=<ms> x=.. y=.. vx=.. vy=.. v=..
@@ -295,6 +301,8 @@ class DemoBridge:
             dists = [0.0, 0.0, 0.0]
             all_valid = len(self._states) == 3
             for i, s in enumerate(self._states):
+                if i == self._args.drop_anchor:
+                    continue  # simulated lost anchor: keep d=0, skip validity
                 d, ts = s.snapshot()
                 fresh = d is not None and (now - ts) <= fresh_s
                 in_bounds = fresh and (dmin <= d <= dmax)
@@ -321,7 +329,7 @@ class DemoBridge:
 # -----------------------------------------------------------------------------
 # Visualization
 # -----------------------------------------------------------------------------
-def build_figure():
+def build_figure(drop_anchor=-1):
     fig = plt.figure(figsize=(7.2, 10), facecolor="#faf7f0")
     gs = fig.add_gridspec(2, 1, height_ratios=[7, 3], hspace=0.12,
                           left=0.06, right=0.94, top=0.98, bottom=0.03)
@@ -355,6 +363,14 @@ def build_figure():
                             ec="#2e7d32", lw=1.2, alpha=0.8))
         ax.plot(axx, ayy, marker="o", ms=9, color="#43a047",
                 mec="#1b5e20", mew=1.5, zorder=6)
+
+    # Mark a simulated dropped anchor with a red X.
+    if drop_anchor is not None and 0 <= drop_anchor < len(ANCHORS):
+        axx, ayy = ANCHORS[drop_anchor]
+        ax.plot([axx - 0.24, axx + 0.24], [ayy - 0.24, ayy + 0.24],
+                color="#d32f2f", lw=2.2, zorder=7)
+        ax.plot([axx - 0.24, axx + 0.24], [ayy + 0.24, ayy - 0.24],
+                color="#d32f2f", lw=2.2, zorder=7)
 
     # Unlock zone around the driver door.
     ax.add_patch(Circle(UNLOCK_POINT, UNLOCK_RADIUS, fill=False,
@@ -428,6 +444,9 @@ def main():
     ap.add_argument("--dmin", type=float, default=0.1)
     ap.add_argument("--dmax", type=float, default=30.0)
     ap.add_argument("--autostart", action="store_true")
+    ap.add_argument("--drop-anchor", type=int, default=1,
+                    help="simulate a lost anchor: force its distance to 0 "
+                         "(default 1 = right side; -1 to disable)")
     ap.add_argument("--esp-debug", action="store_true",
                     help="echo every ESP32 line to the console (like run_fira_bridge.py)")
     ap.add_argument("--log", default=None, help="replay a captured log file")
@@ -438,7 +457,7 @@ def main():
     if args.log is None and (not args.ports or not args.esp_port):
         ap.error("provide --log (replay) or -p PORTS --esp-port (live)")
 
-    fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text = build_figure()
+    fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text = build_figure(args.drop_anchor)
 
     viz = queue.Queue()
     bridge = None
@@ -571,7 +590,10 @@ def main():
         # Access-state banner.
         door = access["door"].replace("_", " ")
         ign = "AUTHORIZED" if access["ignition"] else "OFF"
-        status_text.set_text(f"DOOR: {door}\nIGNITION: {ign}")
+        banner = f"DOOR: {door}\nIGNITION: {ign}"
+        if 0 <= args.drop_anchor < len(ANCHORS):
+            banner += f"\nDROPPED: anchor {args.drop_anchor} (sim)"
+        status_text.set_text(banner)
 
         return [raw_sc, ekf_line, ekf_pt, cone, status_text]
 
