@@ -1,42 +1,67 @@
-\documentclass[a4paper,12pt]{article}
-\usepackage[utf8]{inputenc}
-\usepackage[T5]{fontenc}
-\usepackage{vntex}
-\usepackage[a4paper,left=25mm,right=25mm,top=18mm,bottom=18mm]{geometry}
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
 \usepackage{graphicx}
-\usepackage{array}
+\usepackage{tikz}
+
+\IfFontExistsTF{Times New Roman}
+  {\setmainfont{Times New Roman}[Ligatures=NoCommon]}
+  {\setmainfont{TeX Gyre Termes}[Ligatures=NoCommon]}
 
 \pagestyle{empty}
 \setlength{\parindent}{0pt}
 
+\newcommand{\coverline}[3][]{%
+  \node[anchor=base, inner sep=0pt, #1] at (335.3,#2) {#3};%
+}
+\newcommand{\detailLine}[2]{%
+  \node[anchor=base west, inner sep=0pt] at (244.61,#1) {#2};%
+}
+
 \begin{document}
+\null
+\begin{tikzpicture}[remember picture, overlay]
+  \begin{scope}[shift={(current page.south west)}, x=1bp, y=1bp,
+    every node/.style={font=\fontsize{15bp}{17.28bp}\selectfont\bfseries}]
+    \fill[even odd rule]
+      (69.75,42.75) rectangle (600.75,753.75)
+      (70.65,43.651) rectangle (599.85,752.85);
+    \fill[even odd rule]
+      (71.55,44.55) rectangle (598.95,751.95)
+      (74.25,47.25) rectangle (596.25,749.25);
 
-\begin{center}
-\textbf{\large ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH}\\[0.15cm]
-\textbf{\large TRƯỜNG ĐẠI HỌC BÁCH KHOA}\\[0.15cm]
-\textbf{\large KHOA KHOA HỌC \& KỸ THUẬT MÁY TÍNH}\\[0.9cm]
+    \coverline{731.64}{ĐẠI HỌC QUỐC GIA TP.HCM}
+    \coverline{714.36}{TRƯỜNG ĐẠI HỌC BÁCH KHOA}
+    \coverline{697.18}{KHOA KHOA HỌC VÀ KỸ THUẬT MÁY TÍNH}
 
-\includegraphics[width=3.2cm]{image/hcmut.png}\\[1.1cm]
+    \node[anchor=south west, inner sep=0pt] at (283.32,585.71)
+      {\includegraphics[width=103.83bp,height=94.4bp]{image/hcmut.png}};
 
-\textbf{\LARGE ĐỒ ÁN TỐT NGHIỆP KỸ THUẬT MÁY TÍNH}\\[0.35cm]
-\textbf{\LARGE Mã đề tài: HK253 - DATN - 125}\\[1.3cm]
+    \coverline{554.38}{BÁO CÁO}
+    \coverline{537.19}{LUẬN VĂN TỐT NGHIỆP ĐẠI HỌC}
 
-\rule{\linewidth}{1pt}\\[1.1cm]
-\textbf{\huge Nghiên cứu và Phát triển hệ thống}\\[0.25cm]
-\textbf{\huge Định vị đa điểm (Multi-anchor) và}\\[0.25cm]
-\textbf{\huge Nhận diện ý định hành vi dựa trên TinyML}\\[0.25cm]
-\textbf{\huge cho giải pháp Smart Car Access}\\[1.1cm]
-\rule{\linewidth}{1pt}\\[1.6cm]
+    \coverline[font=\fontsize{20.04bp}{23.04bp}\selectfont\bfseries]
+    {472.03}{NGHIÊN CỨU VÀ PHÁT TRIỂN}
+    \coverline[font=\fontsize{20.04bp}{23.04bp}\selectfont\bfseries]
+    {448.99}{HỆ THỐNG ĐỊNH VỊ ĐA ĐIỂM}
+    \coverline[font=\fontsize{20.04bp}{23.04bp}\selectfont\bfseries]
+    {425.95}{VÀ NHẬN DIỆN Ý ĐỊNH HÀNH VI}
+    \coverline[font=\fontsize{20.04bp}{23.04bp}\selectfont\bfseries]
+    {402.91}{DỰA TRÊN TINYML}
+    \coverline[font=\fontsize{20.04bp}{23.04bp}\selectfont\bfseries]
+    {379.87}{CHO GIẢI PHÁP SMART CAR ACCESS}
 
-\begin{tabular}{@{}r l@{}}
-\textbf{Giảng viên hướng dẫn:} & TS. Lê Trọng Nhân \\[0.35cm]
-\textbf{Sinh viên thực hiện:} & Võ Thành Nhân -- 2111914 \\
-\end{tabular}
+    \coverline[font=\fontsize{15bp}{17.28bp}\selectfont]
+      {345.05}{Ngành : KỸ THUẬT MÁY TÍNH}
 
-\vfill
+    \detailLine{272.69}{HỘI ĐỒNG: 5L KỸ THUẬT MÁY TÍNH}
+    \detailLine{255.41}{GVHD: TS. LÊ TRỌNG NHÂN}
+    \node[anchor=base, inner sep=0pt] at (390.85,220.85)
+      {-{}-{}-o0o-{}-{}-};
+    \detailLine{203.66}{SVTH: VÕ THÀNH NHÂN - 2111914}
 
-\textbf{Thành phố Hồ Chí Minh -- Tháng 9/2026}
-
-\end{center}
-
+    \coverline[font=\fontsize{15bp}{17.28bp}\selectfont]
+      {72.504}{TP. HỒ CHÍ MINH, 09/2026}
+  \end{scope}
+\end{tikzpicture}
 \end{document}

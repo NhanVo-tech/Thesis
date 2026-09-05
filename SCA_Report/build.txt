@@ -16,8 +16,8 @@ Step 1 — Build the cover page (biachinh.pdf)   [only when the cover changes]
 The cover is a standalone document (biachinh.tex). Build it and copy the result
 into the "pdf files" folder:
 
-  & "C:\Users\Legion\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" -interaction=nonstopmode -halt-on-error biachinh.tex
-  Copy-Item -LiteralPath "C:\DATN\SCA_Report\biachinh.pdf" -Destination "C:\DATN\SCA_Report\pdf files\biachinh.pdf" -Force
+& "C:\Users\Legion\AppData\Local\Programs\MiKTeX\miktex\bin\x64\xelatex.exe" -interaction=nonstopmode -halt-on-error biachinh.tex
+Copy-Item -LiteralPath "C:\DATN\SCA_Report\biachinh.pdf" -Destination "C:\DATN\SCA_Report\pdf files\biachinh.pdf" -Force
 
 Step 2 — Build the report (main.pdf)
 ------------------------------------
