@@ -1,0 +1,69 @@
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1.1}{\ignorespaces Hệ sinh thái xe kết nối (Connected Vehicle Ecosystem)}}{17}{figure.caption.10}%
+\contentsline {figure}{\numberline {1.2}{\ignorespaces Công nghệ chìa khóa qua các thời kì}}{17}{figure.caption.11}%
+\contentsline {figure}{\numberline {1.3}{\ignorespaces Sơ đồ minh họa tấn công chuyển tiếp (Relay Attack) trên hệ thống Keyless Entry}}{18}{figure.caption.12}%
+\contentsline {figure}{\numberline {1.4}{\ignorespaces Trade-off giữa bảo mật, chi phí và tính khả thi của các giải pháp Digital Key}}{20}{figure.caption.13}%
+\contentsline {figure}{\numberline {1.5}{\ignorespaces Tăng trưởng thị trường ô tô Việt Nam (Nguồn: VAMA 2023)}}{21}{figure.caption.14}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Kiến trúc giao tiếp NFC, BLE và UWB theo chuẩn CCC 3.0}}{27}{figure.caption.15}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces NFC Frequency Spectrum Diagram}}{28}{figure.caption.16}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces Sơ đồ minh họa trường từ tính giữa Reader và Tag}}{29}{figure.caption.18}%
+\contentsline {figure}{\numberline {2.4}{\ignorespaces NFC Reader/Writer Mode}}{30}{figure.caption.19}%
+\contentsline {figure}{\numberline {2.5}{\ignorespaces So sánh 3 chế độ của NFC}}{31}{figure.caption.20}%
+\contentsline {figure}{\numberline {2.6}{\ignorespaces Sự phát triển của công nghệ Bluetooth qua các thời kỳ}}{34}{figure.caption.23}%
+\contentsline {figure}{\numberline {2.7}{\ignorespaces Biểu đồ 40 kênh BLE}}{35}{figure.caption.25}%
+\contentsline {figure}{\numberline {2.8}{\ignorespaces Sơ đồ Layered Architecture của BLE}}{36}{figure.caption.26}%
+\contentsline {figure}{\numberline {2.9}{\ignorespaces Diagram GATT Hierarchy}}{38}{figure.caption.28}%
+\contentsline {figure}{\numberline {2.10}{\ignorespaces BLE Connection Flow}}{40}{figure.caption.29}%
+\contentsline {figure}{\numberline {2.11}{\ignorespaces UWB Spectrum vs Narrowband}}{42}{figure.caption.30}%
+\contentsline {figure}{\numberline {2.12}{\ignorespaces Dạng sóng miền thời gian của xung UWB (Gaussian monocycle)}}{43}{figure.caption.32}%
+\contentsline {figure}{\numberline {2.13}{\ignorespaces Sơ đồ trao đổi gói tin của giao thức Symmetrical DS-TWR}}{44}{figure.caption.33}%
+\contentsline {figure}{\numberline {2.14}{\ignorespaces Nguyên lý đo khoảng cách một–nhiều (One-to-Many Ranging)}}{46}{figure.caption.34}%
+\contentsline {figure}{\numberline {2.15}{\ignorespaces Nguyên lý đo khoảng cách đồng thời (Concurrent Ranging)}}{47}{figure.caption.35}%
+\contentsline {figure}{\numberline {2.16}{\ignorespaces Vai trò của UWB trong hệ thống Digital Key}}{49}{figure.caption.36}%
+\contentsline {figure}{\numberline {2.17}{\ignorespaces Nguyên lý Trilateration với ba mỏ neo}}{51}{figure.caption.37}%
+\contentsline {figure}{\numberline {2.18}{\ignorespaces Hệ tọa độ xe và bố trí ba mỏ neo UWB}}{54}{figure.caption.38}%
+\contentsline {figure}{\numberline {2.19}{\ignorespaces So sánh độ bảo mật giữa ECC và RSA}}{59}{figure.caption.41}%
+\contentsline {figure}{\numberline {2.20}{\ignorespaces Đồ thị đường cong Elliptic}}{60}{figure.caption.42}%
+\contentsline {figure}{\numberline {2.21}{\ignorespaces Sơ đồ giao thức ECDH}}{61}{figure.caption.43}%
+\contentsline {figure}{\numberline {2.22}{\ignorespaces Cấu trúc AES-GCM}}{65}{figure.caption.44}%
+\contentsline {figure}{\numberline {2.23}{\ignorespaces Cấu trúc HMAC}}{67}{figure.caption.45}%
+\contentsline {figure}{\numberline {2.24}{\ignorespaces Cấu trúc HKDF Extract}}{68}{figure.caption.46}%
+\contentsline {figure}{\numberline {2.25}{\ignorespaces Cấu trúc HKDF Expand}}{69}{figure.caption.47}%
+\contentsline {figure}{\numberline {2.26}{\ignorespaces Kiến trúc tổng thể của Flutter Framework}}{71}{figure.caption.49}%
+\contentsline {figure}{\numberline {2.27}{\ignorespaces Kiến trúc các dịch vụ Firebase trong hệ thống}}{72}{figure.caption.50}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Sơ đồ khối kiến trúc hệ thống Smart Car Access Tri-Radio}}{80}{figure.caption.51}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Sơ đồ Sequence Phase A}}{87}{figure.caption.54}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Sơ đồ Sequence Phase B}}{89}{figure.caption.55}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Sơ đồ Sequence Phase C}}{91}{figure.caption.56}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Sơ đồ Sequence Phase D tích hợp suy luận AI}}{93}{figure.caption.57}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}}{97}{figure.caption.58}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{105}{figure.caption.62}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{105}{figure.caption.63}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{105}{figure.caption.63}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Module NFC PN532}}{106}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}}{106}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Giao diện kiểm thử xác thực BLE (Phase B)}}{115}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{115}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{115}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{115}{figure.caption.66}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Đồ thị đối chứng dữ liệu UWB thô, filter và xác suất suy luận từ mô hình TinyML}}{117}{figure.caption.67}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Giao diện màn hình chính}}{121}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Giao diện hồ sơ người dùng (1)}}{121}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Giao diện hồ sơ người dùng (2)}}{121}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces Giao diện cài đặt hệ thống (1)}}{121}{figure.caption.69}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces Giao diện cài đặt hệ thống (2)}}{121}{figure.caption.69}%
+\contentsline {figure}{\numberline {5.6}{\ignorespaces Giao diện lựa chọn ngôn ngữ}}{121}{figure.caption.69}%
+\contentsline {figure}{\numberline {5.7}{\ignorespaces Ma trận nhầm lẫn với độ chính xác là 84.3\%}}{127}{figure.caption.74}%
+\contentsline {figure}{\numberline {5.8}{\ignorespaces Báo cáo phân loại (walk, loiter, relay attack)}}{127}{figure.caption.74}%
+\contentsline {figure}{\numberline {5.9}{\ignorespaces Đồ thị phân tích hành vi bình thường: Lảng vảng (Loiter) và Tiếp cận (Walk)}}{128}{figure.caption.75}%
+\contentsline {figure}{\numberline {5.10}{\ignorespaces Đồ thị phân tích kịch bản Tấn công tiếp sóng (Relay Attack)}}{129}{figure.caption.76}%
+\contentsline {figure}{\numberline {5.11}{\ignorespaces Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}}{130}{figure.caption.77}%
+\contentsline {figure}{\numberline {5.12}{\ignorespaces Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}}{130}{figure.caption.78}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsfinish 
+\contentsfinish 

@@ -134,7 +134,7 @@ Firmware của ECU được thiết kế theo kiến trúc Event-Driven \& Multi
     \item \textbf{NFC Task:} Quản lý giao tiếp APDU với điện thoại trong Phase A, trao đổi khóa công khai và thiết lập các tham số Fast Path Artifact.
     \item \textbf{BLE Task (Crypto Engine):} Hoạt động trên nền thư viện NimBLE, cung cấp CCC Auth Service và Admin Service. Task này chịu trách nhiệm tính toán mật mã (mbedTLS): tạo cặp khóa ECDH Ephemeral, tính Shared Secret, băm HKDF-SHA256 sinh Session Keys, và xác thực chữ ký ECDSA.
     \item \textbf{UWB Task:} Đọc luồng khung dữ liệu \texttt{RANGE:d0,d1,d2,valid} từ kênh USB-CDC do cầu nối PC gửi sang, phân tích cú pháp, đưa qua thuật toán \textbf{Trilateration} để giải tọa độ $(x, y)$, cập nhật \textbf{Bộ lọc Kalman hai chiều (EKF)} để ước lượng trạng thái $(x, y, v_x, v_y)$, rồi bàn giao cho khối quyết định truy cập \texttt{AccessController}.
-    \item \textbf{Door Unlock Module (Geometric Hysteresis Logic):} Đảm nhiệm quyết định mở cửa. Thuật toán yêu cầu khoảng cách Euclid từ vị trí $(x, y)$ đến điểm mở khóa phải $\le 2.0$m trong 3 chu kỳ liên tiếp (Debounce) kết hợp cổng vận tốc hướng tâm (approach gate, từ chối người đang rời xa), mới kích hoạt GPIO, và chỉ reset khi điện thoại ra khỏi vùng an toàn ($> 3.0$m).
+    \item \textbf{Access Controller (Máy trạng thái truy cập + Geofencing):} Đảm nhiệm quyết định truy cập hình học. Module \texttt{Geofence} phân lớp vị trí $(x, y)$ thành các vùng ảo (\texttt{DRIVER\_SEAT}, \texttt{DRIVER\_DOOR}, \texttt{WELCOME}, \texttt{OUTSIDE}) với bộ đệm Hysteresis. Trên nền các vùng này, module \texttt{AccessController} triển khai máy trạng thái ba trạng thái (\texttt{LOCKED}, \texttt{DOOR\_UNLOCKED}, \texttt{OCCUPIED}): mở khóa khi người dùng giảm tốc gần như dừng ($<0.4$ m/s) gần cửa trong 3 chu kỳ liên tiếp, khóa cửa và cấp quyền khởi động (GPIO27) khi người dùng đứng yên ở ghế lái 3 giây, rồi khóa xe và thu hồi quyền khi người dùng rời đi.
     \item \textbf{CCC Mailbox:} Quản lý bộ nhớ Non-Volatile Storage (NVS) để lưu trữ tĩnh ID Xe, Public Key của điện thoại và các thông số cài đặt.
 \end{itemize}
 
@@ -165,8 +165,8 @@ Firmware của ECU được thiết kế theo kiến trúc Event-Driven \& Multi
     \item \textbf{Phase C: Xác thực khoảng cách và định vị (Physical Distance Bounding \& Localization) - UWB} \\
     Sau khi Phase B thành công, điện thoại gửi lệnh \texttt{RANGING\_START} qua đường hầm CCC. ESP32 ra lệnh cho cầu nối PC khởi động phiên đo trên ba mỏ neo. Giao thức DS-TWR (Double-Sided Two-Way Ranging) multicast hoạt động, liên tục trả về ba khoảng cách ($d_0, d_1, d_2$) được hợp nhất thành tọa độ $(x, y)$ qua Trilateration và làm mượt bằng EKF.
     
-    \item \textbf{Phase D: Quyết định mở cửa (Conjunctive Access Decision)} \\
-    Vị trí $(x, y)$ sau EKF được đẩy vào khối quyết định truy cập \texttt{AccessController}. Nếu khoảng cách Euclid đến điểm mở khóa cửa tài xế $< 2.0$m trong 3 chu kỳ liên tiếp, cổng vận tốc hướng tâm xác nhận người dùng đang tiến lại gần \textbf{VÀ} FSM đang ở trạng thái \texttt{AUTH\_SECURE\_CHANNEL\_READY} (Đã xác thực BLE), ESP32 mới cấp điện cho GPIO kích hoạt Relay mở cửa.
+    \item \textbf{Phase D: Quyết định truy cập (Access State Machine)} \\
+    Vị trí $(x, y, v_x, v_y)$ sau EKF được đẩy vào khối \texttt{Geofence} để phân vùng và bàn giao cho máy trạng thái \texttt{AccessController}. Máy trạng thái chuyển \texttt{LOCKED} $\rightarrow$ \texttt{DOOR\_UNLOCKED} khi người dùng giảm tốc gần như dừng ($<0.4$ m/s) ở vùng cửa trong 3 chu kỳ liên tiếp; chuyển \texttt{DOOR\_UNLOCKED} $\rightarrow$ \texttt{OCCUPIED} (khóa cửa + cấp quyền khởi động) khi người dùng đứng yên ở ghế lái 3 giây; và chuyển về \texttt{LOCKED} khi người dùng rời đi, đồng thời FSM phải đang ở trạng thái \texttt{AUTH\_SECURE\_CHANNEL\_READY} (Đã xác thực BLE) thì ESP32 mới cấp điện cho GPIO kích hoạt Relay.
 \end{enumerate}
 
 
@@ -507,6 +507,6 @@ Quản lý quá trình bắt tay mật mã (Cryptographic Handshake) tầm xa:
 Tiếp quản phiên làm việc từ Phase B để quyết định mở khóa:
 \begin{itemize}
   \item \textbf{UWB\_RANGING\_ACTIVE}: Kích hoạt sau khi nhận được lệnh \texttt{RANGING\_START}. ESP32 gửi \texttt{CMD:START\_RANGING} sang cầu nối PC và liên tục nhận các khung \texttt{RANGE:d0,d1,d2,valid}, thực hiện Trilateration và cập nhật EKF để thu được vị trí $(x, y)$ theo giao thức DS-TWR đa mỏ neo.
-  \item \textbf{UNLOCKING\_CHECK\_PROXIMITY}: Module \texttt{AccessController} thực hiện kiểm tra Hysteresis hình học trên vị trí $(x, y)$. Nếu khoảng cách Euclid đến điểm mở khóa thỏa mãn điều kiện an toàn (ví dụ: $\le 2.0$m trong 3 chu kỳ liên tiếp, kết hợp cổng vận tốc hướng tâm), kích hoạt sự kiện \texttt{PROXIMITY\_OK}.
+  \item \textbf{UNLOCKING\_CHECK\_PROXIMITY}: Module \texttt{AccessController} thực hiện phân vùng (\texttt{Geofence}) và kiểm tra máy trạng thái truy cập trên vị trí $(x, y, v_x, v_y)$. Nếu người dùng giảm tốc gần như dừng ($<0.4$ m/s) trong vùng cửa 3 chu kỳ liên tiếp, kích hoạt sự kiện \texttt{PROXIMITY\_OK}.
   \item \textbf{UNLOCKING\_EXECUTE \& COMPLETE}: FSM gọi hàm cấp điện áp High cho chân GPIO điều khiển Rơ-le cửa, sau đó ghi nhận hoàn tất và đưa hệ thống vào trạng thái \textit{Cooldown} (khóa logic tạm thời).
 \end{itemize}

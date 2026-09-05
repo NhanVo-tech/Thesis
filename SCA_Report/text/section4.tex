@@ -359,49 +359,86 @@ ekf.predictTo(millis());   // du bao bu khi mat khung du lieu
 
 Bộ lọc Kalman hai chiều chạy ở nhịp cố định 10 Hz, độc lập với nhịp nhận khung dữ liệu, và tự động dự báo bù khi một vài khung bị mất (tối đa 2 giây).
 
-\subsection{Quyết định mở cửa theo vùng hình học (Phase D)}
-Tọa độ $(x, y)$ sau EKF vẫn chứa dao động tự nhiên (Fluctuation) do cơ thể người dùng cản sóng. Nếu hệ thống kích hoạt Relay mở cửa ngay tại khoảnh khắc vị trí chạm giới hạn an toàn (ví dụ: cách điểm mở khóa $2.0$ mét), rơ-le sẽ bị đóng/ngắt liên tục (Relay Chattering).
+\subsection{Quyết định truy cập theo vùng hình học (Phase D)}
 
-Để giải quyết, đề tài triển khai module \texttt{AccessController} sử dụng màng lọc độ trễ trạng thái (Hysteresis/Debouncing logic) trên \textbf{khoảng cách Euclid} từ vị trí $(x, y)$ đến điểm mở khóa cửa tài xế $(-0.95, 0)$ (cột B bên trái, trùng với mỏ neo $A_2$), kết hợp thêm \textbf{cổng vận tốc hướng tâm} (radial-velocity approach gate) để từ chối các trường hợp người dùng đang rời xa hoặc đi ngang qua:
+Sau khi bộ lọc Kalman hai chiều cung cấp trạng thái mượt $(x, y, v_x, v_y)$ ở nhịp 10 Hz, hệ thống thực hiện \textbf{phân vùng không gian} (Geofencing) và ra quyết định truy cập thông qua một \textbf{máy trạng thái truy cập} gồm ba trạng thái. Đây là tầng lõi tất định (deterministic) của hệ thống, hoạt động độc lập với tầng học sâu, đảm bảo tính an toàn cơ học (fail-safe) ngay cả khi tầng AI chưa sẵn sàng.
+
+\subsubsection{Phân vùng không gian (Geofencing)}
+
+Module \texttt{Geofence} ánh xạ tọa độ đã lọc $(x, y)$ vào bốn vùng ảo trong hệ quy chiếu gắn với xe (gốc tọa độ tại tâm xe, $+x$ hướng sang phải, $+y$ hướng về phía trước):
+
+\begin{itemize}
+    \item \textbf{DRIVER\_SEAT:} vùng ghế lái, tâm $(-0.35,\,0)$ bán kính $0.45$ m --- đại diện vị trí người dùng ngồi vào xe.
+    \item \textbf{DRIVER\_DOOR:} vùng cửa tài xế, tâm $(-0.95,\,0)$ bán kính $2.0$ m (trùng với mỏ neo $A_2$ --- cột B bên trái).
+    \item \textbf{WELCOME:} vùng chào đón, bán kính $4.0$ m tính từ tâm xe.
+    \item \textbf{OUTSIDE:} bên ngoài vùng chào đón.
+\end{itemize}
+
+Bộ lọc \texttt{Hysteresis} chỉ chấp nhận vùng ổn định (đồng nhất trong 3 chu kỳ liên tiếp) nhằm triệt tiêu hiện tượng chuyển vùng liên tục tại biên giới (boundary chatter).
+
+\subsubsection{Máy trạng thái truy cập (Access State Machine)}
+
+Module \texttt{AccessController} duy trì ba trạng thái hoạt động:
+
+\begin{itemize}
+    \item \textbf{LOCKED:} cửa khóa, chưa cấp quyền khởi động.
+    \item \textbf{DOOR\_UNLOCKED:} cửa đã mở, người dùng chưa ngồi vào ghế lái.
+    \item \textbf{OCCUPIED:} người dùng đã ngồi vào ghế lái --- cửa khóa lại và cấp quyền khởi động động cơ.
+\end{itemize}
+
+Các chuyển trạng thái được điều khiển bởi các cổng tất định:
+
+\begin{enumerate}
+    \item \textbf{Mở khóa} (\texttt{LOCKED $\rightarrow$ DOOR\_UNLOCKED}): chỉ khi người dùng ở vùng cửa (\texttt{DRIVER\_DOOR}/\texttt{DRIVER\_SEAT}), \textbf{giảm tốc gần như dừng hẳn} (tốc độ $< 0.4$ m/s) trong 3 chu kỳ liên tiếp, đồng thời không có chuyển động rời xa (cổng vận tốc hướng tâm).
+    \item \textbf{Định cư ghế lái} (\texttt{DOOR\_UNLOCKED $\rightarrow$ OCCUPIED}): khi người dùng đứng yên trong vùng \texttt{DRIVER\_SEAT} liên tục 3 giây. Lúc này hệ thống khóa cửa và cấp quyền khởi động (chân \texttt{GPIO27}).
+    \item \textbf{Rời đi} (\texttt{OCCUPIED $\rightarrow$ LOCKED}): khi người dùng ra khỏi vùng chào đón (\texttt{OUTSIDE}) và có vận tốc hướng ra xa trong 3 chu kỳ liên tiếp. Hệ thống thu hồi quyền khởi động và khóa cửa.
+    \item \textbf{Hủy bỏ} (\texttt{DOOR\_UNLOCKED $\rightarrow$ LOCKED}): người dùng bỏ đi mà không ngồi vào ghế --- hệ thống khóa cửa trở lại.
+\end{enumerate}
+
+Trong đó, \textbf{cổng giảm tốc} (deceleration gate) là bổ sung quan trọng: yêu cầu người dùng phải giảm tốc gần như dừng hẳn ở gần cửa mới được mở khóa, nhờ đó loại bỏ triệt để các trường hợp người dùng chỉ \textit{đi ngang qua} cửa (tangential pass) mà không có ý định vào xe --- điều mà một ngưỡng vận tốc hướng tâm đơn thuần không thể phân biệt được.
 
 \noindent\begin{minipage}{\linewidth}
-\begin{lstlisting}[language=C++, caption={Logic quyết định mở cửa theo vùng hình học (2D)}]
+\begin{lstlisting}[language=C++, caption={Máy trạng thái truy cập (AccessController) rút gọn}]
 void AccessController::handlePosition(double x, double y,
                                       double vx, double vy) {
-  double dx = x - kUnlockX, dy = y - kUnlockY;      // vector -> diem mo khoa
-  double d  = sqrt(dx*dx + dy*dy);                  // khoang cach Euclid
-  double vr = (vx*dx + vy*dy) / d;                  // van toc huong tam
+  double vr = radialSpeed(x, y, vx, vy);          // >0 roi xa, <0 tien lai
+  Zone  z  = zone_hyst.update(x, y, 3);           // vung on dinh (debounce 3)
+  bool movingAway = (vr > 0.10);
+  double speed = hypot(vx, vy);
 
-  // 1. Reset neu nguoi dung buoc ra khoi vung Cooldown (> 3.0 m)
-  if (d > RESET_RADIUS_M) {
-    is_door_unlocked = false;
-    consecutive_close_reads = 0;
-    return;
-  }
-  // 2. Cua da mo thi giu nguyen trang thai
-  if (is_door_unlocked) return;
-
-  // 3. Cong van toc huong tam: dang roi xa -> huy bo dem
-  if (vr > APPROACH_SPEED_MIN_MPS) {   // vr > 0.10 m/s = dang di ra xa
-    consecutive_close_reads = 0;
-    return;
-  }
-
-  // 4. Kiem tra vung mo khoa (<= 2.0 m)
-  if (d <= UNLOCK_RADIUS_M) {
-    if (++consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
-      fireRelayPulse();               // kich hoat GPIO26 trong 500 ms
-      is_door_unlocked = true;
-      consecutive_close_reads = 0;
-    }
-  } else {
-    consecutive_close_reads = 0;
+  switch (state_) {
+    case LOCKED:
+      if (z == OUTSIDE || movingAway) { hits = 0; return; }
+      if ((z == DRIVER_DOOR || z == DRIVER_SEAT) && speed < 0.4) {
+        if (++hits >= 3) { fireUnlock(); state_ = DOOR_UNLOCKED; hits = 0; }
+      } else hits = 0;
+      break;
+    case DOOR_UNLOCKED:
+      if (z == DRIVER_SEAT && speed < 0.4) {       // ngoi yen ghe lai 3s
+        if (settledFor(3s)) { lockDoor(); setIgnition(true); state_ = OCCUPIED; }
+      }
+      if (z == OUTSIDE && movingAway) { lockDoor(); state_ = LOCKED; }
+      break;
+    case OCCUPIED:
+      if (z == OUTSIDE && movingAway) {            // roi di
+        if (++leaveHits >= 3) { setIgnition(false); lockDoor(); state_ = LOCKED; }
+      } else leaveHits = 0;
+      break;
   }
 }
 \end{lstlisting}
 \end{minipage}
 
-Thuật toán yêu cầu khoảng cách Euclid từ vị trí đã lọc đến điểm mở khóa phải $\le 2.0$ mét trong $3$ chu kỳ liên tiếp, đồng thời vận tốc hướng tâm không được cho thấy người dùng đang rời xa, mới kích hoạt Relay. Sau khi cửa đã mở, hệ thống đi vào trạng thái nghỉ (Cooldown) để không lặp lại lệnh mở. Cửa chỉ quay về trạng thái khóa sẵn sàng phục vụ lần mở tiếp theo khi người dùng đã bước ra xa quá giới hạn $3.0$ mét. Nhờ thông tin vị trí hai chiều, cổng vận tốc hướng tâm còn giúp phân biệt người dùng \textit{thực sự tiến về cửa tài xế} với người \textit{vô tình đi ngang qua vùng 2 mét}, triệt tiêu hiện tượng mở cửa sai (False Positive). Logic này tạo ra trải nghiệm \textit{Passive Keyless Entry} mượt mà và an toàn.
+\subsubsection{Kích hoạt cơ cấu chấp hành}
+
+Kết quả ra quyết định được phản ánh qua hai kênh tín hiệu:
+
+\begin{itemize}
+    \item \textbf{Chân \texttt{GPIO26}}: điều khiển rơ-le khóa/mở cửa --- mức \texttt{LOW} tương ứng trạng thái khóa, xung \texttt{HIGH} trong 500 ms tương ứng lệnh mở cửa.
+    \item \textbf{Chân \texttt{GPIO27}}: tín hiệu cấp quyền khởi động động cơ --- mức \texttt{HIGH} khi ở trạng thái \texttt{OCCUPIED}.
+\end{itemize}
+
+Toàn bộ quy trình chuyển trạng thái được ghi nhận qua các thẻ log \texttt{[ZONE]}, \texttt{[STATE]} và \texttt{[IGNITION]} phục vụ giám sát và kiểm thử. Logic tất định này tạo ra trải nghiệm \textit{Passive Keyless Entry} mượt mà: mở cửa khi người dùng tiến lại gần và dừng lại, khóa cửa và cấp quyền khởi động khi người dùng đã định cư ghế lái, rồi khóa xe và thu hồi quyền khi người dùng rời đi.
 
 
 

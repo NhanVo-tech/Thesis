@@ -1,0 +1,147 @@
+\contentsline {chapter}{LỜI CAM ĐOAN}{2}{section*.1}%
+\contentsline {chapter}{LỜI CẢM ƠN}{3}{section*.2}%
+\contentsline {chapter}{TÓM TẮT}{4}{section*.3}%
+\contentsline {chapter}{DANH SÁCH HÌNH ẢNH}{11}{section*.5}%
+\contentsline {chapter}{DANH SÁCH BẢNG}{13}{section*.7}%
+\contentsline {chapter}{DANH MỤC TỪ VIẾT TẮT}{14}{chapter*.9}%
+\contentsline {chapter}{\numberline {1}\MakeUppercase []{Giới thiệu tổng quan}}{16}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Bối cảnh và động lực phát triển}{16}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Xu hướng phát triển xe thông minh}{16}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Vấn đề bảo mật của các hệ thống Keyless Entry truyền thống}{17}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}Các giải pháp Digital Key}{19}{subsection.1.1.3}%
+\contentsline {section}{\numberline {1.2}Bối cảnh thị trường ô tô Việt Nam}{20}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Yêu cầu và mục tiêu đề tài}{21}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Yêu cầu đề tài}{21}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Mục tiêu đề tài}{22}{subsection.1.3.2}%
+\contentsline {section}{\numberline {1.4}Cấu trúc báo cáo Đồ án}{23}{section.1.4}%
+\contentsline {chapter}{\numberline {2}\MakeUppercase []{Cơ sở lý thuyết}}{26}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Giới thiệu chung về CCC}{26}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Kiến trúc tổng thể của CCC Digital Key Release 3.0}{26}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Cơ chế chuyển trạng thái trong kiến trúc CCC}{27}{subsection.2.1.2}%
+\contentsline {section}{\numberline {2.2}Công nghệ truyền thông không dây}{28}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Near Field Communication - NFC}{28}{subsection.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.1.1}Giới thiệu và đặc điểm kỹ thuật}{28}{subsubsection.2.2.1.1}%
+\contentsline {subsubsection}{\numberline {2.2.1.2}Nguyên lý hoạt động}{29}{subsubsection.2.2.1.2}%
+\contentsline {subsubsection}{\numberline {2.2.1.3}Ba chế độ hoạt động của NFC}{30}{subsubsection.2.2.1.3}%
+\contentsline {subsubsection}{\numberline {2.2.1.4}Giao thức APDU}{31}{subsubsection.2.2.1.4}%
+\contentsline {subsubsection}{\numberline {2.2.1.5}Bảo mật NFC}{33}{subsubsection.2.2.1.5}%
+\contentsline {subsection}{\numberline {2.2.2}Bluetooth Low Energy - BLE}{34}{subsection.2.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.2.1}Giới thiệu và đặc điểm kỹ thuật}{34}{subsubsection.2.2.2.1}%
+\contentsline {subsubsection}{\numberline {2.2.2.2}Kiến trúc giao thức BLE}{35}{subsubsection.2.2.2.2}%
+\contentsline {subsubsection}{\numberline {2.2.2.3}GATT (Generic Attribute Profile)}{36}{subsubsection.2.2.2.3}%
+\contentsline {subsubsection}{\numberline {2.2.2.4}Connection và Data Transfer Flow}{39}{subsubsection.2.2.2.4}%
+\contentsline {subsubsection}{\numberline {2.2.2.5}Bảo mật BLE}{40}{subsubsection.2.2.2.5}%
+\contentsline {subsection}{\numberline {2.2.3}Ultra-Wideband - UWB}{41}{subsection.2.2.3}%
+\contentsline {subsubsection}{\numberline {2.2.3.1}Giới thiệu và đặc điểm kỹ thuật}{41}{subsubsection.2.2.3.1}%
+\contentsline {subsubsection}{\numberline {2.2.3.2}Nguyên lý hoạt động}{42}{subsubsection.2.2.3.2}%
+\contentsline {subsubsection}{\numberline {2.2.3.3}Đo khoảng cách đa điểm (One-to-Many Ranging)}{45}{subsubsection.2.2.3.3}%
+\contentsline {subsubsection}{\numberline {2.2.3.4}Đo khoảng cách đồng thời (Concurrent Ranging)}{46}{subsubsection.2.2.3.4}%
+\contentsline {subsubsection}{\numberline {2.2.3.5}Bảo mật UWB – Chống tấn công chuyển tiếp (Relay Attack)}{48}{subsubsection.2.2.3.5}%
+\contentsline {subsubsection}{\numberline {2.2.3.6}Ứng dụng trong lĩnh vực ô tô}{48}{subsubsection.2.2.3.6}%
+\contentsline {subsection}{\numberline {2.2.4}Định vị đa mỏ neo và Trilateration}{49}{subsection.2.2.4}%
+\contentsline {subsubsection}{\numberline {2.2.4.1}Giới hạn của kiến trúc đo khoảng cách đơn mỏ neo}{49}{subsubsection.2.2.4.1}%
+\contentsline {subsubsection}{\numberline {2.2.4.2}Nguyên lý Trilateration}{50}{subsubsection.2.2.4.2}%
+\contentsline {subsubsection}{\numberline {2.2.4.3}Nghiệm đại số tuyến tính (Linear Least Squares)}{51}{subsubsection.2.2.4.3}%
+\contentsline {subsubsection}{\numberline {2.2.4.4}Trường hợp hai mỏ neo và sự lưỡng trị}{52}{subsubsection.2.2.4.4}%
+\contentsline {subsubsection}{\numberline {2.2.4.5}Phương pháp Gauss-Newton}{52}{subsubsection.2.2.4.5}%
+\contentsline {subsubsection}{\numberline {2.2.4.6}Độ suy giảm chính xác hình học (GDOP)}{53}{subsubsection.2.2.4.6}%
+\contentsline {subsection}{\numberline {2.2.5}Bộ lọc Kalman hai chiều (EKF) cho bám quỹ đạo}{54}{subsection.2.2.5}%
+\contentsline {subsubsection}{\numberline {2.2.5.1}Mô hình trạng thái}{54}{subsubsection.2.2.5.1}%
+\contentsline {subsubsection}{\numberline {2.2.5.2}Mô hình đo lường}{55}{subsubsection.2.2.5.2}%
+\contentsline {subsubsection}{\numberline {2.2.5.3}Hai giai đoạn của bộ lọc}{55}{subsubsection.2.2.5.3}%
+\contentsline {subsubsection}{\numberline {2.2.5.4}Cấu hình tham số thực nghiệm}{56}{subsubsection.2.2.5.4}%
+\contentsline {subsection}{\numberline {2.2.6}Triển khai UWB – Phần cứng trong hệ thống}{57}{subsection.2.2.6}%
+\contentsline {subsection}{\numberline {2.2.7}So sánh các công nghệ NFC, BLE, UWB}{57}{subsection.2.2.7}%
+\contentsline {subsection}{\numberline {2.2.8}Kiến trúc Digital Key theo chuẩn Car Connectivity Consortium (CCC)}{58}{subsection.2.2.8}%
+\contentsline {section}{\numberline {2.3}Mật mã học và bảo mật}{59}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Mật mã đường cong Elliptic}{59}{subsection.2.3.1}%
+\contentsline {subsubsection}{\numberline {2.3.1.1}Giới thiệu về ECC}{59}{subsubsection.2.3.1.1}%
+\contentsline {subsubsection}{\numberline {2.3.1.2}Đường cong NIST P-256}{60}{subsubsection.2.3.1.2}%
+\contentsline {subsubsection}{\numberline {2.3.1.3}ECDH (Elliptic Curve Diffie-Hellman)}{61}{subsubsection.2.3.1.3}%
+\contentsline {subsubsection}{\numberline {2.3.1.4}ECDSA (Elliptic Curve Digital Signature Algorithm)}{63}{subsubsection.2.3.1.4}%
+\contentsline {subsection}{\numberline {2.3.2}Mã hóa đối xứng và xác thực thông điệp}{64}{subsection.2.3.2}%
+\contentsline {subsubsection}{\numberline {2.3.2.1}AES-128-GCM – Advanced Encryption Standard}{64}{subsubsection.2.3.2.1}%
+\contentsline {subsubsection}{\numberline {2.3.2.2}HMAC-SHA256 – Hash-based Message Authentication SHA-256}{66}{subsubsection.2.3.2.2}%
+\contentsline {subsubsection}{\numberline {2.3.2.3}HKDF – Hàm dẫn xuất khóa dựa trên HMAC}{68}{subsubsection.2.3.2.3}%
+\contentsline {subsection}{\numberline {2.3.3}Tuân thủ chuẩn quốc tế}{70}{subsection.2.3.3}%
+\contentsline {section}{\numberline {2.4}Công nghệ phát triển ứng dụng di động}{70}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Flutter Framework và Quản lý trạng thái}{71}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Firebase Backend-as-a-Service}{72}{subsection.2.4.2}%
+\contentsline {section}{\numberline {2.5}Mô hình học sâu LSTM cho nhận diện hành vi}{74}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Kiến trúc và cơ chế hoạt động của LSTM}{74}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Ứng dụng LSTM trong hệ thống định vị UWB}{75}{subsection.2.5.2}%
+\contentsline {chapter}{\numberline {3}\MakeUppercase []{KIẾN TRÚC HỆ THỐNG}}{77}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Yêu cầu hệ thống}{77}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Yêu cầu chức năng}{77}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Yêu cầu phi chức năng}{78}{subsection.3.1.2}%
+\contentsline {section}{\numberline {3.2}Kiến trúc tổng quan hệ thống}{79}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Tổng quan hệ thống}{79}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Kiến trúc phần cứng ECU}{80}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Kiến trúc phần mềm di động}{81}{subsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.2.4}Kiến trúc phần mềm vi điều khiển}{81}{subsection.3.2.4}%
+\contentsline {subsection}{\numberline {3.2.5}Luồng tương tác xuyên tầng}{82}{subsection.3.2.5}%
+\contentsline {section}{\numberline {3.3}Lựa chọn nền tảng phần cứng}{83}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Yêu cầu về phần cứng trung tâm}{83}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Phân tích và lựa chọn: Automotive ECU vs. ESP32-S3}{84}{subsection.3.3.2}%
+\contentsline {subsubsection}{\numberline {3.3.2.1}Target Platform: Automotive ECU}{84}{subsubsection.3.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.3.2.2}Development Platform: ESP32-S3}{84}{subsubsection.3.3.2.2}%
+\contentsline {subsection}{\numberline {3.3.3}Kiến trúc chuyển đổi}{85}{subsection.3.3.3}%
+\contentsline {section}{\numberline {3.4}Thiết kế giao thức bảo mật}{85}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Phase A - Giai đoạn Cấp quyền vật lý}{86}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Phase B - Xác thực bảo mật kênh truyền}{88}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Phase C - Xác thực khoảng cách và định vị an toàn với UWB}{90}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Phase D - Quyết định truy cập thông minh dựa trên học sâu}{92}{subsection.3.4.4}%
+\contentsline {subsection}{\numberline {3.4.5}Cơ chế đánh giá hành vi dựa trên mô hình chuỗi thời gian}{94}{subsection.3.4.5}%
+\contentsline {section}{\numberline {3.5}Thiết kế kiến trúc máy trạng thái hữu hạn - FSM}{96}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Cấu trúc phân lớp FSM}{96}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Phân loại các chuỗi trạng thái}{96}{subsection.3.5.2}%
+\contentsline {subsubsection}{\numberline {3.5.2.1}Trạng thái Khởi tạo và An toàn}{98}{subsubsection.3.5.2.1}%
+\contentsline {subsubsection}{\numberline {3.5.2.2}Nhóm trạng thái Phase A - Cấp quyền vật lý}{98}{subsubsection.3.5.2.2}%
+\contentsline {subsubsection}{\numberline {3.5.2.3}Nhóm trạng thái Phase B - Xác thực kênh truyền}{98}{subsubsection.3.5.2.3}%
+\contentsline {subsubsection}{\numberline {3.5.2.4}Nhóm trạng thái C\&D - Định vị và Kích hoạt relay}{98}{subsubsection.3.5.2.4}%
+\contentsline {chapter}{\numberline {4}HIỆN THỰC HỆ THỐNG}{100}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Kiến trúc hệ thống tổng thể}{100}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Giao thức truyền thông}{101}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Môi trường phát triển}{101}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Phần mềm vi điều khiển nhúng (ESP32 Firmware)}{101}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Ứng dụng thiết bị di động (Flutter App)}{102}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Dịch vụ Backend (Cloud Infrastructure)}{103}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Triển khai phần nhúng (ESP32)}{103}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Thiết lập phần cứng}{103}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Hiện thực phần mềm}{106}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Máy trạng thái hữu hạn xuyên tầng (Cross-layer FSM)}{106}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}Xử lý NFC và Provisioning (Phase A)}{107}{subsection.4.4.4}%
+\contentsline {subsection}{\numberline {4.4.5}Giao thức xác thực BLE (Phase B)}{107}{subsection.4.4.5}%
+\contentsline {subsection}{\numberline {4.4.6}Đo khoảng cách đa mỏ neo và Định vị Trilateration (Phase C)}{108}{subsection.4.4.6}%
+\contentsline {subsection}{\numberline {4.4.7}Quyết định truy cập theo vùng hình học (Phase D)}{109}{subsection.4.4.7}%
+\contentsline {subsubsection}{\numberline {4.4.7.1}Phân vùng không gian (Geofencing)}{109}{subsubsection.4.4.7.1}%
+\contentsline {subsubsection}{\numberline {4.4.7.2}Máy trạng thái truy cập (Access State Machine)}{110}{subsubsection.4.4.7.2}%
+\contentsline {subsubsection}{\numberline {4.4.7.3}Kích hoạt cơ cấu chấp hành}{111}{subsubsection.4.4.7.3}%
+\contentsline {section}{\numberline {4.5}Triển khai phần ứng dụng di động}{112}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Tích hợp Native Android}{112}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Cấp quyền vật lý qua Thẻ chủ (Phase A - Master Card \& HCE)}{112}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}Cơ chế chạy ngầm và Bàn giao phần cứng}{113}{subsection.4.5.3}%
+\contentsline {subsection}{\numberline {4.5.4}Dữ liệu và Hệ thống cảnh báo an ninh}{113}{subsection.4.5.4}%
+\contentsline {subsection}{\numberline {4.5.5}Giao diện Kiểm thử Chuyên sâu (Integration Test UIs)}{114}{subsection.4.5.5}%
+\contentsline {section}{\numberline {4.6}Kết quả kiểm thử thực tế}{114}{section.4.6}%
+\contentsline {chapter}{\numberline {5}\MakeUppercase []{KẾT QUẢ THỰC NGHIỆM VÀ ĐÁNH GIÁ}}{118}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Tổng quan}{118}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Kết quả đạt được}{118}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Kết quả về phần cứng và hệ thống nhúng}{119}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Kết quả về giao thức bảo mật và mật mã}{120}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Kết quả về Ứng dụng di động và tích hợp hệ thống}{120}{subsection.5.2.3}%
+\contentsline {subsubsection}{\numberline {5.2.3.1}Ứng dụng di động}{120}{subsubsection.5.2.3.1}%
+\contentsline {subsubsection}{\numberline {5.2.3.2}Tích hợp hệ thống}{121}{subsubsection.5.2.3.2}%
+\contentsline {subsection}{\numberline {5.2.4}Đánh giá hiệu năng và Tính ổn định}{122}{subsection.5.2.4}%
+\contentsline {subsubsection}{\numberline {5.2.4.1}Phân tích tốc độ giao dịch và độ trễ toàn trình}{122}{subsubsection.5.2.4.1}%
+\contentsline {subsubsection}{\numberline {5.2.4.2}Đánh giá tài nguyên hệ thống (Resource Utilization):}{123}{subsubsection.5.2.4.2}%
+\contentsline {subsubsection}{\numberline {5.2.4.3}Đánh giá tiêu thụ năng lượng (Power Consumption)}{124}{subsubsection.5.2.4.3}%
+\contentsline {subsubsection}{\numberline {5.2.4.4}Độ ổn định, Phạm vi kết nối và Tối ưu dữ liệu UWB}{125}{subsubsection.5.2.4.4}%
+\contentsline {subsection}{\numberline {5.2.5}Ứng dụng TinyML trong nhận diện hành vi và phòng chống tấn công tiếp sóng chuyên sâu}{126}{subsection.5.2.5}%
+\contentsline {section}{\numberline {5.3}Thành tựu nghiên cứu và Công bố khoa học}{129}{section.5.3}%
+\contentsline {chapter}{\numberline {6}\MakeUppercase []{KẾT LUẬN VÀ ĐỊNH HƯỚNG PHÁT TRIỂN}}{132}{chapter.6}%
+\contentsline {section}{Hạn chế của đề tài}{133}{Item.114}%
+\contentsline {section}{Định hướng phát triển}{134}{Item.114}%
+\contentsline {chapter}{DANH MỤC TÀI LIỆU THAM KHẢO}{134}{Item.118}%
+\contentsline {chapter}{\numberline {A}\MakeUppercase []{KHAI BÁO TRÁCH NHIỆM}}{141}{appendix.A}%
+\contentsfinish 

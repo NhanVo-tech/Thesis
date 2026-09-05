@@ -1,0 +1,40 @@
+BUILD INSTRUCTIONS — SCA_Report/main.pdf
+=========================================
+
+Source entry point:  C:\DATN\SCA_Report\main.tex
+Working directory:   C:\DATN\SCA_Report
+Output:              C:\DATN\SCA_Report\main.pdf
+
+Requirements
+------------
+- MiKTeX installed (provides pdflatex + Vietnamese T5/vntex packages).
+  Full path used below:
+  C:\Users\Legion\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe
+
+Step 1 — Build the cover page (biachinh.pdf)   [only when the cover changes]
+------------------------------------------------------------------------------
+The cover is a standalone document (biachinh.tex). Build it and copy the result
+into the "pdf files" folder:
+
+  & "C:\Users\Legion\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" -interaction=nonstopmode -halt-on-error biachinh.tex
+  Copy-Item -LiteralPath "C:\DATN\SCA_Report\biachinh.pdf" -Destination "C:\DATN\SCA_Report\pdf files\biachinh.pdf" -Force
+
+Step 2 — Build the report (main.pdf)
+------------------------------------
+Run pdflatex TWICE (2 passes) so that the table of contents, list of
+figures/tables, and cross-references resolve correctly:
+
+  & "C:\Users\Legion\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" -interaction=nonstopmode -halt-on-error main.tex
+  & "C:\Users\Legion\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" -interaction=nonstopmode -halt-on-error main.tex
+
+Notes
+-----
+- main.tex includes the cover via:  \includepdf{...}{pdf files/biachinh.pdf}
+- 2 passes are required for main.tex. Pass 1 writes main.aux / main.toc /
+  main.lof / main.lot; pass 2 resolves them into the final document.
+- No bibtex run is needed: the bibliography is a manual `thebibliography`
+  environment in text/bibliography.tex.
+- Known benign warnings (pre-existing, safe to ignore):
+    * "Label `' multiply defined"   -> empty \label{} in a few figures
+    * "Label `fips186' / `nxp_pn532' multiply defined" -> duplicate bibitems
+    * "Infinite glue shrinkage found in box being split"
