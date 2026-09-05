@@ -6,15 +6,15 @@ Hệ thống Smart Car Access được xây dựng trong đề tài đã đạt 
 
 Thông qua việc kết hợp chặt chẽ giữa phần cứng nhúng (ESP32-S3, vi mạch NFC PN532, vi mạch UWB DWM3000), hệ điều hành thời gian thực FreeRTOS, và ứng dụng di động phân luồng (Dual-Isolate), hệ thống mang lại một giải pháp truy cập phương tiện thụ động (Passive Keyless Entry - PKE) an toàn tuyệt đối trước các hình thức tấn công tiếp sóng (Relay Attack), đồng thời duy trì độ trễ thấp và trải nghiệm liền mạch cho người dùng.
 
-Nhìn chung, kết quả đạt được chứng minh hệ thống không chỉ phù hợp với mục tiêu nghiên cứu học thuật mà còn có tiềm năng phát triển thành giải pháp thực tế cấp độ công nghiệp (Industrial-grade), làm tiền đề lý tưởng để triển khai các thuật toán học máy (Machine Learning) nhận diện hành vi trong tương lai.
+Nhìn chung, kết quả đạt được chứng minh hệ thống không chỉ phù hợp với mục tiêu nghiên cứu học thuật mà còn có tiềm năng phát triển thành giải pháp thực tế cấp độ công nghiệp (Industrial-grade), làm tiền đề lý tưởng để triển khai các thuật toán học máy (Machine Learning) nhận diện ý định hành vi ở giai đoạn 2 (đang hiện thực).
 
 \par\noindent
 \textbf{Source code của dự án:} 
-\href{https://github.com/T-K-Nguyen/SmartCarAccess}{\textcolor{blue}{\textbf{Kho mã nguồn trên GitHub}}}
+\href{https://github.com/NhanVo-tech/Thesis.git}{\textcolor{blue}{\textbf{Kho mã nguồn trên GitHub}}}
 
 \par\noindent
 \textbf{Video demo hệ thống:} 
-\href{https://drive.google.com/drive/u/0/folders/1UxYpHjgZSg0lMo_vmYPE1nLQXl4Ya1Jx}{\textcolor{red}{\textbf{Demo hệ thống}}}
+\href{https://drive.google.com/drive/folders/1kUymyDruULcvT3Kjg8Sff-fCjvxDySlZ?usp=drive_link}{\textcolor{red}{\textbf{Demo hệ thống}}}
 
 \section{Kết quả đạt được}
 
@@ -235,7 +235,7 @@ Trong môi trường ứng dụng ô tô, việc kiểm soát dòng tiêu thụ 
         \hline
         Active (Crypto) & Thực hiện xác thực ECDSA, CPU 240MHz. & $\approx 110$ mA \\
         \hline
-        Active (Ranging) & Đo UWB liên tục + Suy luận TinyML. & $\approx 140$ mA \\
+        Active (Ranging) & Đo UWB liên tục (ba mỏ neo). & $\approx 140$ mA \\
         \hline
     \end{tabular}
 \end{table}
@@ -251,7 +251,7 @@ Trong môi trường ứng dụng ô tô, việc kiểm soát dòng tiêu thụ 
     
     \item \textbf{Độ tin cậy hệ thống:} Thực hiện 10 lần đóng/mở khóa liên tục, kết hợp giả lập ngắt kết nối đột ngột. Hệ thống tự phục hồi trạng thái FSM 10/10 lần, không xảy ra hiện tượng treo (hang).
     
-    \item \textbf{Độ ổn định của quỹ đạo sau khi áp dụng Trilateration và Kalman Filter:} Dữ liệu khoảng cách gốc từ ba mỏ neo DWM3001CDK thường tồn tại các dao động nhiễu tĩnh ($\pm 10\sim20$ cm) hoặc các bước nhảy vọt do hiện tượng phản xạ đa đường (multipath), dẫn đến tọa độ $(x, y)$ thô từ Trilateration bị rung lắc. Nhóm đã tích hợp thành công \textbf{Bộ lọc Kalman hai chiều (EKF)} ngay sau tầng Trilateration (nhiễu đo $R$ được dẫn xuất trực tiếp từ chất lượng lời giải RMS, cường độ nhiễu gia tốc $\sigma_a = 1.2$ m/s$^2$). Kết quả cho thấy đường cong quỹ đạo (trajectory) của người dùng trở nên cực kỳ mượt mà, đồng thời ước lượng được vector vận tốc $(v_x, v_y)$ phục vụ cổng vận tốc hướng tâm. Kỹ thuật này không chỉ giúp bộ đệm Hysteresis ra quyết định mở cửa chính xác tuyệt đối mà còn tạo ra chuỗi trạng thái $(x, y, v_x, v_y)$ chất lượng cao, phục vụ làm đầu vào (Input feature) cho mô hình học sâu nhận diện hành vi trong tương lai.
+    \item \textbf{Độ ổn định của quỹ đạo sau khi áp dụng Trilateration và Kalman Filter:} Dữ liệu khoảng cách gốc từ ba mỏ neo DWM3001CDK thường tồn tại các dao động nhiễu tĩnh ($\pm 10\sim20$ cm) hoặc các bước nhảy vọt do hiện tượng phản xạ đa đường (multipath), dẫn đến tọa độ $(x, y)$ thô từ Trilateration bị rung lắc. Nhóm đã tích hợp thành công \textbf{Bộ lọc Kalman hai chiều (EKF)} ngay sau tầng Trilateration (nhiễu đo $R$ được dẫn xuất trực tiếp từ chất lượng lời giải RMS, cường độ nhiễu gia tốc $\sigma_a = 1.2$ m/s$^2$). Kết quả cho thấy đường cong quỹ đạo (trajectory) của người dùng trở nên cực kỳ mượt mà, đồng thời ước lượng được vector vận tốc $(v_x, v_y)$ phục vụ cổng vận tốc hướng tâm. Kỹ thuật này không chỉ giúp bộ đệm Hysteresis ra quyết định mở cửa chính xác tuyệt đối mà còn tạo ra chuỗi trạng thái $(x, y, v_x, v_y)$ chất lượng cao, phục vụ làm đầu vào (Input feature) cho mô hình nhận diện ý định hành vi ở giai đoạn 2 (đang hiện thực).
 \end{itemize}
 
 
@@ -260,6 +260,12 @@ Trong môi trường ứng dụng ô tô, việc kiểm soát dòng tiêu thụ 
 
 
 
+% =====================================================================
+% [STAGE-1 AI - 1D RANGING] NỘI DUNG SAU ĐÂY ĐƯỢC COMMENT LẠI
+% (walk/loiter/attack, 84.3%, P(Walk)/P(Loiter)/P(Attack)) — thay thế bởi
+% phần Stage-2 intent recognition ở cuối khối \iffalse ... \fi này.
+% =====================================================================
+\iffalse
 \subsection{Ứng dụng TinyML trong nhận diện hành vi và phòng chống tấn công tiếp sóng chuyên sâu}
 
 Điểm nhấn kỹ thuật quan trọng nhất của đồ án là việc triển khai thành công mô hình học máy nhúng (TinyML) trực tiếp trên vi điều khiển ESP32-S3. Thay vì chỉ dựa vào các ngưỡng khoảng cách cố định (Rule-based), hệ thống hiện nay có khả năng "hiểu" được hình thái động học của người dùng thông qua chuỗi thời gian.
@@ -322,6 +328,34 @@ Trong môi trường ứng dụng ô tô, việc kiểm soát dòng tiêu thụ 
         \item Đây là kịch bản phô diễn sức mạnh phòng thủ của hệ thống. Kẻ tấn công giả mạo tín hiệu, khiến khoảng cách thô (đường nét mờ ở đồ thị trên cùng) đột ngột rớt từ mức 5m xuống dưới 2m theo hình bậc thang.
         \item Nếu chỉ dùng if-else truyền thống, cửa sẽ mở ngay lập tức. Tuy nhiên, nhờ quán tính của bộ lọc Kalman, quỹ đạo bị trễ lại, tạo ra một sự sai lệch khổng lồ. Điều này được thể hiện rõ qua các cú giật cực lớn của đường Thặng dư (Residual - màu cam) ở đồ thị giữa.
         \item Khối 1D-CNN ngay lập tức bắt được đặc trưng dị thường này. Ở đồ thị dưới cùng, xác suất P(Attack) (đường màu đỏ) vọt lên mức gần 1.0 mỗi khi xuất hiện spike, trong khi P(Walk) bị dập tắt hoàn toàn. Hệ thống cưỡng bức trạng thái khóa an toàn, ngăn chặn triệt để cuộc tấn công.
+    \end{itemize}
+\end{itemize}
+\fi
+% =====================================================================
+% [STAGE-2 AI - 2D INTENT RECOGNITION] KẾT QUẢ (đang hiện thực)
+% =====================================================================
+
+\subsection{Ứng dụng TinyML trong nhận diện ý định hành vi (đang hiện thực)}
+
+\textit{Ghi chú:} Phần nhận diện ý định hành vi bằng TinyML ở giai đoạn 2 hiện \textbf{đang trong quá trình hiện thực}. Nội dung dưới đây trình bày quy trình thiết kế và kết quả dự kiến; số liệu thực nghiệm sẽ được cập nhật khi hoàn tất.
+
+\begin{itemize}
+    \item \textbf{Xây dựng bộ dữ liệu quỹ đạo (Dataset \& Feature Engineering):} Bộ dữ liệu gồm các chuỗi quỹ đạo $(x, y, v_x, v_y)$ được gán nhãn theo 4 lớp: \textit{Approach} (tiếp cận), \textit{Seated} (ngồi ghế lái), \textit{Leave} (rời đi) và \textit{Passing} (đi ngang qua). Dữ liệu được thu thập qua \texttt{localization\_demo.py} (10--15 lần chạy mỗi lớp), chuyển thành CSV có nhãn bằng \texttt{collect\_traj.py}, rồi chia tập huấn luyện/kiểm thử \textbf{theo từng lần chạy} (run-stratified) để tránh rò rỉ dữ liệu.
+
+    \item \textbf{Kiến trúc mô hình tối ưu cho phần cứng nhúng:} Mạng nơ-ron tích chập một chiều Conv1D (cùng họ kiến trúc đã được kiểm chứng chạy trên TFLM) nhận đầu vào kích thước $(25 \times 4)$ và xuất 4 xác suất qua Softmax. Mô hình được huấn luyện trên Google Colab với chuẩn hóa z-score, sau đó xuất file header \texttt{uwb\_traj\_model.h} cùng tham số scaler để nhúng vào firmware.
+
+    \item \textbf{Kết quả dự kiến (target):}
+    \begin{itemize}
+        \item \textit{Độ chính xác:} đạt tối thiểu $\sim 77\%$ trên tập kiểm thử độc lập, với ma trận nhầm lẫn được rà soát (ô nhiễu lớn nhất kỳ vọng là \texttt{passing} $\leftrightarrow$ \texttt{approach}).
+        \item \textit{Hiệu năng phần cứng:} arena TFLM khởi đầu 35 KB (mở rộng tới $\sim 48$ KB nếu cần), suy luận trong vài mili-giây mỗi chu kỳ 100 ms, không ảnh hưởng tính thời gian thực của các tác vụ FreeRTOS.
+    \end{itemize}
+
+    \item \textbf{Kịch bản kiểm thử dự kiến:}
+    \begin{itemize}
+        \item \textit{Tiếp cận:} người dùng tiến lại gần cửa và giảm tốc dừng lại --- kỳ vọng $p_{\text{approach}} \ge 0.80$, cho phép mở khóa.
+        \item \textit{Định cư ghế lái:} người dùng đứng yên tại ghế lái --- kỳ vọng $p_{\text{seated}} \ge 0.80$, khóa cửa và cấp quyền khởi động.
+        \item \textit{Rời đi:} người dùng rời xa xe --- kỳ vọng $p_{\text{leave}} \ge 0.80$, khóa xe và thu hồi quyền.
+        \item \textit{Đi ngang qua:} người dùng đi ngang mà không dừng --- kỳ vọng $p_{\text{passing}} \ge 0.70$ chặn cứng lệnh mở khóa (zero false-positive).
     \end{itemize}
 \end{itemize}
 

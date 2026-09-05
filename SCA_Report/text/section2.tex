@@ -1723,6 +1723,13 @@ Bên cạnh đó, \textbf{Cloud Firestore} được sử dụng làm cơ sở d�
 
 
 
+% =====================================================================
+% [STAGE-1 AI - 1D RANGING] NỘI DUNG SAU ĐÂY ĐƯỢC COMMENT LẠI
+% Lý do: đây là AI "1D ranging" của giai đoạn 1 (walk/loiter/attack, LSTM).
+% Giai đoạn 2 (2D intent recognition) chưa hiện thực xong — xem phần thay thế
+% bên dưới khối \iffalse ... \fi này.
+% =====================================================================
+\iffalse
 \section{Mô hình học sâu LSTM cho nhận diện hành vi}
 
 Trong bài toán nhận diện hành vi người dùng dựa trên dữ liệu từ cảm biến UWB, các tín hiệu (khoảng cách, vận tốc, thặng dư) không tồn tại độc lập mà có sự phụ thuộc chặt chẽ vào thời gian. Các mạng nơ-ron truyền thống (Feed-forward Neural Network) không thể xử lý loại dữ liệu chuỗi này do thiếu cơ chế ghi nhớ các trạng thái quá khứ. Mạng nơ-ron hồi quy (RNN) ra đời để giải quyết vấn đề này, tuy nhiên RNN gặp phải hiện tượng "biến mất gradient" (Vanishing Gradient) khi xử lý các chuỗi dài, khiến mô hình không thể học được các phụ thuộc xa (long-term dependencies).Kiến trúc LSTM, được giới thiệu bởi Hochreiter \& Schmidhuber (1997), là một biến thể đặc biệt của RNN được thiết kế để khắc phục nhược điểm trên. Trong hệ thống Smart Car Access của đề tài, LSTM đóng vai trò nhận diện các "hình thái" chuyển động (như việc tiến lại gần xe hoặc các dao động bất thường của tấn công tiếp sóng) thông qua một cửa sổ thời gian (sliding window).
@@ -1772,3 +1779,58 @@ Dữ liệu sau khi đi qua các lớp LSTM sẽ được đưa vào lớp kết
 \begin{equation}P(y=k|X) = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}\end{equation}
 
 với $K=3$ tương ứng với các nhãn: Walk (0), Loiter (1), và Relay Attack (2). Việc sử dụng LSTM giúp hệ thống không chỉ phản ứng với khoảng cách tức thời mà còn có khả năng nhận diện các "kịch bản" di chuyển phức tạp, nâng cao tính an toàn cho giải pháp Smart Car Access.
+\fi
+% =====================================================================
+% [STAGE-2 AI - 2D INTENT RECOGNITION] LÝ THUYẾT (đang hiện thực)
+% =====================================================================
+
+\section{Mô hình học sâu cho nhận diện ý định hành vi (Intent Recognition)}
+
+\textit{Ghi chú:} Phần nhận diện ý định hành vi bằng TinyML ở giai đoạn 2 hiện đang trong quá trình \textbf{hiện thực}. Mục này trình bày cơ sở lý thuyết và thiết kế định hướng của mô hình; kết quả thực nghiệm sẽ được cập nhật khi hoàn tất.
+
+\subsection{Bài toán nhận diện ý định hành vi}
+
+Khác với giai đoạn 1 (Stage 1) chỉ khai thác chuỗi khoảng cách một chiều $(d_t, r_t, v_t)$ từ một mỏ neo để nhận diện hành vi, giai đoạn 2 (Stage 2) sử dụng \textbf{quỹ đạo hai chiều} $(x, y, v_x, v_y)$ đã được hợp nhất từ ba mỏ neo qua Trilateration và bộ lọc Kalman mở rộng (EKF). Mô hình học máy có nhiệm vụ phân loại một \textbf{cửa sổ quỹ đạo ngắn} thành một trong bốn lớp ý định hành vi:
+
+\begin{itemize}
+    \item \textbf{Approach (0):} người dùng tiến lại gần cửa với ý định vào xe --- khoảng cách tới cửa giảm dần, tốc độ giảm (giảm tốc) rồi dừng lại sát cửa.
+    \item \textbf{Seated (1):} người dùng đứng yên tại ghế lái trong một khoảng thời gian --- vị trí ổn định, tốc độ $\approx 0$.
+    \item \textbf{Leave (2):} người dùng rời khỏi xe --- khoảng cách tăng, tốc độ hướng ra ngoài.
+    \item \textbf{Passing (3):} người dùng đi ngang qua xe mà không dừng lại --- khoảng cách giảm rồi tăng, tốc độ gần như không đổi.
+\end{itemize}
+
+Trong đó, \textbf{Passing} là lớp \textit{phủ định} (negative class): nó có nhiệm vụ chặn lệnh mở khóa mà cổng hình học ``tiến lại gần + giảm tốc'' có thể nhầm chấp nhận khi người dùng chỉ đi ngang qua với tốc độ thấp.
+
+\subsection{Mạng tích chập một chiều (Conv1D)}
+
+Kiến trúc được lựa chọn là \textbf{mạng nơ-ron tích chập một chiều (Conv1D)} --- cùng họ kiến trúc đã được kiểm chứng có thể chạy trên nền TensorFlow Lite for Microcontrollers (TFLM). Conv1D trượt các bộ lọc (kernel) dọc theo trục thời gian để trích xuất các mẫu không gian--thời gian cục bộ (giảm tốc, dừng, đảo hướng) mà không cần cơ chế ghi nhớ tuần tự như LSTM, nhờ đó nhẹ hơn và phù hợp với ngân sách bộ nhớ của vi điều khiển ESP32-S3. Tại vị trí thời gian $t$, đầu ra của một bộ lọc được tính theo phép tích chập:
+
+\begin{equation}
+    y_t = b + \sum_{k=0}^{K-1} w_k \cdot x_{t+k-\lfloor K/2\rfloor}
+\end{equation}
+
+trong đó $w_k$ là trọng số kernel (kích thước $K=3$), $b$ là hệ số lệch và $x$ là tín hiệu đầu vào. Sau mỗi lớp tích chập, hàm kích hoạt ReLU $\mathrm{ReLU}(z)=\max(0,z)$ và phép gộp cực đại (Max Pooling) giúp giảm chiều thời gian và tăng tính bất biến đối với dịch chuyển nhỏ.
+
+\subsection{Đặc trưng đầu vào và cửa sổ trượt}
+
+Vector đặc trưng tại mỗi khung hình là $f_t = [x, y, v_x, v_y]$, trong đó $(x, y)$ là vị trí đã lọc (mét) trong hệ quy chiếu gắn với xe và $(v_x, v_y)$ là vận tốc (m/s). Vị trí mã hóa gián tiếp hình học (cửa tại $(-0.95, 0)$, ghế lái tại $(-0.35, 0)$), còn vận tốc là tín hiệu mạnh nhất để phân biệt tiếp cận/rời đi/đi ngang. Cửa sổ trượt có kích thước $T = 25$ khung hình ở tần số 10 Hz (tương đương $2.5$ giây), đủ để quan sát trọn vẹn một cử chỉ ``tiến lại rồi dừng'' hay ``đi ngang qua''. Dữ liệu được chuẩn hóa z-score (StandardScaler) với tham số trung bình và độ lệch chuẩn được ước lượng trên tập huấn luyện rồi xuất sang firmware dưới dạng hằng số.
+
+\subsection{Kiến trúc mô hình và phân loại Softmax}
+
+Kiến trúc đề xuất gồm hai khối tích chập nối tiếp, một lớp kết nối đầy đủ và một lớp Softmax:
+
+\begin{center}
+\texttt{Input (25, 4) $\to$ Conv1D(16, k=3, ReLU) $\to$ MaxPool(2) $\to$ Conv1D(32, k=3, ReLU) $\to$ MaxPool(2) $\to$ Flatten $\to$ Dense(16, ReLU) $\to$ Dropout(0.2) $\to$ Dense(4, Softmax)}
+\end{center}
+
+Đầu ra là phân bố xác suất trên bốn lớp ý định:
+
+\begin{equation}
+    P(y=k \mid X) = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}, \quad K = 4
+\end{equation}
+
+với $K=4$ tương ứng với các nhãn: Approach (0), Seated (1), Leave (2) và Passing (3).
+
+\subsection{Nguyên tắc "Gate, don't decide"}
+
+Mô hình AI không trực tiếp điều khiển cơ cấu chấp hành mà chỉ \textbf{đóng/mở cổng} (gate) trên các chuyển trạng thái tất định của \texttt{AccessController}: xác suất $p_{\text{approach}} \ge 0.80$ cho phép mở khóa, $p_{\text{seated}} \ge 0.80$ cho phép định cư ghế lái, $p_{\text{leave}} \ge 0.80$ cho phép khóa khi rời đi, và $p_{\text{passing}} \ge 0.70$ chặn cứng lệnh mở khóa. Nguyên tắc này giữ nguyên lõi tất định fail-safe, đồng thời bổ sung độ bền vững ở mức ý định; nếu mô hình không sẵn sàng (thiếu mô hình, tràn bộ nhớ), hệ thống tự suy biến về lõi tất định mà vẫn hoạt động.

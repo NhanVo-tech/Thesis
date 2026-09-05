@@ -276,9 +276,12 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4.2}Firebase Backend-as-a-Service}{72}{subsection.2.4.2}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {2.27}{\ignorespaces Kiến trúc các dịch vụ Firebase trong hệ thống}}{72}{figure.caption.50}\protected@file@percent }
 \newlabel{fig:firebase_architecture}{{2.27}{72}{Kiến trúc các dịch vụ Firebase trong hệ thống}{figure.caption.50}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {2.5}Mô hình học sâu LSTM cho nhận diện hành vi}{74}{section.2.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.1}Kiến trúc và cơ chế hoạt động của LSTM}{74}{subsection.2.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.2}Ứng dụng LSTM trong hệ thống định vị UWB}{75}{subsection.2.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2.5}Mô hình học sâu cho nhận diện ý định hành vi (Intent Recognition)}{74}{section.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.1}Bài toán nhận diện ý định hành vi}{74}{subsection.2.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.2}Mạng tích chập một chiều (Conv1D)}{75}{subsection.2.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.3}Đặc trưng đầu vào và cửa sổ trượt}{75}{subsection.2.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.4}Kiến trúc mô hình và phân loại Softmax}{75}{subsection.2.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5.5}Nguyên tắc "Gate, don't decide"}{76}{subsection.2.5.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {chapter}{\numberline {3}\MakeUppercase    []{KIẾN TRÚC HỆ THỐNG}}{77}{chapter.3}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
@@ -328,143 +331,133 @@
 \citation{nxp_ncj29d5}
 \citation{neirynck2016overview}
 \citation{neirynck2016overview}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.4}Phase D - Quyết định truy cập thông minh dựa trên học sâu}{92}{subsection.3.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.4}Phase D - Quyết định truy cập thông minh}{92}{subsection.3.4.4}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {3.5}{\ignorespaces Sơ đồ Sequence Phase D tích hợp suy luận AI}}{93}{figure.caption.57}\protected@file@percent }
 \newlabel{fig:phaseD}{{3.5}{93}{Sơ đồ Sequence Phase D tích hợp suy luận AI}{figure.caption.57}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.5}Cơ chế đánh giá hành vi dựa trên mô hình chuỗi thời gian}{94}{subsection.3.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4.5}Cơ chế nhận diện ý định hành vi dựa trên TinyML (đang hiện thực)}{94}{subsection.3.4.5}\protected@file@percent }
 \citation{fsm_book}
-\@writefile{toc}{\contentsline {section}{\numberline {3.5}Thiết kế kiến trúc máy trạng thái hữu hạn - FSM}{96}{section.3.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.1}Cấu trúc phân lớp FSM}{96}{subsection.3.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.2}Phân loại các chuỗi trạng thái}{96}{subsection.3.5.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}}{97}{figure.caption.58}\protected@file@percent }
-\newlabel{fig:fsm_diagram}{{3.6}{97}{Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}{figure.caption.58}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.2.1}Trạng thái Khởi tạo và An toàn}{98}{subsubsection.3.5.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.2.2}Nhóm trạng thái Phase A - Cấp quyền vật lý}{98}{subsubsection.3.5.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3.5}Thiết kế kiến trúc máy trạng thái hữu hạn - FSM}{95}{section.3.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.1}Cấu trúc phân lớp FSM}{95}{subsection.3.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3.6}{\ignorespaces Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}}{96}{figure.caption.58}\protected@file@percent }
+\newlabel{fig:fsm_diagram}{{3.6}{96}{Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}{figure.caption.58}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5.2}Phân loại các chuỗi trạng thái}{97}{subsection.3.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.2.1}Trạng thái Khởi tạo và An toàn}{97}{subsubsection.3.5.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.2.2}Nhóm trạng thái Phase A - Cấp quyền vật lý}{97}{subsubsection.3.5.2.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.2.3}Nhóm trạng thái Phase B - Xác thực kênh truyền}{98}{subsubsection.3.5.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.5.2.4}Nhóm trạng thái C\&D - Định vị và Kích hoạt relay}{98}{subsubsection.3.5.2.4}\protected@file@percent }
 \citation{richards_arch}
 \citation{flutter_docs}
 \citation{firebase_docs}
-\@writefile{toc}{\contentsline {chapter}{\numberline {4}HIỆN THỰC HỆ THỐNG}{100}{chapter.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {4}HIỆN THỰC HỆ THỐNG}{99}{chapter.4}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{\numberline {4.1}Kiến trúc hệ thống tổng thể}{100}{section.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.1}Kiến trúc hệ thống tổng thể}{99}{section.4.1}\protected@file@percent }
 \citation{platformio_docs}
 \citation{esp32s3}
 \citation{esp32s3}
 \citation{nimble_arduino}
 \citation{nxp_pn532}
 \citation{mbedtls_docs}
-\@writefile{toc}{\contentsline {section}{\numberline {4.2}Giao thức truyền thông}{101}{section.4.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4.1}{\ignorespaces Đặc tả các giao thức truyền thông trong hệ thống}}{101}{table.caption.59}\protected@file@percent }
-\newlabel{tab:protocols}{{4.1}{101}{Đặc tả các giao thức truyền thông trong hệ thống}{table.caption.59}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.3}Môi trường phát triển}{101}{section.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.1}Phần mềm vi điều khiển nhúng (ESP32 Firmware)}{101}{subsection.4.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4.2}{\ignorespaces Danh sách thư viện phần mềm cốt lõi trên ESP32}}{102}{table.caption.60}\protected@file@percent }
-\newlabel{tab:esp_libs}{{4.2}{102}{Danh sách thư viện phần mềm cốt lõi trên ESP32}{table.caption.60}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.2}Ứng dụng thiết bị di động (Flutter App)}{102}{subsection.4.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.2}Giao thức truyền thông}{100}{section.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4.1}{\ignorespaces Đặc tả các giao thức truyền thông trong hệ thống}}{100}{table.caption.59}\protected@file@percent }
+\newlabel{tab:protocols}{{4.1}{100}{Đặc tả các giao thức truyền thông trong hệ thống}{table.caption.59}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.3}Môi trường phát triển}{100}{section.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.1}Phần mềm vi điều khiển nhúng (ESP32 Firmware)}{100}{subsection.4.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4.2}{\ignorespaces Danh sách thư viện phần mềm cốt lõi trên ESP32}}{101}{table.caption.60}\protected@file@percent }
+\newlabel{tab:esp_libs}{{4.2}{101}{Danh sách thư viện phần mềm cốt lõi trên ESP32}{table.caption.60}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.2}Ứng dụng thiết bị di động (Flutter App)}{101}{subsection.4.3.2}\protected@file@percent }
 \citation{nxp_pn532}
-\@writefile{lot}{\contentsline {table}{\numberline {4.3}{\ignorespaces Danh sách các gói thư viện chủ đạo trên Ứng dụng Mobile}}{103}{table.caption.61}\protected@file@percent }
-\newlabel{tab:flutter_libs}{{4.3}{103}{Danh sách các gói thư viện chủ đạo trên Ứng dụng Mobile}{table.caption.61}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.3}Dịch vụ Backend (Cloud Infrastructure)}{103}{subsection.4.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.4}Triển khai phần nhúng (ESP32)}{103}{section.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.1}Thiết lập phần cứng}{103}{subsection.4.4.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{105}{figure.caption.62}\protected@file@percent }
-\newlabel{fig:uwb_hardware_arch}{{4.1}{105}{Sơ đồ ghép nối hệ thống UWB đa mỏ neo}{figure.caption.62}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{105}{figure.caption.63}\protected@file@percent }
-\newlabel{fig:hardware}{{4.2}{105}{Mạch trung gian nRF52840}{figure.caption.63}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{105}{figure.caption.63}\protected@file@percent }
-\newlabel{fig:spec_yolouno}{{4.3}{105}{Sơ đồ chân Yolo Uno ESP32-S3}{figure.caption.63}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.4}{\ignorespaces Module NFC PN532}}{106}{figure.caption.64}\protected@file@percent }
-\newlabel{fig:spec_pn532}{{4.4}{106}{Module NFC PN532}{figure.caption.64}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.5}{\ignorespaces Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}}{106}{figure.caption.64}\protected@file@percent }
-\newlabel{fig:spec_dwm3000}{{4.5}{106}{Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}{figure.caption.64}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.2}Hiện thực phần mềm}{106}{subsection.4.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.3}Máy trạng thái hữu hạn xuyên tầng (Cross-layer FSM)}{106}{subsection.4.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.4}Xử lý NFC và Provisioning (Phase A)}{107}{subsection.4.4.4}\protected@file@percent }
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.1}{\ignorespaces Adaptive Polling logic cho NFC}}{107}{lstlisting.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.5}Giao thức xác thực BLE (Phase B)}{107}{subsection.4.4.5}\protected@file@percent }
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.2}{\ignorespaces Các bước mật mã chính trong Phase B}}{108}{lstlisting.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.6}Đo khoảng cách đa mỏ neo và Định vị Trilateration (Phase C)}{108}{subsection.4.4.6}\protected@file@percent }
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.3}{\ignorespaces Khung dữ liệu RANGE và hàm phân tích trên ESP32}}{108}{lstlisting.4.3}\protected@file@percent }
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.4}{\ignorespaces Định vị Trilateration và cập nhật EKF}}{109}{lstlisting.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.7}Quyết định truy cập theo vùng hình học (Phase D)}{109}{subsection.4.4.7}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.7.1}Phân vùng không gian (Geofencing)}{109}{subsubsection.4.4.7.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.7.2}Máy trạng thái truy cập (Access State Machine)}{110}{subsubsection.4.4.7.2}\protected@file@percent }
-\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.5}{\ignorespaces Máy trạng thái truy cập (AccessController) rút gọn}}{111}{lstlisting.4.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.7.3}Kích hoạt cơ cấu chấp hành}{111}{subsubsection.4.4.7.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.5}Triển khai phần ứng dụng di động}{112}{section.4.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.1}Tích hợp Native Android}{112}{subsection.4.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.2}Cấp quyền vật lý qua Thẻ chủ (Phase A - Master Card \& HCE)}{112}{subsection.4.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.3}Cơ chế chạy ngầm và Bàn giao phần cứng}{113}{subsection.4.5.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.4}Dữ liệu và Hệ thống cảnh báo an ninh}{113}{subsection.4.5.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.5}Giao diện Kiểm thử Chuyên sâu (Integration Test UIs)}{114}{subsection.4.5.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.6}Kết quả kiểm thử thực tế}{114}{section.4.6}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4.6}{\ignorespaces Giao diện kiểm thử xác thực BLE (Phase B)}}{115}{figure.caption.65}\protected@file@percent }
-\newlabel{fig:ble_test}{{4.6}{115}{Giao diện kiểm thử xác thực BLE (Phase B)}{figure.caption.65}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{115}{figure.caption.65}\protected@file@percent }
-\newlabel{fig:uwb_test1}{{4.7}{115}{Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}{figure.caption.65}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{115}{figure.caption.65}\protected@file@percent }
-\newlabel{fig:uwb_test2}{{4.8}{115}{Giao diện ranging UWB Ranging (Phase C) (2)}{figure.caption.65}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.9}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{115}{figure.caption.66}\protected@file@percent }
-\newlabel{fig:esp32_log}{{4.9}{115}{Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}{figure.caption.66}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4.10}{\ignorespaces Đồ thị đối chứng dữ liệu UWB thô, filter và xác suất suy luận từ mô hình TinyML}}{117}{figure.caption.67}\protected@file@percent }
-\newlabel{fig:ai_result}{{4.10}{117}{Đồ thị đối chứng dữ liệu UWB thô, filter và xác suất suy luận từ mô hình TinyML}{figure.caption.67}{}}
-\@writefile{toc}{\contentsline {chapter}{\numberline {5}\MakeUppercase    []{KẾT QUẢ THỰC NGHIỆM VÀ ĐÁNH GIÁ}}{118}{chapter.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4.3}{\ignorespaces Danh sách các gói thư viện chủ đạo trên Ứng dụng Mobile}}{102}{table.caption.61}\protected@file@percent }
+\newlabel{tab:flutter_libs}{{4.3}{102}{Danh sách các gói thư viện chủ đạo trên Ứng dụng Mobile}{table.caption.61}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.3}Dịch vụ Backend (Cloud Infrastructure)}{102}{subsection.4.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.4}Triển khai phần nhúng (ESP32)}{102}{section.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.1}Thiết lập phần cứng}{102}{subsection.4.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{104}{figure.caption.62}\protected@file@percent }
+\newlabel{fig:uwb_hardware_arch}{{4.1}{104}{Sơ đồ ghép nối hệ thống UWB đa mỏ neo}{figure.caption.62}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{104}{figure.caption.63}\protected@file@percent }
+\newlabel{fig:hardware}{{4.2}{104}{Mạch trung gian nRF52840}{figure.caption.63}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{104}{figure.caption.63}\protected@file@percent }
+\newlabel{fig:spec_yolouno}{{4.3}{104}{Sơ đồ chân Yolo Uno ESP32-S3}{figure.caption.63}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.4}{\ignorespaces Module NFC PN532}}{105}{figure.caption.64}\protected@file@percent }
+\newlabel{fig:spec_pn532}{{4.4}{105}{Module NFC PN532}{figure.caption.64}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.5}{\ignorespaces Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}}{105}{figure.caption.64}\protected@file@percent }
+\newlabel{fig:spec_dwm3000}{{4.5}{105}{Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}{figure.caption.64}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.2}Hiện thực phần mềm}{105}{subsection.4.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.3}Máy trạng thái hữu hạn xuyên tầng (Cross-layer FSM)}{105}{subsection.4.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.4}Xử lý NFC và Provisioning (Phase A)}{106}{subsection.4.4.4}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.1}{\ignorespaces Adaptive Polling logic cho NFC}}{106}{lstlisting.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.5}Giao thức xác thực BLE (Phase B)}{106}{subsection.4.4.5}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.2}{\ignorespaces Các bước mật mã chính trong Phase B}}{107}{lstlisting.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.6}Đo khoảng cách đa mỏ neo và Định vị Trilateration (Phase C)}{107}{subsection.4.4.6}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.3}{\ignorespaces Khung dữ liệu RANGE và hàm phân tích trên ESP32}}{107}{lstlisting.4.3}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.4}{\ignorespaces Định vị Trilateration và cập nhật EKF}}{108}{lstlisting.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.7}Quyết định truy cập theo vùng hình học (Phase D)}{108}{subsection.4.4.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.7.1}Phân vùng không gian (Geofencing)}{108}{subsubsection.4.4.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.7.2}Máy trạng thái truy cập (Access State Machine)}{109}{subsubsection.4.4.7.2}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4.5}{\ignorespaces Máy trạng thái truy cập (AccessController) rút gọn}}{110}{lstlisting.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.7.3}Kích hoạt cơ cấu chấp hành}{110}{subsubsection.4.4.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.5}Triển khai phần ứng dụng di động}{111}{section.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.1}Tích hợp Native Android}{111}{subsection.4.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.2}Cấp quyền vật lý qua Thẻ chủ (Phase A - Master Card \& HCE)}{111}{subsection.4.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.3}Cơ chế chạy ngầm và Bàn giao phần cứng}{112}{subsection.4.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.4}Dữ liệu và Hệ thống cảnh báo an ninh}{112}{subsection.4.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.5}Giao diện Kiểm thử Chuyên sâu (Integration Test UIs)}{113}{subsection.4.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.6}Kết quả kiểm thử thực tế}{113}{section.4.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4.6}{\ignorespaces Giao diện kiểm thử xác thực BLE (Phase B)}}{114}{figure.caption.65}\protected@file@percent }
+\newlabel{fig:ble_test}{{4.6}{114}{Giao diện kiểm thử xác thực BLE (Phase B)}{figure.caption.65}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{114}{figure.caption.65}\protected@file@percent }
+\newlabel{fig:uwb_test1}{{4.7}{114}{Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}{figure.caption.65}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{114}{figure.caption.65}\protected@file@percent }
+\newlabel{fig:uwb_test2}{{4.8}{114}{Giao diện ranging UWB Ranging (Phase C) (2)}{figure.caption.65}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.9}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{114}{figure.caption.66}\protected@file@percent }
+\newlabel{fig:esp32_log}{{4.9}{114}{Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}{figure.caption.66}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {5}\MakeUppercase    []{KẾT QUẢ THỰC NGHIỆM VÀ ĐÁNH GIÁ}}{116}{chapter.5}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{\numberline {5.1}Tổng quan}{118}{section.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5.2}Kết quả đạt được}{118}{section.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.1}Kết quả về phần cứng và hệ thống nhúng}{119}{subsection.5.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.2}Kết quả về giao thức bảo mật và mật mã}{120}{subsection.5.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.3}Kết quả về Ứng dụng di động và tích hợp hệ thống}{120}{subsection.5.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.3.1}Ứng dụng di động}{120}{subsubsection.5.2.3.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Giao diện màn hình chính}}{121}{figure.caption.68}\protected@file@percent }
-\newlabel{fig:app_home}{{5.1}{121}{Giao diện màn hình chính}{figure.caption.68}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Giao diện hồ sơ người dùng (1)}}{121}{figure.caption.68}\protected@file@percent }
-\newlabel{fig:app_profile2}{{5.2}{121}{Giao diện hồ sơ người dùng (1)}{figure.caption.68}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces Giao diện hồ sơ người dùng (2)}}{121}{figure.caption.68}\protected@file@percent }
-\newlabel{fig:app_profile}{{5.3}{121}{Giao diện hồ sơ người dùng (2)}{figure.caption.68}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces Giao diện cài đặt hệ thống (1)}}{121}{figure.caption.69}\protected@file@percent }
-\newlabel{fig:app_setting1}{{5.4}{121}{Giao diện cài đặt hệ thống (1)}{figure.caption.69}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.5}{\ignorespaces Giao diện cài đặt hệ thống (2)}}{121}{figure.caption.69}\protected@file@percent }
-\newlabel{fig:app_setting2}{{5.5}{121}{Giao diện cài đặt hệ thống (2)}{figure.caption.69}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.6}{\ignorespaces Giao diện lựa chọn ngôn ngữ}}{121}{figure.caption.69}\protected@file@percent }
-\newlabel{fig:app_language}{{5.6}{121}{Giao diện lựa chọn ngôn ngữ}{figure.caption.69}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.3.2}Tích hợp hệ thống}{121}{subsubsection.5.2.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.4}Đánh giá hiệu năng và Tính ổn định}{122}{subsection.5.2.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.1}Phân tích tốc độ giao dịch và độ trễ toàn trình}{122}{subsubsection.5.2.4.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces Thời gian xử lý thực tế quá trình Mở khóa thụ động (Giao dịch Tiêu chuẩn)}}{123}{table.caption.70}\protected@file@percent }
-\newlabel{tab:latency_breakdown_real}{{5.1}{123}{Thời gian xử lý thực tế quá trình Mở khóa thụ động (Giao dịch Tiêu chuẩn)}{table.caption.70}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.2}Đánh giá tài nguyên hệ thống (Resource Utilization):}{123}{subsubsection.5.2.4.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces Phân rã độ trễ chuyển giao từ BLE sang UWB (Dựa trên Log thực nghiệm)}}{124}{table.caption.71}\protected@file@percent }
-\newlabel{tab:handoff_latency_breakdown}{{5.2}{124}{Phân rã độ trễ chuyển giao từ BLE sang UWB (Dựa trên Log thực nghiệm)}{table.caption.71}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5.3}{\ignorespaces Thống kê tiêu thụ tài nguyên trên ESP32-S3}}{124}{table.caption.72}\protected@file@percent }
-\newlabel{tab:resource_usage}{{5.3}{124}{Thống kê tiêu thụ tài nguyên trên ESP32-S3}{table.caption.72}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.3}Đánh giá tiêu thụ năng lượng (Power Consumption)}{124}{subsubsection.5.2.4.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5.4}{\ignorespaces Phân tích dòng tiêu thụ chi tiết ở các chế độ (Nguồn cấp 5V qua LDO)}}{125}{table.caption.73}\protected@file@percent }
-\newlabel{tab:power_consumption}{{5.4}{125}{Phân tích dòng tiêu thụ chi tiết ở các chế độ (Nguồn cấp 5V qua LDO)}{table.caption.73}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.4}Độ ổn định, Phạm vi kết nối và Tối ưu dữ liệu UWB}{125}{subsubsection.5.2.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.5}Ứng dụng TinyML trong nhận diện hành vi và phòng chống tấn công tiếp sóng chuyên sâu}{126}{subsection.5.2.5}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5.7}{\ignorespaces Ma trận nhầm lẫn với độ chính xác là 84.3\%}}{127}{figure.caption.74}\protected@file@percent }
-\newlabel{fig:confu_matrix}{{5.7}{127}{Ma trận nhầm lẫn với độ chính xác là 84.3\%}{figure.caption.74}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.8}{\ignorespaces Báo cáo phân loại (walk, loiter, relay attack)}}{127}{figure.caption.74}\protected@file@percent }
-\newlabel{fig:classification_report}{{5.8}{127}{Báo cáo phân loại (walk, loiter, relay attack)}{figure.caption.74}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.9}{\ignorespaces Đồ thị phân tích hành vi bình thường: Lảng vảng (Loiter) và Tiếp cận (Walk)}}{128}{figure.caption.75}\protected@file@percent }
-\newlabel{fig:normal_behavior}{{5.9}{128}{Đồ thị phân tích hành vi bình thường: Lảng vảng (Loiter) và Tiếp cận (Walk)}{figure.caption.75}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.10}{\ignorespaces Đồ thị phân tích kịch bản Tấn công tiếp sóng (Relay Attack)}}{129}{figure.caption.76}\protected@file@percent }
-\newlabel{fig:relay_atk}{{5.10}{129}{Đồ thị phân tích kịch bản Tấn công tiếp sóng (Relay Attack)}{figure.caption.76}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5.3}Thành tựu nghiên cứu và Công bố khoa học}{129}{section.5.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {5.11}{\ignorespaces Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}}{130}{figure.caption.77}\protected@file@percent }
-\newlabel{fig:iaaa_website}{{5.11}{130}{Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}{figure.caption.77}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5.12}{\ignorespaces Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}}{130}{figure.caption.78}\protected@file@percent }
-\newlabel{fig:paper_accepted}{{5.12}{130}{Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}{figure.caption.78}{}}
-\@writefile{toc}{\contentsline {chapter}{\numberline {6}\MakeUppercase    []{KẾT LUẬN VÀ ĐỊNH HƯỚNG PHÁT TRIỂN}}{132}{chapter.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.1}Tổng quan}{116}{section.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.2}Kết quả đạt được}{116}{section.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.1}Kết quả về phần cứng và hệ thống nhúng}{117}{subsection.5.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.2}Kết quả về giao thức bảo mật và mật mã}{118}{subsection.5.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.3}Kết quả về Ứng dụng di động và tích hợp hệ thống}{118}{subsection.5.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.3.1}Ứng dụng di động}{118}{subsubsection.5.2.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Giao diện màn hình chính}}{119}{figure.caption.67}\protected@file@percent }
+\newlabel{fig:app_home}{{5.1}{119}{Giao diện màn hình chính}{figure.caption.67}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Giao diện hồ sơ người dùng (1)}}{119}{figure.caption.67}\protected@file@percent }
+\newlabel{fig:app_profile2}{{5.2}{119}{Giao diện hồ sơ người dùng (1)}{figure.caption.67}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces Giao diện hồ sơ người dùng (2)}}{119}{figure.caption.67}\protected@file@percent }
+\newlabel{fig:app_profile}{{5.3}{119}{Giao diện hồ sơ người dùng (2)}{figure.caption.67}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces Giao diện cài đặt hệ thống (1)}}{119}{figure.caption.68}\protected@file@percent }
+\newlabel{fig:app_setting1}{{5.4}{119}{Giao diện cài đặt hệ thống (1)}{figure.caption.68}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.5}{\ignorespaces Giao diện cài đặt hệ thống (2)}}{119}{figure.caption.68}\protected@file@percent }
+\newlabel{fig:app_setting2}{{5.5}{119}{Giao diện cài đặt hệ thống (2)}{figure.caption.68}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.6}{\ignorespaces Giao diện lựa chọn ngôn ngữ}}{119}{figure.caption.68}\protected@file@percent }
+\newlabel{fig:app_language}{{5.6}{119}{Giao diện lựa chọn ngôn ngữ}{figure.caption.68}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.3.2}Tích hợp hệ thống}{119}{subsubsection.5.2.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.4}Đánh giá hiệu năng và Tính ổn định}{120}{subsection.5.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.1}Phân tích tốc độ giao dịch và độ trễ toàn trình}{120}{subsubsection.5.2.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces Thời gian xử lý thực tế quá trình Mở khóa thụ động (Giao dịch Tiêu chuẩn)}}{121}{table.caption.69}\protected@file@percent }
+\newlabel{tab:latency_breakdown_real}{{5.1}{121}{Thời gian xử lý thực tế quá trình Mở khóa thụ động (Giao dịch Tiêu chuẩn)}{table.caption.69}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.2}Đánh giá tài nguyên hệ thống (Resource Utilization):}{121}{subsubsection.5.2.4.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces Phân rã độ trễ chuyển giao từ BLE sang UWB (Dựa trên Log thực nghiệm)}}{122}{table.caption.70}\protected@file@percent }
+\newlabel{tab:handoff_latency_breakdown}{{5.2}{122}{Phân rã độ trễ chuyển giao từ BLE sang UWB (Dựa trên Log thực nghiệm)}{table.caption.70}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.3}{\ignorespaces Thống kê tiêu thụ tài nguyên trên ESP32-S3}}{122}{table.caption.71}\protected@file@percent }
+\newlabel{tab:resource_usage}{{5.3}{122}{Thống kê tiêu thụ tài nguyên trên ESP32-S3}{table.caption.71}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.3}Đánh giá tiêu thụ năng lượng (Power Consumption)}{122}{subsubsection.5.2.4.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.4}{\ignorespaces Phân tích dòng tiêu thụ chi tiết ở các chế độ (Nguồn cấp 5V qua LDO)}}{123}{table.caption.72}\protected@file@percent }
+\newlabel{tab:power_consumption}{{5.4}{123}{Phân tích dòng tiêu thụ chi tiết ở các chế độ (Nguồn cấp 5V qua LDO)}{table.caption.72}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.4.4}Độ ổn định, Phạm vi kết nối và Tối ưu dữ liệu UWB}{123}{subsubsection.5.2.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.5}Ứng dụng TinyML trong nhận diện ý định hành vi (đang hiện thực)}{124}{subsection.5.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.3}Thành tựu nghiên cứu và Công bố khoa học}{125}{section.5.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.7}{\ignorespaces Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}}{125}{figure.caption.73}\protected@file@percent }
+\newlabel{fig:iaaa_website}{{5.7}{125}{Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}{figure.caption.73}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.8}{\ignorespaces Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}}{126}{figure.caption.74}\protected@file@percent }
+\newlabel{fig:paper_accepted}{{5.8}{126}{Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}{figure.caption.74}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {6}\MakeUppercase    []{KẾT LUẬN VÀ ĐỊNH HƯỚNG PHÁT TRIỂN}}{127}{chapter.6}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\@writefile{toc}{\contentsline {section}{Hạn chế của đề tài}{133}{Item.114}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{Định hướng phát triển}{134}{Item.114}\protected@file@percent }
-\@writefile{toc}{\contentsline {chapter}{DANH MỤC TÀI LIỆU THAM KHẢO}{134}{Item.118}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Hạn chế của đề tài}{128}{Item.110}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{Định hướng phát triển}{129}{Item.110}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{DANH MỤC TÀI LIỆU THAM KHẢO}{129}{Item.114}\protected@file@percent }
 \bibcite{axelson_serial}{1}
 \bibcite{autosar}{2}
 \bibcite{arduinojson}{3}
@@ -537,8 +530,8 @@
 \bibcite{ccc_digikey3}{70}
 \bibcite{nxp_ncj29d5}{71}
 \bibcite{nxp_pn532}{72}
-\@writefile{toc}{\contentsline {chapter}{\numberline {A}\MakeUppercase    []{KHAI BÁO TRÁCH NHIỆM}}{141}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {A}\MakeUppercase    []{KHAI BÁO TRÁCH NHIỆM}}{136}{appendix.A}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
 \ttl@finishall
-\gdef \@abspage@last{141}
+\gdef \@abspage@last{136}

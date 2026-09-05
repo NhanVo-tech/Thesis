@@ -8,9 +8,9 @@
 
     \item \textbf{Về mặt kỹ thuật nhúng và hiệu năng:} Hệ thống đã chứng minh tính khả thi khi vận hành ổn định các giao thức mật mã phức tạp và xử lý tín hiệu thời gian thực trên vi điều khiển ESP32-S3 dưới sự quản lý của hệ điều hành FreeRTOS. Các chỉ số hiệu năng thực tế, bao gồm độ trễ giao dịch toàn trình ($\approx 1.5$s) và độ trễ bàn giao kết nối ($\approx 630$ms), đều nằm trong ngưỡng đáp ứng tiêu chuẩn công nghiệp, mang lại trải nghiệm liền mạch cho người dùng.
 
-    \item \textbf{Về điểm đột phá Trí tuệ nhân tạo (TinyML):} Điểm sáng tạo của đề tài là việc vượt ra khỏi các thuật toán so sánh ngưỡng (Rule-based) đơn thuần để nhúng thành công mô hình học máy (mạng tích chập 1D - Conv1D) trực tiếp lên thiết bị biên. Khả năng nhận diện ngữ cảnh hành vi (Walk, Loiter, Attack) từ dữ liệu UWB đã giúp nâng cấp hệ thống từ mức đo lường thụ động sang nhận thức thông minh, tăng cường đáng kể khả năng phòng vệ trước các kịch bản tấn công tiếp sóng (Relay Attack) tinh vi.
+    \item \textbf{Về điểm đột phá Trí tuệ nhân tạo (TinyML, đang hiện thực):} Điểm sáng tạo của đề tài là việc vượt ra khỏi các thuật toán so sánh ngưỡng (Rule-based) đơn thuần để nhúng mô hình học máy (mạng tích chập 1D - Conv1D) trực tiếp lên thiết bị biên nhằm nhận diện ý định hành vi. Kiến trúc định hướng ở giai đoạn 2 phân loại quỹ đạo $(x, y, v_x, v_y)$ thành bốn lớp ý định (Approach, Seated, Leave, Passing) và đóng vai trò cổng (gate) cho quyết định truy cập tất định, hướng tới nâng cấp hệ thống từ mức đo lường thụ động sang nhận thức thông minh.
 
-    \item \textbf{Về giá trị thực tiễn và khoa học:} Đồ án là minh chứng cho việc làm chủ công nghệ xuyên suốt từ tầng vật lý (Physical Layer) đến tầng ứng dụng (Application Layer). Sự kết hợp hiệu quả giữa bộ lọc Kalman truyền thống và học máy hiện đại mang lại độ chính xác nhận diện hành vi đạt $77\%$, mở ra hướng tiếp cận khả thi và tối ưu chi phí cho các hệ thống an ninh ô tô thế hệ mới.
+    \item \textbf{Về giá trị thực tiễn và khoa học:} Đồ án là minh chứng cho việc làm chủ công nghệ xuyên suốt từ tầng vật lý (Physical Layer) đến tầng ứng dụng (Application Layer). Sự kết hợp giữa bộ lọc Kalman truyền thống và học máy hiện đại mở ra hướng tiếp cận khả thi và tối ưu chi phí cho các hệ thống an ninh ô tô thế hệ mới.
 \end{enumerate}
 
 Tóm lại, hệ thống Smart Car Access được phát triển trong đồ án là một giải pháp mang tính toàn diện, hội đủ các yếu tố: an ninh mật mã, ổn định phần cứng và thông minh hóa phần mềm. Đây là tiền đề quan trọng để phát triển các ứng dụng bảo mật ô tô hướng tới sự tiện nghi và an toàn tuyệt đối trong kỷ nguyên xe điện và xe tự hành.
@@ -32,9 +32,9 @@ Mặc dù hệ thống đã hiện thực hóa thành công luồng truy cập P
         \item Một hệ thống thương mại chuẩn CCC yêu cầu phải có Hạ tầng quản lý chứng chỉ số (PKI) hoàn chỉnh. Trong phạm vi đồ án, quy trình cấp quyền (Provisioning) mới dừng ở mức mô phỏng cục bộ thông qua thẻ vật lý (Master Card) thay vì xác thực đám mây thông qua các máy chủ OEM chuyên dụng.
     \end{itemize}
 
-    \item \textbf{Tiến độ nhúng mô hình học máy chuỗi thời gian (Time-series ML):}
+    \item \textbf{Tiến độ nhúng mô hình học máy (TinyML, đang hiện thực):}
     \begin{itemize}
-        \item Hệ thống đã trích xuất thành công đặc trưng vật lý và tối ưu hóa quỹ đạo bằng bộ lọc Kalman, đồng thời nhúng thành công mô hình tĩnh Conv1D. Tuy nhiên, việc lượng tử hóa (Quantization) các mạng nơ-ron phức tạp như LSTM để suy luận thời gian thực trên ESP32-S3 vẫn đòi hỏi nhiều chi phí tài nguyên. Do đó, để đảm bảo tính an toàn cơ học tuyệt đối, logic ra quyết định mở cửa hiện tại vẫn ưu tiên sử dụng thuật toán Hysteresis kết hợp bộ lọc Kalman làm cốt lõi.
+        \item Hệ thống đã trích xuất thành công đặc trưng vật lý và tối ưu hóa quỹ đạo bằng bộ lọc Kalman hai chiều (EKF), tạo chuỗi trạng thái $(x, y, v_x, v_y)$ chất lượng cao làm đầu vào cho mô hình. Mô hình nhận diện ý định hành vi (Conv1D/TFLM) hiện đang trong quá trình thu thập dữ liệu, huấn luyện và nhúng lên ESP32-S3. Do đó, để đảm bảo tính an toàn cơ học tuyệt đối, logic ra quyết định mở cửa hiện tại vẫn ưu tiên sử dụng thuật toán Hysteresis kết hợp bộ lọc Kalman làm cốt lõi tất định.
     \end{itemize}
 
     \item \textbf{Độ phủ của dữ liệu huấn luyện (Model Coverage):}

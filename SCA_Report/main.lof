@@ -38,31 +38,26 @@
 \contentsline {figure}{\numberline {3.3}{\ignorespaces Sơ đồ Sequence Phase B}}{89}{figure.caption.55}%
 \contentsline {figure}{\numberline {3.4}{\ignorespaces Sơ đồ Sequence Phase C}}{91}{figure.caption.56}%
 \contentsline {figure}{\numberline {3.5}{\ignorespaces Sơ đồ Sequence Phase D tích hợp suy luận AI}}{93}{figure.caption.57}%
-\contentsline {figure}{\numberline {3.6}{\ignorespaces Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}}{97}{figure.caption.58}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}}{96}{figure.caption.58}%
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{105}{figure.caption.62}%
-\contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{105}{figure.caption.63}%
-\contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{105}{figure.caption.63}%
-\contentsline {figure}{\numberline {4.4}{\ignorespaces Module NFC PN532}}{106}{figure.caption.64}%
-\contentsline {figure}{\numberline {4.5}{\ignorespaces Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}}{106}{figure.caption.64}%
-\contentsline {figure}{\numberline {4.6}{\ignorespaces Giao diện kiểm thử xác thực BLE (Phase B)}}{115}{figure.caption.65}%
-\contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{115}{figure.caption.65}%
-\contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{115}{figure.caption.65}%
-\contentsline {figure}{\numberline {4.9}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{115}{figure.caption.66}%
-\contentsline {figure}{\numberline {4.10}{\ignorespaces Đồ thị đối chứng dữ liệu UWB thô, filter và xác suất suy luận từ mô hình TinyML}}{117}{figure.caption.67}%
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{104}{figure.caption.62}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{104}{figure.caption.63}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{104}{figure.caption.63}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Module NFC PN532}}{105}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}}{105}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Giao diện kiểm thử xác thực BLE (Phase B)}}{114}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{114}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{114}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{114}{figure.caption.66}%
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {5.1}{\ignorespaces Giao diện màn hình chính}}{121}{figure.caption.68}%
-\contentsline {figure}{\numberline {5.2}{\ignorespaces Giao diện hồ sơ người dùng (1)}}{121}{figure.caption.68}%
-\contentsline {figure}{\numberline {5.3}{\ignorespaces Giao diện hồ sơ người dùng (2)}}{121}{figure.caption.68}%
-\contentsline {figure}{\numberline {5.4}{\ignorespaces Giao diện cài đặt hệ thống (1)}}{121}{figure.caption.69}%
-\contentsline {figure}{\numberline {5.5}{\ignorespaces Giao diện cài đặt hệ thống (2)}}{121}{figure.caption.69}%
-\contentsline {figure}{\numberline {5.6}{\ignorespaces Giao diện lựa chọn ngôn ngữ}}{121}{figure.caption.69}%
-\contentsline {figure}{\numberline {5.7}{\ignorespaces Ma trận nhầm lẫn với độ chính xác là 84.3\%}}{127}{figure.caption.74}%
-\contentsline {figure}{\numberline {5.8}{\ignorespaces Báo cáo phân loại (walk, loiter, relay attack)}}{127}{figure.caption.74}%
-\contentsline {figure}{\numberline {5.9}{\ignorespaces Đồ thị phân tích hành vi bình thường: Lảng vảng (Loiter) và Tiếp cận (Walk)}}{128}{figure.caption.75}%
-\contentsline {figure}{\numberline {5.10}{\ignorespaces Đồ thị phân tích kịch bản Tấn công tiếp sóng (Relay Attack)}}{129}{figure.caption.76}%
-\contentsline {figure}{\numberline {5.11}{\ignorespaces Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}}{130}{figure.caption.77}%
-\contentsline {figure}{\numberline {5.12}{\ignorespaces Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}}{130}{figure.caption.78}%
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Giao diện màn hình chính}}{119}{figure.caption.67}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Giao diện hồ sơ người dùng (1)}}{119}{figure.caption.67}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Giao diện hồ sơ người dùng (2)}}{119}{figure.caption.67}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces Giao diện cài đặt hệ thống (1)}}{119}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces Giao diện cài đặt hệ thống (2)}}{119}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.6}{\ignorespaces Giao diện lựa chọn ngôn ngữ}}{119}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.7}{\ignorespaces Hội nghị Quốc tế IAAA 2026 tổ chức tại trường ĐH Bách Khoa}}{125}{figure.caption.73}%
+\contentsline {figure}{\numberline {5.8}{\ignorespaces Minh chứng bài báo được chấp nhận (Accepted) trên hệ thống EDAS}}{126}{figure.caption.74}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \contentsfinish 

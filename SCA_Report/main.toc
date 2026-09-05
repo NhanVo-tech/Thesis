@@ -67,9 +67,12 @@
 \contentsline {section}{\numberline {2.4}Công nghệ phát triển ứng dụng di động}{70}{section.2.4}%
 \contentsline {subsection}{\numberline {2.4.1}Flutter Framework và Quản lý trạng thái}{71}{subsection.2.4.1}%
 \contentsline {subsection}{\numberline {2.4.2}Firebase Backend-as-a-Service}{72}{subsection.2.4.2}%
-\contentsline {section}{\numberline {2.5}Mô hình học sâu LSTM cho nhận diện hành vi}{74}{section.2.5}%
-\contentsline {subsection}{\numberline {2.5.1}Kiến trúc và cơ chế hoạt động của LSTM}{74}{subsection.2.5.1}%
-\contentsline {subsection}{\numberline {2.5.2}Ứng dụng LSTM trong hệ thống định vị UWB}{75}{subsection.2.5.2}%
+\contentsline {section}{\numberline {2.5}Mô hình học sâu cho nhận diện ý định hành vi (Intent Recognition)}{74}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Bài toán nhận diện ý định hành vi}{74}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Mạng tích chập một chiều (Conv1D)}{75}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Đặc trưng đầu vào và cửa sổ trượt}{75}{subsection.2.5.3}%
+\contentsline {subsection}{\numberline {2.5.4}Kiến trúc mô hình và phân loại Softmax}{75}{subsection.2.5.4}%
+\contentsline {subsection}{\numberline {2.5.5}Nguyên tắc "Gate, don't decide"}{76}{subsection.2.5.5}%
 \contentsline {chapter}{\numberline {3}\MakeUppercase []{KIẾN TRÚC HỆ THỐNG}}{77}{chapter.3}%
 \contentsline {section}{\numberline {3.1}Yêu cầu hệ thống}{77}{section.3.1}%
 \contentsline {subsection}{\numberline {3.1.1}Yêu cầu chức năng}{77}{subsection.3.1.1}%
@@ -90,58 +93,58 @@
 \contentsline {subsection}{\numberline {3.4.1}Phase A - Giai đoạn Cấp quyền vật lý}{86}{subsection.3.4.1}%
 \contentsline {subsection}{\numberline {3.4.2}Phase B - Xác thực bảo mật kênh truyền}{88}{subsection.3.4.2}%
 \contentsline {subsection}{\numberline {3.4.3}Phase C - Xác thực khoảng cách và định vị an toàn với UWB}{90}{subsection.3.4.3}%
-\contentsline {subsection}{\numberline {3.4.4}Phase D - Quyết định truy cập thông minh dựa trên học sâu}{92}{subsection.3.4.4}%
-\contentsline {subsection}{\numberline {3.4.5}Cơ chế đánh giá hành vi dựa trên mô hình chuỗi thời gian}{94}{subsection.3.4.5}%
-\contentsline {section}{\numberline {3.5}Thiết kế kiến trúc máy trạng thái hữu hạn - FSM}{96}{section.3.5}%
-\contentsline {subsection}{\numberline {3.5.1}Cấu trúc phân lớp FSM}{96}{subsection.3.5.1}%
-\contentsline {subsection}{\numberline {3.5.2}Phân loại các chuỗi trạng thái}{96}{subsection.3.5.2}%
-\contentsline {subsubsection}{\numberline {3.5.2.1}Trạng thái Khởi tạo và An toàn}{98}{subsubsection.3.5.2.1}%
-\contentsline {subsubsection}{\numberline {3.5.2.2}Nhóm trạng thái Phase A - Cấp quyền vật lý}{98}{subsubsection.3.5.2.2}%
+\contentsline {subsection}{\numberline {3.4.4}Phase D - Quyết định truy cập thông minh}{92}{subsection.3.4.4}%
+\contentsline {subsection}{\numberline {3.4.5}Cơ chế nhận diện ý định hành vi dựa trên TinyML (đang hiện thực)}{94}{subsection.3.4.5}%
+\contentsline {section}{\numberline {3.5}Thiết kế kiến trúc máy trạng thái hữu hạn - FSM}{95}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Cấu trúc phân lớp FSM}{95}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Phân loại các chuỗi trạng thái}{97}{subsection.3.5.2}%
+\contentsline {subsubsection}{\numberline {3.5.2.1}Trạng thái Khởi tạo và An toàn}{97}{subsubsection.3.5.2.1}%
+\contentsline {subsubsection}{\numberline {3.5.2.2}Nhóm trạng thái Phase A - Cấp quyền vật lý}{97}{subsubsection.3.5.2.2}%
 \contentsline {subsubsection}{\numberline {3.5.2.3}Nhóm trạng thái Phase B - Xác thực kênh truyền}{98}{subsubsection.3.5.2.3}%
 \contentsline {subsubsection}{\numberline {3.5.2.4}Nhóm trạng thái C\&D - Định vị và Kích hoạt relay}{98}{subsubsection.3.5.2.4}%
-\contentsline {chapter}{\numberline {4}HIỆN THỰC HỆ THỐNG}{100}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Kiến trúc hệ thống tổng thể}{100}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Giao thức truyền thông}{101}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Môi trường phát triển}{101}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Phần mềm vi điều khiển nhúng (ESP32 Firmware)}{101}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}Ứng dụng thiết bị di động (Flutter App)}{102}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Dịch vụ Backend (Cloud Infrastructure)}{103}{subsection.4.3.3}%
-\contentsline {section}{\numberline {4.4}Triển khai phần nhúng (ESP32)}{103}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}Thiết lập phần cứng}{103}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}Hiện thực phần mềm}{106}{subsection.4.4.2}%
-\contentsline {subsection}{\numberline {4.4.3}Máy trạng thái hữu hạn xuyên tầng (Cross-layer FSM)}{106}{subsection.4.4.3}%
-\contentsline {subsection}{\numberline {4.4.4}Xử lý NFC và Provisioning (Phase A)}{107}{subsection.4.4.4}%
-\contentsline {subsection}{\numberline {4.4.5}Giao thức xác thực BLE (Phase B)}{107}{subsection.4.4.5}%
-\contentsline {subsection}{\numberline {4.4.6}Đo khoảng cách đa mỏ neo và Định vị Trilateration (Phase C)}{108}{subsection.4.4.6}%
-\contentsline {subsection}{\numberline {4.4.7}Quyết định truy cập theo vùng hình học (Phase D)}{109}{subsection.4.4.7}%
-\contentsline {subsubsection}{\numberline {4.4.7.1}Phân vùng không gian (Geofencing)}{109}{subsubsection.4.4.7.1}%
-\contentsline {subsubsection}{\numberline {4.4.7.2}Máy trạng thái truy cập (Access State Machine)}{110}{subsubsection.4.4.7.2}%
-\contentsline {subsubsection}{\numberline {4.4.7.3}Kích hoạt cơ cấu chấp hành}{111}{subsubsection.4.4.7.3}%
-\contentsline {section}{\numberline {4.5}Triển khai phần ứng dụng di động}{112}{section.4.5}%
-\contentsline {subsection}{\numberline {4.5.1}Tích hợp Native Android}{112}{subsection.4.5.1}%
-\contentsline {subsection}{\numberline {4.5.2}Cấp quyền vật lý qua Thẻ chủ (Phase A - Master Card \& HCE)}{112}{subsection.4.5.2}%
-\contentsline {subsection}{\numberline {4.5.3}Cơ chế chạy ngầm và Bàn giao phần cứng}{113}{subsection.4.5.3}%
-\contentsline {subsection}{\numberline {4.5.4}Dữ liệu và Hệ thống cảnh báo an ninh}{113}{subsection.4.5.4}%
-\contentsline {subsection}{\numberline {4.5.5}Giao diện Kiểm thử Chuyên sâu (Integration Test UIs)}{114}{subsection.4.5.5}%
-\contentsline {section}{\numberline {4.6}Kết quả kiểm thử thực tế}{114}{section.4.6}%
-\contentsline {chapter}{\numberline {5}\MakeUppercase []{KẾT QUẢ THỰC NGHIỆM VÀ ĐÁNH GIÁ}}{118}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Tổng quan}{118}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Kết quả đạt được}{118}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Kết quả về phần cứng và hệ thống nhúng}{119}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}Kết quả về giao thức bảo mật và mật mã}{120}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Kết quả về Ứng dụng di động và tích hợp hệ thống}{120}{subsection.5.2.3}%
-\contentsline {subsubsection}{\numberline {5.2.3.1}Ứng dụng di động}{120}{subsubsection.5.2.3.1}%
-\contentsline {subsubsection}{\numberline {5.2.3.2}Tích hợp hệ thống}{121}{subsubsection.5.2.3.2}%
-\contentsline {subsection}{\numberline {5.2.4}Đánh giá hiệu năng và Tính ổn định}{122}{subsection.5.2.4}%
-\contentsline {subsubsection}{\numberline {5.2.4.1}Phân tích tốc độ giao dịch và độ trễ toàn trình}{122}{subsubsection.5.2.4.1}%
-\contentsline {subsubsection}{\numberline {5.2.4.2}Đánh giá tài nguyên hệ thống (Resource Utilization):}{123}{subsubsection.5.2.4.2}%
-\contentsline {subsubsection}{\numberline {5.2.4.3}Đánh giá tiêu thụ năng lượng (Power Consumption)}{124}{subsubsection.5.2.4.3}%
-\contentsline {subsubsection}{\numberline {5.2.4.4}Độ ổn định, Phạm vi kết nối và Tối ưu dữ liệu UWB}{125}{subsubsection.5.2.4.4}%
-\contentsline {subsection}{\numberline {5.2.5}Ứng dụng TinyML trong nhận diện hành vi và phòng chống tấn công tiếp sóng chuyên sâu}{126}{subsection.5.2.5}%
-\contentsline {section}{\numberline {5.3}Thành tựu nghiên cứu và Công bố khoa học}{129}{section.5.3}%
-\contentsline {chapter}{\numberline {6}\MakeUppercase []{KẾT LUẬN VÀ ĐỊNH HƯỚNG PHÁT TRIỂN}}{132}{chapter.6}%
-\contentsline {section}{Hạn chế của đề tài}{133}{Item.114}%
-\contentsline {section}{Định hướng phát triển}{134}{Item.114}%
-\contentsline {chapter}{DANH MỤC TÀI LIỆU THAM KHẢO}{134}{Item.118}%
-\contentsline {chapter}{\numberline {A}\MakeUppercase []{KHAI BÁO TRÁCH NHIỆM}}{141}{appendix.A}%
+\contentsline {chapter}{\numberline {4}HIỆN THỰC HỆ THỐNG}{99}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Kiến trúc hệ thống tổng thể}{99}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Giao thức truyền thông}{100}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Môi trường phát triển}{100}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Phần mềm vi điều khiển nhúng (ESP32 Firmware)}{100}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Ứng dụng thiết bị di động (Flutter App)}{101}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Dịch vụ Backend (Cloud Infrastructure)}{102}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Triển khai phần nhúng (ESP32)}{102}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Thiết lập phần cứng}{102}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Hiện thực phần mềm}{105}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Máy trạng thái hữu hạn xuyên tầng (Cross-layer FSM)}{105}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}Xử lý NFC và Provisioning (Phase A)}{106}{subsection.4.4.4}%
+\contentsline {subsection}{\numberline {4.4.5}Giao thức xác thực BLE (Phase B)}{106}{subsection.4.4.5}%
+\contentsline {subsection}{\numberline {4.4.6}Đo khoảng cách đa mỏ neo và Định vị Trilateration (Phase C)}{107}{subsection.4.4.6}%
+\contentsline {subsection}{\numberline {4.4.7}Quyết định truy cập theo vùng hình học (Phase D)}{108}{subsection.4.4.7}%
+\contentsline {subsubsection}{\numberline {4.4.7.1}Phân vùng không gian (Geofencing)}{108}{subsubsection.4.4.7.1}%
+\contentsline {subsubsection}{\numberline {4.4.7.2}Máy trạng thái truy cập (Access State Machine)}{109}{subsubsection.4.4.7.2}%
+\contentsline {subsubsection}{\numberline {4.4.7.3}Kích hoạt cơ cấu chấp hành}{110}{subsubsection.4.4.7.3}%
+\contentsline {section}{\numberline {4.5}Triển khai phần ứng dụng di động}{111}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Tích hợp Native Android}{111}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Cấp quyền vật lý qua Thẻ chủ (Phase A - Master Card \& HCE)}{111}{subsection.4.5.2}%
+\contentsline {subsection}{\numberline {4.5.3}Cơ chế chạy ngầm và Bàn giao phần cứng}{112}{subsection.4.5.3}%
+\contentsline {subsection}{\numberline {4.5.4}Dữ liệu và Hệ thống cảnh báo an ninh}{112}{subsection.4.5.4}%
+\contentsline {subsection}{\numberline {4.5.5}Giao diện Kiểm thử Chuyên sâu (Integration Test UIs)}{113}{subsection.4.5.5}%
+\contentsline {section}{\numberline {4.6}Kết quả kiểm thử thực tế}{113}{section.4.6}%
+\contentsline {chapter}{\numberline {5}\MakeUppercase []{KẾT QUẢ THỰC NGHIỆM VÀ ĐÁNH GIÁ}}{116}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Tổng quan}{116}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Kết quả đạt được}{116}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Kết quả về phần cứng và hệ thống nhúng}{117}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Kết quả về giao thức bảo mật và mật mã}{118}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Kết quả về Ứng dụng di động và tích hợp hệ thống}{118}{subsection.5.2.3}%
+\contentsline {subsubsection}{\numberline {5.2.3.1}Ứng dụng di động}{118}{subsubsection.5.2.3.1}%
+\contentsline {subsubsection}{\numberline {5.2.3.2}Tích hợp hệ thống}{119}{subsubsection.5.2.3.2}%
+\contentsline {subsection}{\numberline {5.2.4}Đánh giá hiệu năng và Tính ổn định}{120}{subsection.5.2.4}%
+\contentsline {subsubsection}{\numberline {5.2.4.1}Phân tích tốc độ giao dịch và độ trễ toàn trình}{120}{subsubsection.5.2.4.1}%
+\contentsline {subsubsection}{\numberline {5.2.4.2}Đánh giá tài nguyên hệ thống (Resource Utilization):}{121}{subsubsection.5.2.4.2}%
+\contentsline {subsubsection}{\numberline {5.2.4.3}Đánh giá tiêu thụ năng lượng (Power Consumption)}{122}{subsubsection.5.2.4.3}%
+\contentsline {subsubsection}{\numberline {5.2.4.4}Độ ổn định, Phạm vi kết nối và Tối ưu dữ liệu UWB}{123}{subsubsection.5.2.4.4}%
+\contentsline {subsection}{\numberline {5.2.5}Ứng dụng TinyML trong nhận diện ý định hành vi (đang hiện thực)}{124}{subsection.5.2.5}%
+\contentsline {section}{\numberline {5.3}Thành tựu nghiên cứu và Công bố khoa học}{125}{section.5.3}%
+\contentsline {chapter}{\numberline {6}\MakeUppercase []{KẾT LUẬN VÀ ĐỊNH HƯỚNG PHÁT TRIỂN}}{127}{chapter.6}%
+\contentsline {section}{Hạn chế của đề tài}{128}{Item.110}%
+\contentsline {section}{Định hướng phát triển}{129}{Item.110}%
+\contentsline {chapter}{DANH MỤC TÀI LIỆU THAM KHẢO}{129}{Item.114}%
+\contentsline {chapter}{\numberline {A}\MakeUppercase []{KHAI BÁO TRÁCH NHIỆM}}{136}{appendix.A}%
 \contentsfinish 

@@ -122,7 +122,7 @@ Hệ thống phần cứng trên xe được thiết kế module hóa nhằm t�
 \begin{itemize}
     \item \textbf{Background Isolate (Luồng chạy ngầm):} Quản lý bởi \texttt{PkeBackgroundService}. Nhiệm vụ của luồng này là liên tục quét (Scan) tín hiệu BLE dưới nền. Khi phát hiện xe, luồng tự động thiết lập kênh truyền an toàn và thực hiện Xác thực mật mã (Phase B). Điểm mấu chốt là sau khi xác thực, luồng này \textit{không ngắt kết nối} mà tiến hành "Giữ trạng thái" (Hold Connection) để bàn giao cho luồng Foreground.
     \item \textbf{Foreground Isolate (Luồng giao diện \& UWB Ranging):} Xử lý dịch vụ \texttt{UwbMultiService} thông qua Native Android MethodChannel (\texttt{smartcar/uwb}). Kế thừa kết nối BLE từ Background, luồng này gửi lệnh \texttt{RANGING\_START/STOP} qua đường hầm CCC đã mã hóa cho ESP32, đồng thời kích hoạt chip UWB trên điện thoại (API \texttt{android.ranging}, địa chỉ Controller \texttt{0x06C1}) để bắt đầu phiên đo khoảng cách \textbf{DS-TWR multicast} với ba mỏ neo trên xe.
-    \item \textbf{Security \& ML Module:} Chứa thuật toán \textit{Kalman-LSTM Detector}. Tích hợp chức năng lọc nhiễu tọa độ UWB và phát hiện tấn công tiếp sóng (Relay Attack) dựa trên phân tích sự lạm phát khoảng cách trong chuỗi thời gian (Distance Inflation).
+    \item \textbf{Security \& ML Module:} Chứa module nhận diện ý định hành vi \textit{TrajInference} (Conv1D/TFLM, \textbf{đang hiện thực}). Module này phân loại cửa sổ quỹ đạo $(x, y, v_x, v_y)$ thành bốn lớp ý định (Approach/Seated/Leave/Passing) và đóng vai trò cổng (gate) cho quyết định truy cập tất định.
 \end{itemize}
 
 \subsection{Kiến trúc phần mềm vi điều khiển}
@@ -145,7 +145,7 @@ Firmware của ECU được thiết kế theo kiến trúc Event-Driven \& Multi
 \textbf{Mobile App (Flutter Dual-Isolate)} & \textbf{Vehicle Controller (C/C++ FreeRTOS)} \\ \hline
 \textbf{Background Isolate:} Quét BLE ngầm, tự động kết nối và chạy Phase B (Crypto) không cần mở màn hình. & \textbf{FSM Core:} Máy trạng thái hữu hạn kiểm soát tính nhất quán xuyên tầng (Cross-layer). \\ \hline
 \textbf{Foreground Isolate:} Nhận Handoff, gọi API Native Android cấu hình chip UWB và gửi lệnh Ranging. & \textbf{Tasks \& Protocol Layer:} NFC Task (APDU), BLE Task (GATT/Crypto), UWB Task (Trilateration + EKF). \\ \hline
-\textbf{ML Layer:} Bộ lọc Kalman-LSTM phát hiện Relay Attack từ dữ liệu thô. & \textbf{Access Logic:} Thuật toán Hysteresis kết hợp dữ liệu Ranging để điều khiển GPIO Relay. \\ \hline
+\textbf{ML Layer:} TrajInference (Conv1D/TFLM) nhận diện ý định hành vi, đóng vai trò cổng cho quyết định (đang hiện thực). & \textbf{Access Logic:} Thuật toán Hysteresis kết hợp dữ liệu Ranging để điều khiển GPIO Relay. \\ \hline
 \end{tabular}
 \caption{Tương quan kiến trúc phần mềm giữa Mobile App và ECU}
 \label{tab:sw_arch_new}
@@ -358,9 +358,9 @@ Khác với các hệ thống Smart Key truyền thống dùng RSSI của Blueto
     \item \textbf{Chống Relay Attack:} Để ngăn chặn kẻ gian thu phát lại tín hiệu xung UWB, một chuỗi dấu thời gian bị xáo trộn (Scrambled Timestamp Sequence - STS) được áp dụng vào tầng vật lý (MAC layer) \cite{ccc_digikey3, nxp_ncj29d5, neirynck2016overview}. STS được mã hóa bằng chính khóa $K_{ursk}$ đã sinh ra từ Phase B \cite{neirynck2016overview}. Nhờ đó, gói tin UWB bị ràng buộc chặt chẽ với phiên BLE, triệt tiêu mọi khả năng chèn ép hoặc làm giả thời gian bay (Time-of-Flight).
 \end{enumerate}
 
-\subsection{Phase D - Quyết định truy cập thông minh dựa trên học sâu}
+\subsection{Phase D - Quyết định truy cập thông minh}
 
-Đây là giai đoạn thực thi cuối cùng và quan trọng nhất của hệ thống. Việc kích hoạt rơ-le mở cửa (Door Unlock Actuator) không còn phụ thuộc vào ngưỡng khoảng cách vô hướng đơn lẻ từ một mỏ neo, mà là kết quả của sự \textbf{quyết định kết hợp} giữa trạng thái giao thức, vị trí không gian $(x, y)$ và vận tốc $(v_x, v_y)$ được hợp nhất từ ba mỏ neo, cùng với kết quả suy luận từ mô hình học sâu chuỗi thời gian.
+Đây là giai đoạn thực thi cuối cùng và quan trọng nhất của hệ thống. Việc kích hoạt rơ-le mở cửa (Door Unlock Actuator) không còn phụ thuộc vào ngưỡng khoảng cách vô hướng đơn lẻ từ một mỏ neo, mà là kết quả của sự \textbf{quyết định kết hợp} giữa trạng thái giao thức, vị trí không gian $(x, y)$ và vận tốc $(v_x, v_y)$ được hợp nhất từ ba mỏ neo. Lõi quyết định là tầng tất định \texttt{AccessController}; trên nền đó, mô hình TinyML nhận diện ý định hành vi (\textbf{đang hiện thực}) đóng vai trò \textbf{cổng} (gate) bổ sung.
 
 \leavevmode
 \begin{figure}[htbp]
@@ -370,21 +370,18 @@ Khác với các hệ thống Smart Key truyền thống dùng RSSI của Blueto
     \label{fig:phaseD}
 \end{figure}
 
-Trạng thái $(x, y, v_x, v_y)$ sau khi đi qua bộ lọc Kalman hai chiều (EKF) sẽ được bàn giao cho module \texttt{AccessController} để thực hiện quyết định truy cập hình học, đồng thời được đưa vào module \texttt{LstmInference}. Tại đây, một cửa sổ trượt (Sliding Window) lưu trữ $25$ khung hình gần nhất sẽ thực hiện tính toán đặc trưng và suy luận ngay trên vi điều khiển (On-device Inference). Quy trình ra quyết định được thực hiện qua hai lớp bảo mật:
+Trạng thái $(x, y, v_x, v_y)$ sau khi đi qua bộ lọc Kalman hai chiều (EKF) sẽ được bàn giao cho module \texttt{AccessController} để thực hiện quyết định truy cập hình học, đồng thời được đưa vào module \texttt{TrajInference} (\textbf{đang hiện thực}). Tại đây, một cửa sổ trượt (Sliding Window) lưu trữ $25$ khung hình gần nhất sẽ thực hiện tính toán đặc trưng và suy luận ngay trên vi điều khiển (On-device Inference). Quy trình ra quyết định được thực hiện qua hai lớp:
 
 \begin{enumerate}
-    \item \textbf{Lớp lọc an ninh AI (Security Inference Layer):}
-    Hệ thống liên tục đánh giá vector xác suất từ mô hình AI bao gồm $P_{walk}$ (Tiếp cận), $P_{loiter}$ (Lảng vảng) và $P_{attack}$ (Tấn công tiếp sóng). 
-    \begin{itemize}
-        \item Nếu ghi nhận xác suất tấn công $P_{attack} > 0.70$, hệ thống lập tức cưỡng bức trạng thái khóa an toàn, ngăn chặn hoàn toàn mọi nỗ lực xâm nhập bằng thiết bị tiếp sóng ngay cả khi khoảng cách vật lý thỏa mãn điều kiện.
-    \end{itemize}
+    \item \textbf{Lớp quyết định tất định (Deterministic Core):}
+    Module \texttt{AccessController} kiểm tra vùng (Geofence), cổng giảm tốc và máy trạng thái ba trạng thái như đã mô tả. Lớp này hoạt động độc lập với tầng AI và đảm bảo tính an toàn cơ học (fail-safe).
 
-    \item \textbf{Lớp xác thực hành vi và khoảng cách (Behavioral Verification Layer):}
-    Rơ-le cửa chỉ được phép kích hoạt \textbf{NẾU VÀ CHỈ NẾU} thỏa mãn đồng thời ba điều kiện sau:
+    \item \textbf{Lớp cổng ý định AI (Intent Gate, đang hiện thực):}
+    Rơ-le cửa chỉ được phép kích hoạt \textbf{NẾU VÀ CHỈ NẾU} thỏa mãn đồng thời các điều kiện sau:
     \begin{itemize}
         \item \textbf{Giao thức:} FSM đang ở trạng thái \texttt{AUTH\_SECURE\_CHANNEL\_READY} (Đã xác thực BLE thành công).
         \item \textbf{Vật lý:} Khoảng cách Euclid từ vị trí đã lọc $(x, y)$ đến điểm mở khóa (cửa tài xế) nằm trong ngưỡng tiệm cận ($\le 2.0$ mét) trong ít nhất \textbf{3 chu kỳ đo liên tiếp}, đồng thời vận tốc hướng tâm không cho thấy người dùng đang rời xa (approach gate).
-        \item \textbf{Hành vi:} Mô hình AI xác nhận ý định người dùng với độ tin cậy $P_{walk} > 0.80$. Điều này giúp loại bỏ hoàn toàn các trường hợp người dùng vô tình đi ngang qua vùng nhận diện hoặc dừng lại ở ranh giới 2m nhưng không có ý định vào xe.
+        \item \textbf{Ý định:} Mô hình \texttt{TrajInference} xác nhận ý định tiếp cận với độ tin cậy $p_{\text{approach}} \ge 0.80$. Ngược lại, nếu $p_{\text{passing}} \ge 0.70$ thì lệnh mở khóa bị \textbf{chặn cứng}, triệt tiêu các trường hợp người dùng chỉ đi ngang qua vùng nhận diện mà không có ý định vào xe.
     \end{itemize}
 \end{enumerate}
 
@@ -396,6 +393,12 @@ Sự kết hợp giữa lý thuyết điều khiển truyền thống (Hysteresi
 % =======================================================================
 
 
+% =====================================================================
+% [STAGE-1 AI - 1D RANGING] NỘI DUNG SAU ĐÂY ĐƯỢC COMMENT LẠI
+% (walk/loiter/attack, residual, Kalman-LSTM) — thay thế bởi phần
+% Stage-2 intent recognition ở cuối khối \iffalse ... \fi này.
+% =====================================================================
+\iffalse
 \subsection{Cơ chế đánh giá hành vi dựa trên mô hình chuỗi thời gian}
 
 Trong các hệ thống PKE (Passive Keyless Entry) truyền thống, việc ra quyết định mở cửa chỉ dựa trên một ngưỡng khoảng cách tĩnh (ví dụ: $d \le 2.0$m). Tuy nhiên, phương pháp này tồn tại hai lỗ hổng lớn: không thể nhận diện được các bước nhảy vọt của khoảng cách do tấn công tiếp sóng (Relay Attack), và không phân biệt được người dùng đang chủ đích tiến vào xe hay chỉ đang đứng nói chuyện/lảng vảng gần xe (Loitering).
@@ -428,6 +431,41 @@ Xác suất đầu ra từ mô hình AI không thay thế hoàn toàn cơ chế 
 \end{itemize}
 
 Kết hợp này tạo ra một kiến trúc "Phòng thủ chiều sâu" (Defense-in-depth), nơi thuật toán truyền thống đảm bảo tính an toàn cơ học, còn AI cung cấp lớp bảo mật chống giả mạo vật lý.
+\fi
+% =====================================================================
+% [STAGE-2 AI - 2D INTENT RECOGNITION] THIẾT KẾ (đang hiện thực)
+% =====================================================================
+
+\subsection{Cơ chế nhận diện ý định hành vi dựa trên TinyML (đang hiện thực)}
+
+Trong các hệ thống PKE truyền thống, việc ra quyết định mở cửa chỉ dựa trên một ngưỡng khoảng cách tĩnh. Phương pháp này không phân biệt được người dùng đang chủ đích tiến vào xe hay chỉ đang đi ngang qua/lảng vảng gần xe. Để giải quyết bài toán này ở giai đoạn 2, kiến trúc hệ thống bổ sung một lớp nhận diện ý định sử dụng mô hình TinyML (Conv1D/TFLM) vận hành song song với bộ đệm Hysteresis. Cơ chế được thực hiện qua các bước sau:
+
+\paragraph*{Cửa sổ thời gian và Trích xuất đặc trưng:}
+Hệ thống duy trì một cửa sổ trượt (Sliding Window) có kích thước $T = 25$ khung hình (tương đương $2.5$ giây ở tần số 10 Hz). Tại mỗi khung hình, bộ tiền xử lý trích xuất vector đặc trưng $f_t = [x, y, v_x, v_y]$:
+\begin{itemize}
+    \item $x, y$: vị trí đã qua bộ lọc Kalman hai chiều (mét), mã hóa hình học cửa và ghế lái.
+    \item $v_x, v_y$: vận tốc ước lượng (m/s), tín hiệu mạnh nhất cho tiếp cận/rời đi/đi ngang.
+\end{itemize}
+
+\paragraph*{Phân loại xác suất ý định:}
+Ma trận dữ liệu đầu vào có kích thước $(25 \times 4)$ được chuẩn hóa z-score (tham số mean/scale từ tập huấn luyện) trước khi đưa vào mạng Conv1D trên vi điều khiển. Mô hình xuất ra phân bố xác suất Softmax cho 4 lớp ý định:
+\begin{itemize}
+    \item $p_{\text{approach}}$: xác suất người dùng đang chủ đích bước tới xe.
+    \item $p_{\text{seated}}$: xác suất người dùng đã đứng yên tại ghế lái.
+    \item $p_{\text{leave}}$: xác suất người dùng đang rời khỏi xe.
+    \item $p_{\text{passing}}$: xác suất người dùng chỉ đi ngang qua xe.
+\end{itemize}
+
+\paragraph*{Tích hợp AI vào Logic điều khiển (Gate, don't decide):}
+Xác suất đầu ra không thay thế cơ chế Hysteresis mà đóng vai trò màng lọc cấp cao (High-level Gate):
+\begin{itemize}
+    \item \textbf{Mở khóa:} cho phép khi người dùng nằm trong vùng tiệm cận ($\le 2.0$m) trong 3 chu kỳ liên tiếp và $p_{\text{approach}} \ge 0.80$.
+    \item \textbf{Định cư ghế lái:} cho phép khi người dùng đứng yên ở ghế lái và $p_{\text{seated}} \ge 0.80$.
+    \item \textbf{Rời đi:} cho phép khóa khi người dùng rời khỏi vùng chào đón và $p_{\text{leave}} \ge 0.80$.
+    \item \textbf{Chặn mở khóa:} nếu $p_{\text{passing}} \ge 0.70$ thì chặn cứng lệnh mở khóa, triệt tiêu mở cửa sai khi đi ngang qua.
+\end{itemize}
+
+Kết hợp này tạo ra một kiến trúc "Phòng thủ chiều sâu" (Defense-in-depth), nơi thuật toán tất định đảm bảo an toàn cơ học, còn AI bổ sung độ bền vững ở mức ý định. Nếu mô hình không sẵn sàng (thiếu mô hình, tràn bộ nhớ), hệ thống tự suy biến về lõi tất định.
 
 
 

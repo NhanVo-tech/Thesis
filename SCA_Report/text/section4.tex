@@ -549,18 +549,18 @@ Ngay sau khi quá trình Hand-off hoàn tất, giao diện chuyển sang bài ki
     \item \textbf{Xác thực BLE:} Sinh khóa ephemeral, nhận Handshake, xác minh chữ ký điện thoại, tính toán ECDH và dùng HKDF sinh ra Session Keys.
     \item \textbf{Kích hoạt phiên Ranging:} Tiếp nhận lệnh \texttt{RANGING\_START} qua đường hầm CCC, ESP32 phát lệnh \texttt{CMD:START\_RANGING} sang cầu nối PC để khởi động ba mỏ neo.
     \item \textbf{Xử lý định vị thời gian thực (Trilateration + Kalman Filtering):} Ba khoảng cách thô $d_0, d_1, d_2$ từ cầu nối PC được đưa qua thuật toán Trilateration để giải tọa độ $(x, y)$, sau đó cập nhật bộ lọc Kalman hai chiều. Log hệ thống ghi nhận quá trình làm mượt quỹ đạo, triệt tiêu các xung nhiễu vật lý và ước lượng vận tốc $(v_x, v_y)$. Đây là bước tiền xử lý quan trọng để tạo ra bộ dữ liệu đầu vào ổn định cho tầng quyết định truy cập.
-    \item \textbf{Suy luận hành vi (On-device Inference):} Sau khi tích lũy đủ cửa sổ thời gian 25 frames, module \texttt{LstmInference} bắt đầu thực hiện dự báo. Log Console hiển thị chi tiết các xác suất phân loại: $P_{walk}$ (người dùng tiến lại gần), $P_{loiter}$ (lảng vảng) và $P_{attack}$ (tấn công tiếp sóng). Kết quả thực nghiệm cho thấy mô hình phản hồi xác suất $P_{walk} > 0.85$ khi người dùng di chuyển ổn định về phía xe.
-    \item \textbf{Quyết định truy cập thông minh (AI-driven Decision):} Thay vì chỉ dựa vào ngưỡng khoảng cách vô hướng, log thực thi cho thấy lệnh mở GPIO rơ-le chỉ được phát ra khi đồng thời thỏa mãn: Khoảng cách Euclid từ vị trí $(x, y)$ đến điểm mở khóa $\le 2.0$m, cổng vận tốc hướng tâm xác nhận người dùng đang tiến lại gần VÀ xác suất $P_{walk}$ đạt ngưỡng tin cậy cao. Điều này minh chứng cho khả năng chống mở cửa sai (False Positive) khi người dùng chỉ đứng lảng vảng gần xe.
+    \item \textbf{Suy luận ý định hành vi (On-device Inference, đang hiện thực):} Sau khi tích lũy đủ cửa sổ thời gian 25 frames, module \texttt{TrajInference} (Conv1D/TFLM) sẽ thực hiện dự báo ý định. Log Console dự kiến hiển thị các xác suất phân loại $p_{\text{approach}}$, $p_{\text{seated}}$, $p_{\text{leave}}$ và $p_{\text{passing}}$ qua thẻ log \texttt{[INTENT]}. Kết quả kỳ vọng là mô hình phản hồi $p_{\text{approach}} \ge 0.80$ khi người dùng tiến lại gần và giảm tốc.
+    \item \textbf{Quyết định truy cập thông minh (AI-driven Decision, đang hiện thực):} Thay vì chỉ dựa vào ngưỡng khoảng cách vô hướng, lệnh mở GPIO rơ-le chỉ được phát ra khi đồng thời thỏa mãn: Khoảng cách Euclid từ vị trí $(x, y)$ đến điểm mở khóa $\le 2.0$m, cổng vận tốc hướng tâm xác nhận người dùng đang tiến lại gần, VÀ xác suất $p_{\text{approach}}$ đạt ngưỡng tin cậy cao (đồng thời $p_{\text{passing}}$ không vượt ngưỡng chặn). Điều này nhằm chống mở cửa sai (False Positive) khi người dùng chỉ đi ngang qua hoặc lảng vảng gần xe.
 \end{enumerate}
 
-Để trực quan hóa hiệu quả của tầng xử lý thông minh, đồ thị thực nghiệm dưới đây so sánh sự khác biệt giữa dữ liệu thô và dữ liệu sau xử lý:
+% Để trực quan hóa hiệu quả của tầng xử lý thông minh, đồ thị thực nghiệm dưới đây so sánh sự khác biệt giữa dữ liệu thô và dữ liệu sau xử lý:
 
-\leavevmode
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{image/section5/kalman_filter.png}
-    \caption{Đồ thị đối chứng dữ liệu UWB thô, filter và xác suất suy luận từ mô hình TinyML}
-    \label{fig:ai_result}
-\end{figure}
+% \leavevmode
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{image/section5/kalman_filter.png}
+%     \caption{Đồ thị đối chứng dữ liệu UWB thô và dữ liệu sau bộ lọc Kalman}
+%     \label{fig:ai_result}
+% \end{figure}
 
-Sự kết hợp giữa bộ lọc Kalman và mô hình LSTM đã nâng tầm hệ thống từ một thiết bị đo khoảng cách thuần túy thành một hệ thống nhận thức ngữ cảnh (Context-aware). Các kết quả kiểm thử trên đã chứng minh sự vận hành ổn định và tính đúng đắn của toàn bộ kiến trúc hệ thống Tri-Radio, đáp ứng toàn diện tiêu chuẩn an ninh nghiêm ngặt dành cho giải pháp truy cập phương tiện thông minh.
+% Sự kết hợp giữa bộ lọc Kalman và tầng nhận diện ý định TinyML (\textbf{đang hiện thực}) hướng tới nâng tầm hệ thống từ một thiết bị đo khoảng cách thuần túy thành một hệ thống nhận thức ngữ cảnh (Context-aware). Các kết quả kiểm thử trên đã chứng minh sự vận hành ổn định và tính đúng đắn của toàn bộ kiến trúc hệ thống Tri-Radio, đáp ứng toàn diện tiêu chuẩn an ninh nghiêm ngặt dành cho giải pháp truy cập phương tiện thông minh.
