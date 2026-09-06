@@ -17,6 +17,7 @@ namespace {
     PN532_HSU* hsu = nullptr;
     PN532* nfc = nullptr;
     bool samConfigured = false;
+    bool pn532Present = false;
     bool waitingForRemoval = false;
     bool targetActive = false;
     uint32_t removalWaitStartedMs = 0;
@@ -936,8 +937,10 @@ namespace NfcSession {
         uint32_t ver = nfc->getFirmwareVersion();
         if (!ver) {
             Serial.println("PN532 NOT FOUND!");
+            pn532Present = false;
             return;
         }
+        pn532Present = true;
         Serial.printf("PN532 Firmware %d.%d\n", (int)((ver >> 16) & 0xFF), (int)((ver >> 8) & 0xFF));
 
         Serial.print("Configuring SAM...");
@@ -954,6 +957,12 @@ namespace NfcSession {
     void tick() {
         // Process admin serial commands
         handleSerialCommands();
+
+        // No PN532 detected at boot: skip the blocking card poll
+        // (inListPassiveTarget waits up to 30 s per attempt on a missing PN532).
+        if (!pn532Present) {
+            return;
+        }
 
         if (waitingForRemoval) {
             bool removed = pollCardRemovalNonBlocking(2, 80);

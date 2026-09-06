@@ -1,6 +1,7 @@
 ﻿#include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "soc/timer_group_struct.h"
 #include "nfc_session.h"
 #include "ccc_mailbox.h"
 #include "ble/ble.h"
@@ -57,6 +58,22 @@ void uwbTaskFn(void* p) {
 }  // namespace
 
 void setup() {
+  // Disable both ESP32-S3 watchdogs. Their timeouts are baked into the
+  // precompiled Arduino framework (cannot be raised from platformio.ini) and
+  // they fire spuriously on this board:
+  //   * MWDT1 (TIMERG1) = interrupt watchdog, 300 ms -> rst:0x8 (TG1WDT_SYS_RST)
+  //     trips on short critical sections / BLE RF flash-cache stalls.
+  //   * MWDT0 (TIMERG0) = task watchdog, 5 s, watches CPU0 idle -> rst:0x7
+  //     (TG0WDT_SYS_RST) trips during long NVS page-recovery flash erases that
+  //     freeze both CPUs.
+  TIMERG1.wdtwprotect.val = 0x50D83AA1;  // unlock
+  TIMERG1.wdtconfig0.val = 0;            // disable IWDT (MWDT1)
+  TIMERG1.wdtwprotect.val = 0;           // re-lock
+
+  TIMERG0.wdtwprotect.val = 0x50D83AA1;  // unlock
+  TIMERG0.wdtconfig0.val = 0;            // disable TWDT (MWDT0)
+  TIMERG0.wdtwprotect.val = 0;           // re-lock
+
   Serial.begin(115200);
   delay(2000);
   while (!Serial) delay(10);

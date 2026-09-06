@@ -30,8 +30,13 @@ constexpr int LEAVE_CONSECUTIVE_HITS = 3;      // leave debounce
 constexpr bool ENABLE_APPROACH_GATE = true;    // reject moving-away readings
 constexpr double APPROACH_SPEED_MIN_MPS = 0.10;
 
-constexpr int RELAY_PIN = 26;      // door lock relay (LOW=locked, HIGH pulse=unlock)
-constexpr int IGNITION_PIN = 27;   // engine-start authorization (HIGH=authorized)
+// NOTE: The board (m5stack_atoms3 / ESP32-S3 with embedded PSRAM) reserves
+// GPIO26 as the PSRAM chip-select (CONFIG_SPIRAM_CS_IO=26) and GPIO27 as an
+// octal-PSRAM data line. Driving those pins as GPIO outputs crashes the SoC.
+// Use free GPIOs instead (G5 = IR out, G7 = free on the ATOM S3); adjust to
+// your relay/ignition wiring if different.
+constexpr int RELAY_PIN = 5;        // door lock relay (LOW=locked, HIGH pulse=unlock)
+constexpr int IGNITION_PIN = 7;     // engine-start authorization (HIGH=authorized)
 constexpr int RELAY_PULSE_MS = 500;
 
 // ---- API --------------------------------------------------------------------
