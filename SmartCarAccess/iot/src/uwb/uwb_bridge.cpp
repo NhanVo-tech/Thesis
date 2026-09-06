@@ -96,21 +96,26 @@ void tick() {
     g_lastFixMs = f.t_ms;
   }
 
-  // 2. Fixed-rate drive: predict the EKF forward (bridges dropped frames) and
-  //    feed the smoothed position + velocity to the door logic.
+  // 2. Fixed-rate drive: emit the fused position + velocity to the door logic.
+  //    There is NO prediction/coasting between fixes — the estimate is frozen
+  //    at the last corrected position, so when ranging drops out the UI stops
+  //    moving instead of drawing a fake straight-line trajectory.
   const uint32_t now = millis();
   if (now - g_lastDriveMs >= kDrivePeriodMs) {
     g_lastDriveMs = now;
-    // Keep the estimate alive only while fixes are recent. Once ranging drops
-    // out the estimate is frozen (no coasting), so the UI stops moving instead
-    // of drawing a fake straight-line trajectory that later snaps back.
-    if (now - g_lastFixMs <= kMaxCoastMs && Ekf::predictTo(now)) {
+    if (now - g_lastFixMs <= kMaxCoastMs && Ekf::initialized()) {
       const double fx = Ekf::x();
       const double fy = Ekf::y();
+      // Report zero velocity once the fix is older than one drive period, so a
+      // stale velocity does not keep drawing a direction cone or feed a bogus
+      // "moving away" signal to the access controller.
+      const bool fresh = (now - g_lastFixMs) <= kDrivePeriodMs;
+      const double vx = fresh ? Ekf::vx() : 0.0;
+      const double vy = fresh ? Ekf::vy() : 0.0;
+      const double spd = fresh ? Ekf::speed() : 0.0;
       Serial.printf("[EKF] t=%lu x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
-                    (unsigned long)now, fx, fy, Ekf::vx(), Ekf::vy(),
-                    Ekf::speed());
-      AccessController::handlePosition(fx, fy, Ekf::vx(), Ekf::vy());
+                    (unsigned long)now, fx, fy, vx, vy, spd);
+      AccessController::handlePosition(fx, fy, vx, vy);
     }
   }
 }

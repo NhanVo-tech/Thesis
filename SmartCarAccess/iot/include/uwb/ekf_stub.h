@@ -21,13 +21,9 @@ void update(double x, double y, uint32_t t_ms, double measNoiseStd);
 // nominal timestep and uses the default measurement noise.
 void update(double x, double y);
 
-// Advance the track by prediction only (no measurement) up to t_ms. Lets the
-// filter keep running at a fixed rate when a RANGE frame is dropped. Returns
-// true while the estimate is still fresh (last fix newer than the max gap);
-// false once the track is stale and should not be trusted.
-bool predictTo(uint32_t t_ms);
-
-// Latest fused estimate.
+// Latest fused estimate. The estimate only moves on measurement updates: there
+// is deliberately no coasting/prediction between fixes, so when ranging drops
+// out the position holds still instead of fabricating a straight-line path.
 bool   initialized();
 double x();
 double y();

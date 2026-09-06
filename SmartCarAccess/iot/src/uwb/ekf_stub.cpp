@@ -16,6 +16,13 @@ constexpr double kInitVelVar = 4.0;
 constexpr double kNominalDtS = 0.10;     // ~10 Hz fallback
 // Gaps larger than this (s) reinitialise the track instead of predicting.
 constexpr double kMaxGapS = 2.0;
+// Hard speed bound (m/s). A single noisy fix can otherwise inject an
+// unrealistically large velocity, which flings the estimate across the map.
+constexpr double kMaxSpeedMps = 2.0;
+// Innovation bound (m). If a new fix lands further than this from the
+// predicted position, treat it as a teleport/re-acquisition and snap to it
+// rather than slewing the track along a long fake line.
+constexpr double kMaxInnovationM = 2.5;
 
 // ---- State -----------------------------------------------------------------
 bool     g_init = false;
@@ -122,6 +129,14 @@ void correct(double zx, double zy, double measVar) {
   const double yy = zy - g_x[1];
   for (int i = 0; i < 4; ++i) g_x[i] += K[i][0] * yx + K[i][1] * yy;
 
+  // Clamp the velocity to a physically plausible walking bound.
+  const double sp = hypot(g_x[2], g_x[3]);
+  if (sp > kMaxSpeedMps) {
+    const double s = kMaxSpeedMps / sp;
+    g_x[2] *= s;
+    g_x[3] *= s;
+  }
+
   // Covariance update P = (I - K H) P; K H only touches columns 0,1.
   double M[4][4];
   for (int i = 0; i < 4; ++i)
@@ -172,6 +187,17 @@ void update(double x, double y, uint32_t t_ms, double measNoiseStd) {
   }
 
   predict(dt);
+
+  // Re-acquisition gate: snap to the fix instead of slewing when the new
+  // measurement is implausibly far from where the constant-velocity model
+  // predicted (dropout, spurious fix, or the person re-entering range).
+  if (hypot(x - g_x[0], y - g_x[1]) > kMaxInnovationM) {
+    initFrom(x, y, measVar);
+    g_lastMs = t_ms;
+    g_lastMeasMs = t_ms;
+    return;
+  }
+
   correct(x, y, measVar);
   g_lastMs = t_ms;
   g_lastMeasMs = t_ms;
@@ -181,21 +207,6 @@ void update(double x, double y) {
   const uint32_t synthMs =
       g_lastMs + (uint32_t)(kNominalDtS * 1000.0 + 0.5);
   update(x, y, synthMs, 0.0);
-}
-
-bool predictTo(uint32_t t_ms) {
-  if (!g_init) return false;
-
-  // Stop trusting the track once it has coasted too long without a fix.
-  const double gapSinceMeas = (double)(t_ms - g_lastMeasMs) / 1000.0;
-  if (gapSinceMeas > kMaxGapS) return false;
-
-  const double dt = (double)(t_ms - g_lastMs) / 1000.0;
-  if (dt <= 0.0) return true;  // already up to date
-
-  predict(dt);
-  g_lastMs = t_ms;
-  return true;
 }
 
 bool   initialized() { return g_init; }
