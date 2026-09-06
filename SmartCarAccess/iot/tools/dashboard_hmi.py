@@ -154,7 +154,7 @@ class Toast(QLabel):
 
     def show_at(self, final_pos, on_done):
         self._on_done = on_done
-        self.move(self.parent().width(), final_pos.y())
+        self.move(int(self.parent().width()), int(final_pos.y()))
         self.show()
         self._slide.setStartValue(QPointF(self.parent().width(), final_pos.y()))
         self._slide.setEndValue(QPointF(final_pos.x(), final_pos.y()))

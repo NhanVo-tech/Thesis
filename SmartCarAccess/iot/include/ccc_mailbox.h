@@ -30,6 +30,9 @@ bool begin();
 const CCC_Mailbox& get();
 
 const char* vehicleId();
+// Overwrite the vehicle ID (8 printable ASCII bytes) and persist it to NVS.
+// Used to re-bind an ECU to a specific master card (e.g. SETVID serial command).
+bool setVehicleId(const char* vehicleId);
 bool hasVehiclePub();
 bool getVehiclePub(uint8_t* out, size_t max);
 bool hasVehiclePriv();

@@ -34,8 +34,17 @@ void handleConsole() {
       line.trim();
       if (line.startsWith("RANGE:") || line.startsWith("ACK:")) {
         UwbBridge::feedLine(line.c_str());
+      } else if (line.startsWith("SETVID:")) {
+        String vid = line.substring(7);
+        vid.trim();
+        if (CCCMailbox::setVehicleId(vid.c_str())) {
+          Serial.printf("[CCC] vehicleId set -> %s\n", CCCMailbox::vehicleId());
+        } else {
+          Serial.println("[CCC] SETVID failed: need exactly 8 printable ASCII chars");
+        }
       } else if (line == "help") {
         Serial.println("  help - show this message");
+        Serial.println("  SETVID:<8 chars> - overwrite the vehicle id (rebind to master card)");
       }
       line = "";
     } else {

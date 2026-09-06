@@ -337,6 +337,21 @@ const char* vehicleId() {
   return g_mailbox.vehicle_id;
 }
 
+bool setVehicleId(const char* vehicleId) {
+  if (!vehicleId || strlen(vehicleId) != 8) return false;
+  for (int i = 0; i < 8; ++i) {
+    const unsigned char c = (unsigned char)vehicleId[i];
+    if (c < 0x21 || c > 0x7E) return false;  // printable ASCII only
+  }
+  memcpy(g_mailbox.vehicle_id, vehicleId, 8);
+  g_mailbox.vehicle_id[8] = '\0';
+
+  prefs.begin(kNs, false);
+  bool ok = prefs.putString("v_id", g_mailbox.vehicle_id) > 0;
+  prefs.end();
+  return ok;
+}
+
 bool hasVehiclePub() {
   return g_mailbox.vehicle_identity_valid;
 }

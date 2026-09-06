@@ -147,6 +147,26 @@ def make_range_handler(state):
     return handler
 
 
+def make_session_status_handler(idx, restart_queue):
+    """Detect the anchor leaving responder mode.
+
+    When the Android phone stops ranging (app backgrounded/closed or the
+    session drops), it sends an in-band termination signal that makes the
+    responder exit responder mode. The PC host otherwise never notices, so the
+    anchor goes dead until power-cycled. This handler queues a restart request
+    that the bridge picks up and re-runs session init + ranging_start.
+    """
+    def handler(payload):
+        try:
+            st = SessionStatus(payload)
+        except Exception:
+            return
+        if (st.state == SessionState.Idle and
+                st.reason == SessionStateChangeReason.SessionStoppedDueToInbandSignal):
+            restart_queue.put(idx)
+    return handler
+
+
 def start_anchor(client, mac, dest_mac, args):
     rts, session_handle = client.session_init(args.session, SessionType.Ranging)
     if rts != Status.Ok:
@@ -220,7 +240,7 @@ class DemoBridge:
     """Starts/stops the anchors and forwards distances to the ESP32."""
 
     def __init__(self, clients, macs, states, dest_mac, esp, args, viz_queue,
-                 capture=None):
+                 capture=None, restart_queue=None):
         self._clients = clients
         self._macs = macs
         self._states = states
@@ -229,6 +249,7 @@ class DemoBridge:
         self._args = args
         self._viz = viz_queue
         self._capture = capture
+        self._restart_queue = restart_queue
         self._sessions = [None] * len(clients)
         self._ranging = False
         self._lock = threading.Lock()
@@ -264,6 +285,25 @@ class DemoBridge:
     def _is_ranging(self):
         with self._lock:
             return self._ranging
+
+    def _restart_anchor(self, i):
+        """Re-run session init + config + ranging_start for one anchor after it
+        dropped out of responder mode (in-band stop from the phone)."""
+        if not (0 <= i < len(self._clients)):
+            return
+        with self._lock:
+            client = self._clients[i]
+            if self._sessions[i] is not None:
+                stop_anchor(client, self._sessions[i])
+                self._sessions[i] = None
+            try:
+                self._sessions[i] = start_anchor(
+                    client, self._macs[i], self._dest_mac, self._args)
+                print(f"[{self._args.ports[i]}] session restarted "
+                      f"(in-band stop recovery)")
+            except Exception as e:
+                self._sessions[i] = None
+                print(f"[{self._args.ports[i]}] RESTART error: {e}")
 
     def command_loop(self):
         """Read ESP32 lines: handle CMD and forward [POS2D]/[EKF] to the UI."""
@@ -316,6 +356,15 @@ class DemoBridge:
             time.sleep(period)
             if not self._is_ranging():
                 continue
+            # Recover anchors that dropped out of responder mode (the phone
+            # sent an in-band stop) so they keep ranging without a power-cycle.
+            if self._restart_queue is not None:
+                while True:
+                    try:
+                        idx = self._restart_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    self._restart_anchor(idx)
             now = time.monotonic()
             dists = [0.0, 0.0, 0.0]
             n_usable = 0
@@ -608,11 +657,14 @@ def main():
         macs = [int(m, 0) for m in args.macs]
         dest_mac = int(args.dest_mac, 0)
         states = [AnchorState() for _ in args.ports]
+        restart_queue = queue.Queue()
         clients = []
         for i, port in enumerate(args.ports):
             c = Client(port=port)
             c.notif_handlers = {
                 (Gid.Ranging, OidRanging.Start): make_range_handler(states[i]),
+                (Gid.Session, OidSession.Status): make_session_status_handler(
+                    i, restart_queue),
                 ("default", "default"): lambda gid, oid, x: None,
             }
             clients.append(c)
@@ -631,7 +683,7 @@ def main():
             print(f"Capturing raw ESP32 lines -> {args.capture}")
 
         bridge = DemoBridge(clients, macs, states, dest_mac, esp, args, viz,
-                            capture=capture_fh)
+                            capture=capture_fh, restart_queue=restart_queue)
         bridge_threads = [
             threading.Thread(target=bridge.command_loop, daemon=True),
             threading.Thread(target=bridge.forward_loop, daemon=True),
