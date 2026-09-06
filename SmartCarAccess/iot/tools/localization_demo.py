@@ -460,6 +460,75 @@ def build_figure(drop_anchor=-1):
             status_text, event_text)
 
 
+def run_hmi(args, viz, bridge, capture_fh):
+    """Drive the PyQt6 High-Performance HMI dashboard from the viz queue.
+
+    The bridge threads keep feeding `viz`; a QTimer drains it at 30 fps and
+    forwards the latest pose/ranging/access state through the fixed
+    dashboard.set_data() contract.
+    """
+    try:
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtCore import QTimer
+        from dashboard_hmi import DashboardWindow
+    except Exception as e:  # pragma: no cover
+        sys.exit(f"HMI mode needs PyQt6 + pyqtgraph: {e}")
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    win = DashboardWindow()
+    win.show()
+
+    state = {"x": 0.0, "y": 0.0, "vx": 0.0, "vy": 0.0, "seen": False}
+    dists = [0.0, 0.0, 0.0]
+    access = {"door": "LOCKED", "ignition": False}
+
+    def drain():
+        while True:
+            try:
+                ev = viz.get_nowait()
+            except queue.Empty:
+                break
+            if ev[0] == "range":
+                _, d0, d1, d2, _valid = ev
+                dists[0], dists[1], dists[2] = d0, d1, d2
+            elif ev[0] == "state":
+                access["door"] = ev[1]
+            elif ev[0] == "ignition":
+                access["ignition"] = ev[1]
+            elif ev[0] == "ekf":
+                _, x, y, vx, vy = ev
+                state["x"], state["y"] = x, y
+                state["vx"], state["vy"] = vx, vy
+                state["seen"] = True
+
+        if not state["seen"]:
+            return
+        speed = math.hypot(state["vx"], state["vy"])
+        heading = math.degrees(math.atan2(state["vy"], state["vx"])) % 360.0
+        win.set_data(
+            dists[0], dists[1], dists[2],
+            state["x"], state["y"], speed, heading,
+            access["door"] != "LOCKED", access["ignition"])
+
+    timer = QTimer()
+    timer.timeout.connect(drain)
+    timer.start(33)
+
+    try:
+        app.exec()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        if bridge:
+            bridge.close()
+        if capture_fh is not None:
+            try:
+                capture_fh.close()
+            except Exception:
+                pass
+        print("Stopped.")
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -487,12 +556,17 @@ def main():
     ap.add_argument("--log", default=None, help="replay a captured log file")
     ap.add_argument("--capture", default=None,
                     help="tee raw ESP32 lines to this file (for collect_traj.py)")
+    ap.add_argument("--hmi", action="store_true",
+                    help="use the PyQt6 + pyqtgraph High-Performance HMI "
+                         "dashboard instead of the matplotlib view")
     args = ap.parse_args()
 
     if args.log is None and (not args.ports or not args.esp_port):
         ap.error("provide --log (replay) or -p PORTS --esp-port (live)")
 
-    fig, ax, ekf_line, ekf_pt, cone, metric_axes, dist_axes, status_text, event_text = build_figure(args.drop_anchor)
+    if not args.hmi:
+        (fig, ax, ekf_line, ekf_pt, cone, metric_axes, dist_axes,
+         status_text, event_text) = build_figure(args.drop_anchor)
 
     viz = queue.Queue()
     bridge = None
@@ -565,6 +639,10 @@ def main():
         for t in bridge_threads:
             t.start()
         print(f"Anchors: {', '.join(args.ports)}   ESP32: {args.esp_port}")
+
+    if args.hmi:
+        run_hmi(args, viz, bridge, capture_fh)
+        return
 
     ekf_hist = collections.deque(maxlen=EKF_KEEP)
     state = {"x": None, "y": None, "vx": 0.0, "vy": 0.0, "n": 0}
