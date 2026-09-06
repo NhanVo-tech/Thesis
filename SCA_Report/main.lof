@@ -40,6 +40,7 @@
 \contentsline {figure}{\numberline {3.5}{\ignorespaces Sơ đồ Sequence Phase D tích hợp suy luận AI}}{93}{figure.caption.57}%
 \contentsline {figure}{\numberline {3.6}{\ignorespaces Sơ đồ Máy Trạng thái Xuyên tầng (Cross-layer FSM)}}{96}{figure.caption.58}%
 \addvspace {10\p@ }
+<<<<<<< Updated upstream
 \contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{104}{figure.caption.62}%
 \contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{104}{figure.caption.63}%
 \contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{104}{figure.caption.63}%
@@ -49,6 +50,19 @@
 \contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{114}{figure.caption.65}%
 \contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{114}{figure.caption.65}%
 \contentsline {figure}{\numberline {4.9}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{114}{figure.caption.66}%
+=======
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Sơ đồ ghép nối hệ thống UWB đa mỏ neo}}{105}{figure.caption.62}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Mạch trung gian nRF52840}}{105}{figure.caption.63}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Sơ đồ chân Yolo Uno ESP32-S3}}{105}{figure.caption.63}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Module NFC PN532}}{106}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Module UWB DWM3000EVB}}{106}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Mỏ neo UWB DWM3001CDK (vi mạch DW3000)}}{106}{figure.caption.64}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Giao diện kiểm thử xác thực BLE (Phase B)}}{115}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Giao diện kích hoạt UWB Ranging đa mỏ neo (Phase C) (1)}}{115}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.9}{\ignorespaces Giao diện ranging UWB Ranging (Phase C) (2)}}{115}{figure.caption.65}%
+\contentsline {figure}{\numberline {4.10}{\ignorespaces Log xử lý xuyên tầng (BLE \& UWB) trên ESP32}}{116}{figure.caption.66}%
+\contentsline {figure}{\numberline {4.11}{\ignorespaces Đồ thị đối chứng dữ liệu UWB thô, filter và xác suất suy luận từ mô hình TinyML}}{117}{figure.caption.67}%
+>>>>>>> Stashed changes
 \addvspace {10\p@ }
 \contentsline {figure}{\numberline {5.1}{\ignorespaces Giao diện màn hình chính}}{119}{figure.caption.67}%
 \contentsline {figure}{\numberline {5.2}{\ignorespaces Giao diện hồ sơ người dùng (1)}}{119}{figure.caption.67}%

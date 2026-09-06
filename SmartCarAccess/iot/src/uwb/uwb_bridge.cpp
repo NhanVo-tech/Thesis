@@ -16,11 +16,16 @@ namespace {
 QueueHandle_t g_frameQueue = nullptr;
 bool g_ranging = false;
 uint32_t g_lastDriveMs = 0;  // last time the door logic was driven
+uint32_t g_lastFixMs = 0;    // last time a trilateration fix corrected the EKF
 
 // Cadence at which the EKF estimate drives the access controller. Decoupling
 // this from the raw RANGE rate keeps the unlock debounce timing consistent and
 // lets prediction bridge dropped frames.
 constexpr uint32_t kDrivePeriodMs = 100;
+// Stop predicting/coasting once no fresh fix has arrived for this long, so the
+// EKF stops fabricating a straight-line trajectory while the user is out of
+// range (the UI freezes instead of later snapping back).
+constexpr uint32_t kMaxCoastMs = 500;
 
 bool parseRange(const char* line, RangingFrame* out) {
   const char* p = line + 6;  // skip "RANGE:"
@@ -33,15 +38,14 @@ bool parseRange(const char* line, RangingFrame* out) {
   out->d[0] = d0;
   out->d[1] = d1;
   out->d[2] = d2;
-  // Per-anchor mask: keep a channel only if the bridge reported the round
-  // valid AND that channel has a positive distance. This lets solve() fall
-  // back to its 2-anchor path when one anchor is lost/corrupted (d == 0).
+  // Per-anchor mask: the bridge zeroes stale/out-of-bounds distances, so any
+  // positive distance is a fresh in-bounds measurement. This lets solve() use
+  // the 2-anchor path when one anchor drops out, or return no fix below two.
+  (void)valid;  // kept for protocol/log compatibility
   out->valid_mask = 0;
-  if (valid) {
-    if (d0 > 0.0) out->valid_mask |= 1u << 0;
-    if (d1 > 0.0) out->valid_mask |= 1u << 1;
-    if (d2 > 0.0) out->valid_mask |= 1u << 2;
-  }
+  if (d0 > 0.0) out->valid_mask |= 1u << 0;
+  if (d1 > 0.0) out->valid_mask |= 1u << 1;
+  if (d2 > 0.0) out->valid_mask |= 1u << 2;
   return true;
 }
 
@@ -89,6 +93,7 @@ void tick() {
                   (unsigned long)f.t_ms, r.x, r.y, r.rms);
     // RMS weights how much the raw fix is trusted.
     Ekf::update(r.x, r.y, f.t_ms, r.rms);
+    g_lastFixMs = f.t_ms;
   }
 
   // 2. Fixed-rate drive: predict the EKF forward (bridges dropped frames) and
@@ -96,7 +101,10 @@ void tick() {
   const uint32_t now = millis();
   if (now - g_lastDriveMs >= kDrivePeriodMs) {
     g_lastDriveMs = now;
-    if (Ekf::predictTo(now)) {
+    // Keep the estimate alive only while fixes are recent. Once ranging drops
+    // out the estimate is frozen (no coasting), so the UI stops moving instead
+    // of drawing a fake straight-line trajectory that later snaps back.
+    if (now - g_lastFixMs <= kMaxCoastMs && Ekf::predictTo(now)) {
       const double fx = Ekf::x();
       const double fy = Ekf::y();
       Serial.printf("[EKF] t=%lu x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
@@ -112,6 +120,7 @@ void sendStart() {
   g_ranging = true;
   Ekf::reset();
   g_lastDriveMs = 0;
+  g_lastFixMs = 0;
   Serial.println("CMD:START_RANGING");
 }
 

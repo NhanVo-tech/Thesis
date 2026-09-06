@@ -18,7 +18,7 @@ enum class Zone : uint8_t {
 // anchor 2 (left B-pillar) in uwb_geometry.h; the seat sits slightly "inside".
 constexpr double kDoorX = -0.95;
 constexpr double kDoorY = 0.0;
-constexpr double kDoorRadiusM = 2.0;      // unlock radius (matches the door zone)
+constexpr double kDoorRadiusM = 1.0;      // unlock radius (matches the door zone)
 
 constexpr double kSeatX = -0.35;
 constexpr double kSeatY = 0.0;

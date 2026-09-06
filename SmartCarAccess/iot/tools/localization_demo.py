@@ -12,6 +12,8 @@ Layout (portrait):
     fixes (dim), the EKF estimate (blue) with its trajectory and a translucent
     direction cone.
   * bottom ~30% — 2x2 metrics panel (live x / y / speed / heading).
+The map is zoomed out (±6.5 m) and shows a live, color-coded access-state
+banner (locked / door open / seated) plus a recent-events feed in the corners.
 
 Usage (set PYTHONPATH to the uci + uqt-utils libs first, as for run_fira_bridge.py):
 
@@ -70,9 +72,11 @@ ANCHORS = [
 CAR_LENGTH = 4.0
 CAR_WIDTH = 2.0
 UNLOCK_POINT = ANCHORS[2]   # left B-pillar (driver door)
-UNLOCK_RADIUS = 2.0
+UNLOCK_RADIUS = 1.0         # unlock zone radius (matches Geofence::kDoorRadiusM)
 SEAT_POINT = (-0.35, 0.0)   # driver seat (slightly inside the door)
 SEAT_RADIUS = 0.45
+WELCOME_RADIUS = 4.0        # welcome zone (matches Geofence::kWelcomeRadiusM)
+VIEW_LIMIT = 6.5            # map half-extent in metres (zoomed out)
 
 RAW_KEEP = 50      # dim raw dots kept on screen
 EKF_KEEP = 120     # blue EKF trail length
@@ -81,6 +85,17 @@ CONE_LENGTH = 0.9        # metres, direction cone length
 MIN_SPEED_FOR_CONE = 0.05  # m/s, below this the cone is hidden
 
 METRIC_LABELS = [["x (m)", "y (m)"], ["speed (m/s)", "heading (\u00b0)"]]
+
+STATE_LABEL = {
+    "LOCKED": ("DOOR: ĐANG KHÓA", "#e53935"),
+    "DOOR_UNLOCKED": ("DOOR: CỬA ĐÃ MỞ", "#2e7d32"),
+    "OCCUPIED": ("DOOR: ĐÃ NGỒI", "#1565c0"),
+}
+STATE_EVENT = {
+    "LOCKED": "Cửa đã khóa",
+    "DOOR_UNLOCKED": "Cửa đã mở",
+    "OCCUPIED": "Đã ngồi · cho phép nổ máy",
+}
 
 POS_RE = re.compile(
     r"\[POS2D\]\s+(?:t=\d+\s+)?x=(-?[\d.]+)\s+y=(-?[\d.]+)\s+rms=(-?[\d.]+)"
@@ -299,18 +314,19 @@ class DemoBridge:
                 continue
             now = time.monotonic()
             dists = [0.0, 0.0, 0.0]
-            all_valid = len(self._states) == 3
+            n_usable = 0
             for i, s in enumerate(self._states):
                 if i == self._args.drop_anchor:
-                    continue  # simulated lost anchor: keep d=0, skip validity
+                    continue  # simulated lost anchor: distance stays 0
                 d, ts = s.snapshot()
                 fresh = d is not None and (now - ts) <= fresh_s
                 in_bounds = fresh and (dmin <= d <= dmax)
-                if not in_bounds:
-                    all_valid = False
-                if i < 3:
-                    dists[i] = d if d is not None else 0.0
-            valid = 1 if all_valid else 0
+                if in_bounds and i < 3:
+                    dists[i] = d
+                    n_usable += 1
+            # informational only: the ESP32 derives the per-anchor mask from
+            # which distances are > 0, so stale anchors are zeroed above.
+            valid = 1 if n_usable >= 2 else 0
             self._esp.send(
                 f"RANGE:d0={dists[0]:.3f},d1={dists[1]:.3f},"
                 f"d2={dists[2]:.3f},valid={valid}")
@@ -337,15 +353,19 @@ def build_figure(drop_anchor=-1):
     ax = fig.add_subplot(gs[0])
     ax.set_facecolor("#f6efdd")
     ax.set_aspect("equal")
-    ax.set_xlim(-4.2, 4.2)
-    ax.set_ylim(-4.2, 4.2)
+    ax.set_xlim(-VIEW_LIMIT, VIEW_LIMIT)
+    ax.set_ylim(-VIEW_LIMIT, VIEW_LIMIT)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_axis_off()
 
     # Dashed localization boundary (orange).
-    ax.add_patch(Rectangle((-3.6, -3.6), 7.2, 7.2, fill=False,
+    ax.add_patch(Rectangle((-6.0, -6.0), 12.0, 12.0, fill=False,
                            ec="#e8a33d", ls="--", lw=1.6))
+
+    # Welcome zone ring (4 m from car centre).
+    ax.add_patch(Circle((0, 0), WELCOME_RADIUS, fill=False,
+                        ec="#90a4ae", ls=":", lw=1.0, alpha=0.6))
 
     # Car: 4 m x 2 m, front pointing up.
     ax.add_patch(Rectangle((-CAR_WIDTH / 2, -CAR_LENGTH / 2),
@@ -393,19 +413,23 @@ def build_figure(drop_anchor=-1):
     ax.add_patch(cone)
 
     # Access-state status banner (top-left of the map).
-    status_text = ax.text(-4.0, 3.9, "", fontsize=11, weight="bold",
+    status_text = ax.text(-6.2, 6.2, "", fontsize=11, weight="bold",
                           va="top", ha="left", color="#273671",
                           family="monospace")
 
+    # Recent access events (top-right of the map).
+    event_text = ax.text(6.2, 6.2, "", fontsize=9, va="top", ha="right",
+                         color="#37474f", family="monospace")
+
     # Legend at bottom edge of the map.
-    ax.plot(0.5, -3.95, marker="o", ms=7, color="#43a047", mec="#1b5e20",
+    ax.plot(-5.5, -6.0, marker="o", ms=7, color="#43a047", mec="#1b5e20",
             mew=1.2)
-    ax.text(0.62, -3.95, "uwb anchor", fontsize=8, va="center")
-    ax.plot(1.6, -3.95, marker="o", ms=7, color="#42a5f5", mec="#0d47a1",
+    ax.text(-5.35, -6.0, "uwb anchor", fontsize=8, va="center")
+    ax.plot(-3.2, -6.0, marker="o", ms=7, color="#42a5f5", mec="#0d47a1",
             mew=1.2)
-    ax.text(1.72, -3.95, "estimated position", fontsize=8, va="center")
-    ax.plot(3.0, -3.95, marker="o", ms=6, color="#9aa3ad", alpha=0.5)
-    ax.text(3.12, -3.95, "raw", fontsize=8, va="center")
+    ax.text(-3.05, -6.0, "estimated position", fontsize=8, va="center")
+    ax.plot(-0.9, -6.0, marker="o", ms=6, color="#9aa3ad", alpha=0.5)
+    ax.text(-0.75, -6.0, "raw", fontsize=8, va="center")
 
     # Metrics panel: 2x2.
     gsm = gs[1].subgridspec(2, 2, hspace=0.5, wspace=0.15)
@@ -422,7 +446,7 @@ def build_figure(drop_anchor=-1):
             a.text(0.5, 0.22, METRIC_LABELS[i][j], ha="center", va="center",
                    fontsize=11, color="#8a8f98")
 
-    return fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text
+    return fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text, event_text
 
 
 def main():
@@ -457,7 +481,7 @@ def main():
     if args.log is None and (not args.ports or not args.esp_port):
         ap.error("provide --log (replay) or -p PORTS --esp-port (live)")
 
-    fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text = build_figure(args.drop_anchor)
+    fig, ax, raw_sc, ekf_line, ekf_pt, cone, metric_axes, status_text, event_text = build_figure(args.drop_anchor)
 
     viz = queue.Queue()
     bridge = None
@@ -533,6 +557,7 @@ def main():
     ekf_hist = collections.deque(maxlen=EKF_KEEP)
     state = {"x": None, "y": None, "vx": 0.0, "vy": 0.0, "n": 0}
     access = {"door": "LOCKED", "ignition": False}
+    events = collections.deque(maxlen=8)
 
     def update(_frame):
         while True:
@@ -543,11 +568,21 @@ def main():
             if ev[0] == "raw":
                 raw_hist.append((ev[1], ev[2]))
             elif ev[0] == "state":
-                access["door"] = ev[1]
+                if ev[1] != access["door"]:
+                    access["door"] = ev[1]
+                    events.appendleft(STATE_EVENT.get(ev[1], ev[1]))
             elif ev[0] == "ignition":
-                access["ignition"] = ev[1]
+                if ev[1] != access["ignition"]:
+                    access["ignition"] = ev[1]
+                    events.appendleft("Nổ máy: CHO PHÉP" if ev[1]
+                                      else "Nổ máy: TẮT")
             else:
                 _, x, y, vx, vy = ev
+                if state["x"] is not None and state["n"] > 0:
+                    # Teleport / re-lock gap: break the trail so the UI does
+                    # not draw a long jump line.
+                    if math.hypot(x - state["x"], y - state["y"]) > 1.5:
+                        ekf_hist.clear()
                 state["x"], state["y"] = x, y
                 state["vx"], state["vy"] = vx, vy
                 state["n"] += 1
@@ -587,15 +622,18 @@ def main():
                 metric_axes[i][j].texts[0].set_text(values[i * 2 + j])
                 metric_axes[i][j].texts[1].set_text(METRIC_LABELS[i][j])
 
-        # Access-state banner.
-        door = access["door"].replace("_", " ")
-        ign = "AUTHORIZED" if access["ignition"] else "OFF"
-        banner = f"DOOR: {door}\nIGNITION: {ign}"
+        # Access-state banner (color-coded) + event feed.
+        door_label, door_color = STATE_LABEL.get(
+            access["door"], (access["door"].replace("_", " "), "#757575"))
+        ign = "NỔ MÁY: CHO PHÉP" if access["ignition"] else "NỔ MÁY: TẮT"
+        banner = f"{door_label}\n{ign}"
         if 0 <= args.drop_anchor < len(ANCHORS):
             banner += f"\nDROPPED: anchor {args.drop_anchor} (sim)"
         status_text.set_text(banner)
+        status_text.set_color(door_color)
+        event_text.set_text("\n".join(events))
 
-        return [raw_sc, ekf_line, ekf_pt, cone, status_text]
+        return [raw_sc, ekf_line, ekf_pt, cone, status_text, event_text]
 
     anim = FuncAnimation(fig, update, interval=50, blit=False,
                          cache_frame_data=False)

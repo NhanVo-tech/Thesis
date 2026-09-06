@@ -18,6 +18,7 @@ namespace {
     PN532* nfc = nullptr;
     bool samConfigured = false;
     bool pn532Present = false;
+    bool pn532Present = false;
     bool waitingForRemoval = false;
     bool targetActive = false;
     uint32_t removalWaitStartedMs = 0;
@@ -938,8 +939,10 @@ namespace NfcSession {
         if (!ver) {
             Serial.println("PN532 NOT FOUND!");
             pn532Present = false;
+            pn532Present = false;
             return;
         }
+        pn532Present = true;
         pn532Present = true;
         Serial.printf("PN532 Firmware %d.%d\n", (int)((ver >> 16) & 0xFF), (int)((ver >> 8) & 0xFF));
 
