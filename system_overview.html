@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Car Access — System Architecture</title>
+<style>
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+  }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  #toc {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 16px;
+    background: #010409;
+    border-right: 1px solid #30363d;
+  }
+  #toc h3 {
+    margin: 0 0 12px;
+    color: #58a6ff;
+    font-size: 1.05em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  #toc a {
+    display: block;
+    padding: 6px 10px;
+    margin: 2px 0;
+    border-radius: 6px;
+    color: #c9d1d9;
+    font-size: 0.93em;
+  }
+  #toc a:hover { background: #161b22; color: #58a6ff; text-decoration: none; }
+
+  main {
+    margin-left: 260px;
+    padding: 32px 48px 64px;
+    max-width: 1200px;
+  }
+  h1 {
+    margin-top: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #30363d;
+    color: #e6edf3;
+  }
+
+  details {
+    margin: 20px 0;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 4px 24px 16px;
+  }
+  summary {
+    cursor: pointer;
+    list-style: none;
+    outline: none;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "\25B8";
+    display: inline-block;
+    width: 1.2em;
+    color: #58a6ff;
+    transition: transform 0.15s;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  summary h2 {
+    display: inline;
+    font-size: 1.4em;
+    color: #58a6ff;
+  }
+  summary h2 a { color: inherit; }
+  section > p, details > p { text-align: justify; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.88em;
+    word-break: break-word;
+  }
+  code.filepath {
+    color: #79c0ff;
+    font-size: 0.85em;
+  }
+
+  .mermaid {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  .callout-research {
+    border-left: 3px solid #d29922;
+    background: #272115;
+    padding: 12px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.92em;
+  }
+  th, td {
+    border: 1px solid #30363d;
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  thead th {
+    background: #161b22;
+    color: #58a6ff;
+  }
+  tbody tr:nth-child(odd) { background: #0d1117; }
+  tbody tr:nth-child(even) { background: #161b22; }
+  tbody tr:hover { background: #1f2937; }
+
+  @media (max-width: 768px) {
+    #toc {
+      position: static;
+      width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid #30363d;
+      padding: 16px;
+    }
+    #toc a {
+      display: inline-block;
+      padding: 4px 8px;
+    }
+    main {
+      margin-left: 0;
+      padding: 20px 16px 48px;
+      max-width: 100%;
+    }
+    details { padding: 4px 12px 12px; }
+    section > p, details > p { text-align: left; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="toc">
+  <h3>Contents</h3>
+  <a href="#executive-summary">1. Executive Summary</a>
+  <a href="#nfc-provisioning">2. NFC Provisioning</a>
+  <a href="#ble-auth">3. BLE Authentication</a>
+  <a href="#uwb-pipeline">4. UWB Localization</a>
+  <a href="#access-control">5. Access Control</a>
+  <a href="#tinyml">6. Intent Recognition</a>
+  <a href="#mobile-app">7. Mobile App</a>
+  <a href="#cloud-anomaly">8. Cloud &amp; Anomaly</a>
+  <a href="#freertos">9. FreeRTOS Runtime</a>
+  <a href="#constants">10. Key Constants</a>
+  <a href="#e2e-sequence">11. End-to-End Sequence</a>
+</nav>
+
+<main>
+<h1>Smart Car Access — System Architecture</h1>
+
+<!-- 1 -->
+<details open>
+<summary><h2><a id="executive-summary"></a>1. Executive Summary</h2></summary>
+<p>The phone domain combines Flutter orchestration for master-card intake, native Android HCE provisioning, BLE Phase-B authentication, background scanning and authentication, and Android multicast UWB ranging (<code class="filepath">main.dart</code>, <code class="filepath">master_card_provisioning.dart</code>, <code class="filepath">ProvisioningHostApduService.kt</code>, <code class="filepath">pke_auth_orchestrator.dart</code>, <code class="filepath">pke_background_service.dart</code>, and <code class="filepath">UwbMulticastBridge.kt</code>). The ranging domain uses phone/controller address <code>0x06C1</code> with three anchor sessions, while a PC bridge reads the anchor UARTs and relays <code>RANGE:d0=...,d1=...,d2=...,valid=...</code> frames to the ESP32-S3 over USB-CDC (<code class="filepath">run_fira_bridge.py</code>). The ESP32 ECU runs Arduino and FreeRTOS firmware for NFC, BLE and FSM processing, UWB parsing, trilateration, 2D constant-velocity EKF tracking, TinyML intent inference, geofencing, and relay and ignition control (<code class="filepath">platformio.ini</code>, <code class="filepath">main.cpp</code>, <code class="filepath">uwb_bridge.cpp</code>, and <code class="filepath">access_controller.cpp</code>). Firebase Authentication identifies users, and Firestore stores cars, digital keys, provisioning metadata, access and anomaly history, and anomaly decisions, while immobilizer tokens and private keys remain outside the cloud data model (<code class="filepath">auth.dart</code>, <code class="filepath">car_service.dart</code>, <code class="filepath">anomaly_detection_service.dart</code>, and <code class="filepath">DATA_CONTRACTS.md</code>).</p>
+</details>
+
+<!-- 2 -->
+<details open>
+<summary><h2><a id="nfc-provisioning"></a>2. NFC Provisioning (Phase A)</h2></summary>
+<p>Phase A selects HCE AID <code>A000000809434343444B467631</code> with <code>00 A4 04 00</code>, then executes SPAKE2+ REQUEST <code>INS=0x30</code>, SPAKE2+ VERIFY <code>INS=0x32</code>, base GET DATA <code>INS=0xCA,Lc=0</code>, WRITE DATA <code>INS=0xD4</code>, signature GET DATA <code>INS=0xCA,Lc=24</code>, OP CONTROL <code>INS=0x3C,P1=0x11</code>, and PROVISION RESULT <code>INS=0xDA,data=0x01</code> (<code class="filepath">nfc_session.cpp</code> and <code class="filepath">ProvisioningHostApduService.kt</code>). The SPAKE2+ challenge is <code>vehicle_id[8] || random_nonce[16]</code>: REQUEST transports it in TLV <code>0x50</code>, and VERIFY returns TLV <code>0x58</code> with a 32-byte HMAC-SHA256 that the ECU checks against the master secret (<code class="filepath">nfc_session.cpp</code>). Base GET DATA parses <code>[keyIdLen][keyId][phone_pub_65][certLen_be16][cert]</code> with optional fast-artifact TLVs <code>0x90</code> for the version and <code>0x91</code> for the 32-byte key, whereas WRITE DATA sends TLV <code>0x80,len=8,vehicle_id</code> and TLV <code>0x81,len=65,vehicle_pub</code>, and the signature response contains <code>[sigLen_be16][ECDSA-P256 DER signature]</code> (<code class="filepath">nfc_session.cpp</code>). The CCC mailbox uses NVS namespace <code>ccc_dk</code>, identity and bookkeeping keys <code>v_id</code>, <code>v_pub</code>, <code>v_priv</code>, <code>sig_bmp</code>, and <code>slot_bmp</code>, and eight slots whose <code>ep_0</code>..<code>ep_7</code> values hold 65-byte endpoint public keys and whose <code>tok_0</code>..<code>tok_7</code> values hold 32-byte immobilizer tokens; slot 0 is the owner and slots 1–7 are friends (<code class="filepath">ccc_mailbox.cpp</code> and <code class="filepath">ccc_mailbox.h</code>). The same namespace stores provisioning keys <code>cert_chain</code>, <code>fast_art_ver</code>, <code>fast_art_key</code>, <code>force_prov</code>, and <code>oneshot_force</code>; successful owner provisioning writes the phone key to slot 0, activates it, generates <code>tok_0</code>, clears signaling bit <code>0x0001</code>, and rejects replacement unless force mode is active (<code class="filepath">provisioning_phase.cpp</code>). Android protects the phone identity under alias <code>smart_car_phone_identity_p256</code> in <code>AndroidKeyStore</code> as an EC <code>secp256r1</code> key with SHA-256 sign/verify purposes and no user-authentication requirement, allowing the HCE service to sign while operating in the background (<code class="filepath">KeystoreBridge.kt</code>).</p>
+<div class="mermaid">
+sequenceDiagram
+  participant ECU as ESP32/PN532
+  participant HCE as Android HCE
+  participant KS as Android Keystore
+  participant NVS as CCC NVS
+  ECU-&gt;&gt;HCE: SELECT AID A000000809434343444B467631
+  HCE--&gt;&gt;ECU: version TLVs + 9000
+  ECU-&gt;&gt;HCE: SPAKE2+ REQUEST 0x30, TLV 0x50=vehicle_id||nonce
+  HCE--&gt;&gt;ECU: 9000
+  ECU-&gt;&gt;HCE: SPAKE2+ VERIFY 0x32
+  HCE--&gt;&gt;ECU: TLV 0x58=HMAC-SHA256 + 9000
+  ECU-&gt;&gt;HCE: GET DATA 0xCA, Lc=0
+  HCE-&gt;&gt;KS: ensure/get P-256 public key
+  HCE--&gt;&gt;ECU: phone_pub + cert + optional fast artifact
+  ECU-&gt;&gt;HCE: WRITE DATA 0xD4, vehicle_id + vehicle_pub
+  HCE--&gt;&gt;ECU: 9000
+  ECU-&gt;&gt;HCE: GET DATA 0xCA, challenge Lc=24
+  HCE-&gt;&gt;KS: ECDSA-SHA256 sign challenge
+  HCE--&gt;&gt;ECU: DER signature + 9000
+  ECU-&gt;&gt;HCE: OP CONTROL 0x3C, P1=0x11
+  HCE--&gt;&gt;ECU: 9000
+  ECU-&gt;&gt;NVS: persist slot 0 endpoint key, tok_0, cert/artifact
+  ECU-&gt;&gt;HCE: PROVISION RESULT 0xDA, data=0x01
+  HCE--&gt;&gt;ECU: 9000
+</div>
+</details>
+
+<!-- 3 -->
+<details open>
+<summary><h2><a id="ble-auth"></a>3. BLE Authentication (Phase B)</h2></summary>
+<p>Phase B uses GATT service <code>0000aaaa-1234-5678-9abc-def012345678</code>, RX write characteristic <code>0000aac1-1234-5678-9abc-def012345678</code>, and TX read/notify characteristic <code>0000aac2-1234-5678-9abc-def012345678</code> as an APDU-like tunnel for AUTH0 <code>0x80</code>, AUTH1 <code>0x81</code>, EXCHANGE <code>0x82</code>, CONTROL_FLOW <code>0x83</code>, RANGING_START <code>0x84</code>, and RANGING_STOP <code>0x85</code> (<code class="filepath">ble_auth.cpp</code>). In the standard path, AUTH0 uses <code>P1=0x11</code>; the ECU generates a P-256 ephemeral pair, returns the 65-byte public key, sends <code>[ecu_ephemeral_pub_65][vehicle_sig_len_le16][vehicle_ECDSA_DER]</code>, and verifies the phone response <code>[phone_ephemeral_pub_65][phone_sig_len_le16][phone_ECDSA_DER]</code> with the provisioned endpoint key (<code class="filepath">ble_auth.cpp</code>). A 32-byte P-256 ECDH secret feeds HKDF-SHA256 with an empty salt: ENC info is <code>16-byte("SmartCarv1|ENC" + zero padding) || ecu_ephemeral_pub_65 || phone_ephemeral_pub_65</code>, MAC info replaces the label with <code>SmartCarv1|MAC</code>, and both outputs are 32 bytes (<code class="filepath">ble_auth.cpp</code>). The ECU then publishes <code>vehicle_id[8] || nonce[16]</code>, and the phone returns its signature through EXCHANGE so that the ECU can verify the 24-byte challenge before declaring the session ready (<code class="filepath">ble_auth.cpp</code>). The fast transaction instead uses AUTH0 <code>P1=0x01</code> with the requested artifact version; if rollout policy permits it and NVS contains a matching 32-byte artifact, the ECU skips AUTH1/ECDH and derives 32-byte ENC and MAC keys from empty-salt HKDF info <code>16-byte("SmartCarFast|ENC" or "SmartCarFast|MAC", zero-padded) || vehicle_id[8] || artifact_version[1]</code>, after which it returns the 24-byte challenge directly (<code class="filepath">ble_auth.cpp</code> and <code class="filepath">platformio.ini</code>). CONTROL_FLOW requires ready session keys and raises the FSM unlock-request event, while RANGING_START and RANGING_STOP likewise require a ready session and invoke <code>UwbBridge::sendStart()</code> and <code>UwbBridge::sendStop()</code> (<code class="filepath">ble_auth.cpp</code>).</p>
+<div class="mermaid">
+sequenceDiagram
+  participant Phone
+  participant ECU
+  participant NVS
+  Phone-&gt;&gt;ECU: Connect GATT
+  alt Standard path P1=0x11
+    Phone-&gt;&gt;ECU: AUTH0 0x80
+    ECU--&gt;&gt;Phone: ECU ephemeral P-256 public key
+    ECU--&gt;&gt;Phone: AUTH1 0x81, ECU ephemeral + vehicle signature
+    Phone-&gt;&gt;ECU: AUTH1 0x81, phone ephemeral + phone signature
+    ECU-&gt;&gt;NVS: load provisioned phone public key
+    ECU-&gt;&gt;ECU: verify signature, ECDH, HKDF ENC/MAC
+  else Fast path P1=0x01
+    Phone-&gt;&gt;ECU: AUTH0 0x80, artifact version
+    ECU-&gt;&gt;NVS: load matching 32-byte fast artifact
+    ECU-&gt;&gt;ECU: HKDF fast ENC/MAC#59; skip AUTH1/ECDH
+  end
+  ECU--&gt;&gt;Phone: 24-byte vehicle_id||nonce challenge
+  Phone-&gt;&gt;ECU: EXCHANGE 0x82, signed challenge
+  ECU-&gt;&gt;ECU: verify with provisioned phone key
+  ECU--&gt;&gt;Phone: EXCHANGE 9000#59; session ready
+  Phone-&gt;&gt;ECU: CONTROL_FLOW 0x83
+  ECU--&gt;&gt;Phone: CONTROL_FLOW 9000
+  Phone-&gt;&gt;ECU: RANGING_START 0x84
+  ECU--&gt;&gt;Phone: 9000
+</div>
+</details>
+
+<!-- 4 -->
+<details open>
+<summary><h2><a id="uwb-pipeline"></a>4. UWB Localization Pipeline</h2></summary>
+<p>The localization topology uses phone/controller address <code>0x06C1</code> with three anchors and per-anchor PC UART clients, commonly ordered as COM11/COM19/COM12 for d0 rear-centre, d1 right, and d2 left B-pillar, and forwards <code>RANGE:d0=&lt;m&gt;,d1=&lt;m&gt;,d2=&lt;m&gt;,valid=&lt;0|1&gt;</code> over ESP32 USB-CDC (<code class="filepath">run_fira_bridge.py</code> and <code class="filepath">uwb_geometry.h</code>). The PC bridge starts or stops all anchor sessions on <code>CMD:START_RANGING</code> or <code>CMD:STOP_RANGING</code> and returns corresponding <code>ACK:</code> lines, while the ESP32 derives <code>valid_mask</code> from each positive distance rather than the aggregate <code>valid</code> field so that two-anchor solutions remain possible (<code class="filepath">run_fira_bridge.py</code> and <code class="filepath">uwb_bridge.cpp</code>). Trilateration applies a two-circle closed-form solution when exactly two anchors are usable and a maximum-10-iteration Gauss-Newton least-squares refinement when all three are usable, producing <code>(x,y,rms,valid)</code> (<code class="filepath">trilateration.cpp</code> and <code class="filepath">trilateration.h</code>). Anchors (<code class="filepath">uwb_geometry.h</code>): A0=(0.00,-2.00)m rear-centre, A1=(0.95,0.00)m right, A2=(-0.95,0.00)m left B-pillar. EKF: 2D constant-velocity [x,y,vx,vy]; sigma_meas=clamp(RMS,0.05,1.0)m; sigma_a=1.2 m/s^2; predict per measurement; NO coasting; re-init if gap&gt;2s or innovation&gt;2.5m. The EKF additionally uses a default measurement standard deviation of 0.15 m, initial velocity variance 4.0 <code>(m/s)^2</code>, and a 2.0 m/s speed clamp; <code>kDrivePeriodMs=100</code> drives inference and access from the last corrected estimate, whereas <code>kMaxCoastMs=500</code> suppresses stale access updates without introducing prediction between measurements (<code class="filepath">ekf_stub.cpp</code> and <code class="filepath">uwb_bridge.cpp</code>).</p>
+<div class="callout-research">
+  &#9888;&#65039; Research transport: The PC bridge (run_fira_bridge.py) is a
+  development-grade serial relay, not a production topology. In a production
+  system this would be replaced by direct SPI/UART between the UWB module and ESP32.
+</div>
+<div class="mermaid">
+flowchart TD
+  P[Phone UWB 0x06C1] --&gt; A0[A0 rear-centre]
+  P --&gt; A1[A1 right]
+  P --&gt; A2[A2 left B-pillar]
+  A0 --&gt; PC[PC UART bridge]
+  A1 --&gt; PC
+  A2 --&gt; PC
+  PC --&gt;|RANGE:d0,d1,d2,valid over USB-CDC| Q[ESP32 frame queue]
+  Q --&gt; T{usable anchors}
+  T --&gt;|2| C[2-circle closed form]
+  T --&gt;|3| G[Gauss-Newton]
+  C --&gt; R[x,y,rms]
+  G --&gt; R
+  R --&gt; E[CV EKF predict+correct on measurement]
+  E --&gt; I[25x4 intent window]
+  E --&gt; Z[Geofence and access gates]
+  I --&gt; Z
+</div>
+</details>
+
+<!-- 5 -->
+<details open>
+<summary><h2><a id="access-control"></a>5. Access Control &amp; Geofencing</h2></summary>
+<p>Geofence zones: OUTSIDE / WELCOME r=2.5m / DRIVER_DOOR centre(-0.95,0) r=1.0m / DRIVER_SEAT centre(-0.35,0) r=0.45m. Classification checks DRIVER_SEAT before DRIVER_DOOR, WELCOME, and OUTSIDE, and the stateful result changes only after three consecutive samples of a candidate zone (<code class="filepath">geofence.cpp</code>, <code class="filepath">geofence.h</code>, and <code class="filepath">access_controller.cpp</code>). AccessController: 3 states LOCKED-&gt;DOOR_UNLOCKED-&gt;OCCUPIED-&gt;LOCKED; gates: deceleration (speed&lt;0.4m/s), 3-hit unlock debounce, 3s seat-settle, radial-velocity approach, 4-class AI intent. From LOCKED, unlocking additionally requires a DRIVER_DOOR or DRIVER_SEAT zone, radial velocity not moving away above <code>0.10 m/s</code>, passing probability below <code>0.70</code>, approach probability at least <code>0.80</code>, and all conditions sustained for three hits; from DOOR_UNLOCKED, DRIVER_SEAT, speed below <code>0.4 m/s</code>, seated probability at least <code>0.80</code>, and a continuous 3000 ms settle cause the door to lock and ignition to become authorized (<code class="filepath">access_controller.cpp</code>). DOOR_UNLOCKED returns directly to LOCKED when the stable zone becomes OUTSIDE while moving away above <code>0.10 m/s</code>, without leave debounce or a leave-intent threshold, whereas OCCUPIED requires OUTSIDE, the same moving-away condition, leave probability at least <code>0.80</code>, and three consecutive hits before revoking ignition and locking; if inference is unavailable or its 25-frame window is warming up, approach, seated, and leave default to <code>1.0</code> and passing defaults to <code>0.0</code> so that AI gates are skipped (<code class="filepath">access_controller.cpp</code> and <code class="filepath">uwb_bridge.cpp</code>). RELAY_PIN=5, IGNITION_PIN=7; an unlock holds the relay HIGH for 500 ms before returning it LOW, while authorized ignition is represented by a HIGH output (<code class="filepath">access_controller.cpp</code> and <code class="filepath">access_controller.h</code>).</p>
+<div class="mermaid">
+stateDiagram-v2
+  [*] --&gt; LOCKED
+  LOCKED --&gt; DOOR_UNLOCKED: near door + speed&lt;0.4 + approaching/not-away + approach&gt;=0.80 + passing&lt;0.70 + 3 hits / relay pulse
+  DOOR_UNLOCKED --&gt; OCCUPIED: driver seat + speed&lt;0.4 + seated&gt;=0.80 + 3 s / lock + ignition HIGH
+  DOOR_UNLOCKED --&gt; LOCKED: OUTSIDE + moving away / lock
+  OCCUPIED --&gt; LOCKED: OUTSIDE + moving away + leave&gt;=0.80 + 3 hits / ignition LOW + lock
+</div>
+</details>
+
+<!-- 6 -->
+<details open>
+<summary><h2><a id="tinyml"></a>6. Intent Recognition (TinyML)</h2></summary>
+<p>The data pipeline begins when <code><span class="filepath">localization_demo.py</span> --capture</code> records ESP32 output, after which <code class="filepath">collect_traj.py</code> extracts labelled <code>[EKF]</code> rows in the form <code>run_id,timestamp_ms,x,y,vx,vy,label</code>; <code class="filepath">train_traj_model.py</code> trains and converts the model, <code class="filepath">uwb_traj_model.h</code> embeds its bytes, and <code class="filepath">traj_inference.cpp</code> executes it with TensorFlow Lite Micro. Train/test separation occurs by run, StandardScaler is fitted only to training features, and sliding windows do not cross run boundaries (<code class="filepath">collect_traj.py</code> and <code class="filepath">train_traj_model.py</code>). The model is Conv1D(16,kernel=3,ReLU) -&gt; MaxPool(2) -&gt; Conv1D(32,kernel=3,ReLU) -&gt; MaxPool(2) -&gt; Flatten -&gt; Dense(16,ReLU) -&gt; Dropout(0.2) -&gt; Dense(4,softmax) (<code class="filepath">train_traj_model.py</code>). Intent: TFLM Conv1D, 25x4 window [x,y,vx,vy], 4 classes approach(0)/seated(1)/leave(2)/passing(3); act if p&gt;=0.80; hard-block unlock if p_passing&gt;=0.70; already wired in <code class="filepath">uwb_bridge.cpp</code>. Feature normalization uses mean <code>[-1.176990,-0.693135,-0.019802,0.006809]</code> and scale <code>[1.118417,1.425282,0.187332,0.270498]</code> in <code>[x,y,vx,vy]</code> order (<code class="filepath">traj_inference.h</code>). TFLM allocates a 44 KiB tensor arena, requires float32 input and output tensors, and withholds predictions until all 25 frames are available, preventing partially populated sequences from controlling the state machine (<code class="filepath">traj_inference.cpp</code>).</p>
+<div class="mermaid">
+flowchart LR
+  L[localization_demo.py --capture] --&gt; C[collect_traj.py]
+  C --&gt; D[labelled x,y,vx,vy CSV runs]
+  D --&gt; T[train_traj_model.py Conv1D]
+  T --&gt; H[uwb_traj_model.h]
+  H --&gt; M[traj_inference.cpp TFLM]
+  E[EKF x,y,vx,vy] --&gt; M
+  M --&gt; P[approach/seated/leave/passing probabilities]
+  P --&gt; A[AccessController AI gates]
+</div>
+</details>
+
+<!-- 7 -->
+<details open>
+<summary><h2><a id="mobile-app"></a>7. Mobile App Architecture</h2></summary>
+<p>The Flutter service layer separates cloud and user functions across <code class="filepath">auth.dart</code>, <code class="filepath">car_service.dart</code>, <code class="filepath">database.dart</code>, <code class="filepath">initial_data_helper.dart</code>, and <code class="filepath">language_service.dart</code>: these modules wrap Firebase Authentication, car and digital-key CRUD plus owner-provisioning and simulated control updates, writes to <code>User/{userId}</code>, sample car/key seeding with UI feedback, and persisted localization preferences, respectively. Its security and access services include <code class="filepath">master_card_provisioning.dart</code> for NDEF JSON intake and native HCE session/binding control; the disabled compatibility stub <code class="filepath">nfc_provisioning_service.dart</code>; <code class="filepath">pke_auth_orchestrator.dart</code> for FlutterBluePlus scanning, connection, standard or fast Phase B, session keys, GPS, and ranging commands; <code class="filepath">ble_phase_test.dart</code> for Phase-A status and delegated Phase-B tests; <code class="filepath">ble_runtime_permissions.dart</code> for Android permission handling; and <code class="filepath">gps_service.dart</code> for GPS acquisition, reverse geocoding, 32-byte serialization, XOR encryption, and HMAC-SHA256 (<code class="filepath">master_card_provisioning.dart</code>, <code class="filepath">nfc_provisioning_service.dart</code>, <code class="filepath">pke_auth_orchestrator.dart</code>, <code class="filepath">ble_phase_test.dart</code>, <code class="filepath">ble_runtime_permissions.dart</code>, and <code class="filepath">gps_service.dart</code>). Runtime support is divided among <code class="filepath">pke_background_service.dart</code>, which performs foreground-mode Android scanning, authentication, telemetry/backoff, and dual-isolate handoff; <code class="filepath">background_service_control.dart</code>, which persists and toggles service state; <code class="filepath">doze_exemption_service.dart</code>, which manages battery-optimization exemption; <code class="filepath">pke_rollout_flags.dart</code>, which persists background, fast-transaction, bonding, and RSSI policy; <code class="filepath">pke_telemetry.dart</code>, which defines structured PKE events; and <code class="filepath">uwb_multi_service.dart</code>, which wraps the native multicast UWB MethodChannel and EventChannel (<code class="filepath">pke_background_service.dart</code>, <code class="filepath">background_service_control.dart</code>, <code class="filepath">doze_exemption_service.dart</code>, <code class="filepath">pke_rollout_flags.dart</code>, <code class="filepath">pke_telemetry.dart</code>, and <code class="filepath">uwb_multi_service.dart</code>). The anomaly and notification layer comprises <code class="filepath">ai_service.dart</code>, <code class="filepath">anomaly_scorer.dart</code>, <code class="filepath">anomaly_detection_service.dart</code>, <code class="filepath">anomaly_decision_engine.dart</code>, <code class="filepath">time_anomaly_detector.dart</code>, <code class="filepath">location_anomaly_detector.dart</code>, <code class="filepath">notification_service.dart</code>, and <code class="filepath">push_notification_service.dart</code>, covering risk features, Gemini-backed scoring and fallback, deterministic and AI analyses, decision mapping, temporal/frequency and geographic detectors, in-app dialogs, and system notifications. Native Kotlin modules assign HCE APDU handling to <code>ProvisioningHostApduService</code>, UID/vehicle/artifact persistence to <code>DataStoreUtil</code>, the Phase-A P-256 identity to <code>KeystoreBridge</code>, Flutter-accessible Phase-B cryptography to <code>HandshakeChannel</code> and <code>PhaseBCrypto</code>, and API-36 <code>android.ranging</code> multicast DS-TWR with aggregate status/range events to <code>UwbMulticastBridge</code> (<code class="filepath">ProvisioningHostApduService.kt</code>, <code class="filepath">DataStoreUtil.kt</code>, <code class="filepath">KeystoreBridge.kt</code>, <code class="filepath">HandshakeChannel.kt</code>, <code class="filepath">PhaseBCrypto.kt</code>, and <code class="filepath">UwbMulticastBridge.kt</code>). During the dual-isolate handoff, the background isolate authenticates and retains BLE while invoking <code>runUwbHandoff</code>; the foreground isolate reconnects by known MAC, sends RANGING_START, starts native multicast UWB, returns <code>uwbHandoffResult</code>, and allows the background connection to be released, with <code>stopUwbHandoff</code> and <code>uwbHandoffStopped</code> reversing the process; supporting dependencies are <code>nfc_manager</code> 4.1.1 with local override, <code>flutter_blue_plus</code> 1.18.5, <code>pointycastle</code> 3.9.0, <code>asn1lib</code> 1.5.0, <code>crypto</code> 3.0.3, <code>cryptography</code> 2.7.0, <code>flutter_secure_storage</code> 9.2.2, <code>shared_preferences</code> 2.3.2, <code>permission_handler</code> 11.3.1, <code>wakelock_plus</code> 1.2.5, <code>geolocator</code> 13.0.2, <code>flutter_background_service</code> 5.1.0, <code>flutter_background_service_android</code> 6.3.0, and local <code>phaseb_handshake_bridge</code> (<code class="filepath">pke_background_service.dart</code> and <code class="filepath">pubspec.yaml</code>).</p>
+</details>
+
+<!-- 8 -->
+<details open>
+<summary><h2><a id="cloud-anomaly"></a>8. Cloud &amp; Anomaly Detection</h2></summary>
+<p>Firestore <code>cars/{carId}</code> stores owner-controlled car state and an <code>ownerProvisioning</code> object containing <code>vehicle_id</code>, <code>owner_uid</code>, <code>device_pub_key</code>, <code>vehicle_pub_key</code>, status, slot-0 owner metadata, and optional write-data and scanned-vehicle fields, while <code>Vehicles/{vehicleIdHex}</code> receives a best-effort mirror (<code class="filepath">car_service.dart</code>). The <code>digital_keys/{keyId}</code> collection stores owner ID, car ID, name, type, status, permissions, validity, and timestamps; user records use the code-authoritative path <code>User/{userId}</code>, rather than the documented <code>users/{uid}</code> path (<code class="filepath">car_service.dart</code> and <code class="filepath">database.dart</code>). The <code>access_logs/{id}</code> history supports time, frequency, and location analysis, <code>anomaly_analysis/{id}</code> stores deterministic analysis details, and <code>anomaly_decisions/{id}</code> stores AI-enriched decisions (<code class="filepath">time_anomaly_detector.dart</code>, <code class="filepath">location_anomaly_detector.dart</code>, and <code class="filepath">anomaly_detection_service.dart</code>). In the deterministic path, <code>AnomalyDetectionService</code> invokes <code>TimeAnomalyDetector</code> and <code>LocationAnomalyDetector</code>, the time detector evaluates one-hour frequency, and their confidence values are summed and logged; in the AI path, time, location, and frequency features flow through <code>AnomalyScorer</code> to <code>AIService</code> with respective weights of 30%, 30%, and 40% and a rule-based fallback (<code class="filepath">anomaly_detection_service.dart</code>, <code class="filepath">time_anomaly_detector.dart</code>, <code class="filepath">location_anomaly_detector.dart</code>, <code class="filepath">anomaly_scorer.dart</code>, and <code class="filepath">ai_service.dart</code>). <code>AIService</code> calls <code>gemini-2.5-flash-lite:generateContent</code>, parses JSON from the first candidate, and falls back when HTTP or parsing fails, while the otherwise uninvoked <code>AnomalyDecisionEngine.processDecision</code> maps confidence <code>&lt;=0.60</code> to LOW/ALLOW, <code>&lt;=0.85</code> to MEDIUM/CONFIRM, and <code>&gt;0.85</code> to HIGH/BLOCK (<code class="filepath">ai_service.dart</code> and <code class="filepath">anomaly_decision_engine.dart</code>). GPS synchronization uses a code-authoritative 32-byte little-endian plaintext of latitude float64, longitude float64, altitude float32, accuracy float32, and timestamp int64 milliseconds; the phone XORs it with the 32-byte session ENC key and appends HMAC-SHA256 over the ciphertext with the 32-byte session MAC key, yielding a 64-byte packet and overriding the stale documented lon/lat/alt le32, accuracy u16, and timestamp u32 layout (<code class="filepath">gps_service.dart</code> and <code class="filepath">ble_auth.cpp</code>).</p>
+</details>
+
+<!-- 9 -->
+<details open>
+<summary><h2><a id="freertos"></a>9. FreeRTOS Runtime &amp; Data Contracts</h2></summary>
+<p>The FreeRTOS runtime creates <code>FSM</code> on core 1 with priority 6 and an 8192-byte stack to call <code>FSM::tick()</code> every 1 ms, <code>NFC</code> on core 1 with priority 4 and an 8192-byte stack to call <code>NfcSession::tick()</code> every 2 ms, and <code>UWB</code> on core 1 with priority 5 and a 20480-byte stack to read USB-CDC RANGE/ACK lines, execute <code>UwbBridge::tick()</code> and <code>AccessController::tick()</code>, and delay 5 ms (<code class="filepath">main.cpp</code>). The Arduino <code>loop()</code> independently services <code>BLEMod::tick()</code> every 50 ms, keeping BLE maintenance separate from the three explicit tasks (<code class="filepath">main.cpp</code>). Each <code>RangingFrame</code> contains <code>uint32_t t_ms</code>, <code>double d[3]</code>, and <code>uint8_t valid_mask</code>, whose bit i records whether d[i] is fresh and in bounds after parsing; the serial boundary accepts <code>RANGE:d0=...,d1=...,d2=...,valid=...</code> and <code>ACK:...</code> from the PC and emits <code>CMD:START_RANGING</code> or <code>CMD:STOP_RANGING</code> from the ECU (<code class="filepath">ranging_frame.h</code>, <code class="filepath">uwb_bridge.cpp</code>, and <code class="filepath">run_fira_bridge.py</code>). The EKF maintains private state <code>g_x[4]=[px,py,vx,vy]</code>, covariance <code>g_P[4][4]</code>, and timestamps <code>g_lastMs</code> and <code>g_lastMeasMs</code>, while <code>Geofence::Zone</code> assigns the implicit values <code>OUTSIDE=0</code>, <code>WELCOME=1</code>, <code>DRIVER_DOOR=2</code>, and <code>DRIVER_SEAT=3</code> (<code class="filepath">ekf_stub.cpp</code> and <code class="filepath">geofence.h</code>). The BLE boundary uses request frames <code>[CLA,INS,P1,P2,Lc,data...]</code> and emits responses through the TX notify characteristic with the originating instruction, response status, and any data, providing a single transport contract for authentication and ranging commands (<code class="filepath">ble_auth.cpp</code>).</p>
+</details>
+
+<!-- 10 -->
+<details open>
+<summary><h2><a id="constants"></a>10. Key Constants Table</h2></summary>
+<p>The following constants define the geometry, estimator, access policy, protocol, and runtime parameters used by the implementation. Values are reproduced directly from the structured code extraction without substituting documentation-era settings. The source column identifies the implementation file in which each constant is defined.</p>
+<table>
+  <thead>
+    <tr><th>Constant</th><th>Value</th><th>Source file</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>kAnchorX/Y</code> (A0/A1/A2)</td><td><code>(0,-2)/(0.95,0)/(-0.95,0)</code> m</td><td><code class="filepath">uwb_geometry.h</code></td></tr>
+    <tr><td><code>kDoorX/kDoorY/kDoorRadiusM</code></td><td><code>-0.95 / 0.0 / 1.0</code></td><td><code class="filepath">geofence.h</code></td></tr>
+    <tr><td><code>kSeatX/kSeatY/kSeatRadiusM</code></td><td><code>-0.35 / 0.0 / 0.45</code></td><td><code class="filepath">geofence.h</code></td></tr>
+    <tr><td><code>kWelcomeRadiusM</code></td><td><code>2.5</code></td><td><code class="filepath">geofence.h</code></td></tr>
+    <tr><td><code>RELAY_PIN / IGNITION_PIN</code></td><td><code>5 / 7</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>STILL_SPEED_MPS</code></td><td><code>0.4</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>REQUIRED_CONSECUTIVE_HITS</code></td><td><code>3</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>SEAT_SETTLE_MS</code></td><td><code>3000</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>LEAVE_CONSECUTIVE_HITS</code></td><td><code>3</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>APPROACH_SPEED_MIN_MPS</code></td><td><code>0.10</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>RELAY_PULSE_MS</code></td><td><code>500</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>INTENT_APPROACH/SEATED/LEAVE_THRESHOLD</code></td><td><code>0.80</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>INTENT_PASSING_BLOCK</code></td><td><code>0.70</code></td><td><code class="filepath">access_controller.h</code></td></tr>
+    <tr><td><code>kAccelStd</code> (EKF)</td><td><code>1.2 m/s^2</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
+    <tr><td>EKF meas-noise clamp</td><td><code>0.05–1.0 m</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
+    <tr><td><code>kDefaultMeasStd / kInitVelVar / kNominalDtS</code></td><td><code>0.15 m / 4.0 (m/s)^2 / 0.10 s</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
+    <tr><td><code>kMaxGapS / kMaxInnovationM / kMaxSpeedMps</code></td><td><code>2.0 s / 2.5 m / 2.0 m/s</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
+    <tr><td><code>kDrivePeriodMs / kMaxCoastMs</code></td><td><code>100 / 500 ms</code></td><td><code class="filepath">uwb_bridge.cpp</code></td></tr>
+    <tr><td>UWB frame queue depth</td><td><code>8</code></td><td><code class="filepath">uwb_bridge.cpp</code></td></tr>
+    <tr><td><code>TIME_STEPS / NUM_FEATURES / NUM_CLASSES</code></td><td><code>25 / 4 / 4</code></td><td><code class="filepath">traj_inference.h</code></td></tr>
+    <tr><td>TFLM tensor arena</td><td><code>44 * 1024 bytes</code></td><td><code class="filepath">traj_inference.cpp</code></td></tr>
+    <tr><td>Scaler mean</td><td><code>[-1.176990,-0.693135,-0.019802,0.006809]</code></td><td><code class="filepath">traj_inference.h</code></td></tr>
+    <tr><td>Scaler scale</td><td><code>[1.118417,1.425282,0.187332,0.270498]</code></td><td><code class="filepath">traj_inference.h</code></td></tr>
+    <tr><td>AUTH service / RX / TX UUID</td><td><code>0000aaaa...5678 / 0000aac1...5678 / 0000aac2...5678</code></td><td><code class="filepath">ble_auth.cpp</code></td></tr>
+    <tr><td>AUTH0 standard / fast P1</td><td><code>0x11 / 0x01</code></td><td><code class="filepath">ble_auth.cpp</code></td></tr>
+    <tr><td>AUTH0/AUTH1/EXCHANGE/CONTROL/RANGING_START/RANGING_STOP</td><td><code>0x80/0x81/0x82/0x83/0x84/0x85</code></td><td><code class="filepath">ble_auth.cpp</code></td></tr>
+    <tr><td>HCE AID</td><td><code>A000000809434343444B467631</code></td><td><code class="filepath">ProvisioningHostApduService.kt</code></td></tr>
+    <tr><td><code>SPAKE2_CHALLENGE_TTL_MS</code></td><td><code>45000 ms</code></td><td><code class="filepath">ProvisioningHostApduService.kt</code></td></tr>
+    <tr><td>CCC maximum slots</td><td><code>8</code></td><td><code class="filepath">ccc_mailbox.cpp</code></td></tr>
+    <tr><td>Phase-A challenge</td><td><code>8-byte vehicle ID + 16-byte nonce = 24 bytes</code></td><td><code class="filepath">nfc_session.cpp</code></td></tr>
+    <tr><td>PC bridge destination/session/channel/preamble</td><td><code>0x06C1 / 42 / 9 / 9</code></td><td><code class="filepath">run_fira_bridge.py</code></td></tr>
+    <tr><td>PC bridge rate/freshness/distance bounds</td><td><code>10 Hz / 500 ms / 0.1–30.0 m</code></td><td><code class="filepath">run_fira_bridge.py</code></td></tr>
+    <tr><td>FSM event queue</td><td><code>16</code></td><td><code class="filepath">fsm.cpp</code></td></tr>
+    <tr><td>NFC UART RX/TX/baud</td><td><code>44 / 43 / 115200</code></td><td><code class="filepath">main.cpp</code></td></tr>
+  </tbody>
+</table>
+</details>
+
+<!-- 11 -->
+<details open>
+<summary><h2><a id="e2e-sequence"></a>11. End-to-End Unlock Sequence</h2></summary>
+<p>The end-to-end path begins with one-time NFC provisioning, which binds the phone P-256 identity, vehicle identity, owner slot, immobilizer token, and optional fast artifact before BLE authentication is permitted. A standard ECDH/HKDF or artifact-based fast Phase-B exchange establishes authenticated session keys, after which RANGING_START activates the three-anchor pipeline and the ESP32 processes range frames through trilateration, the no-coasting EKF, geofencing, and TFLM intent inference. When the driver-door geometry, speed, radial approach, intent thresholds, and three-hit debounce all pass, the ECU drives RELAY_PIN 5 HIGH for 500 ms and enters DOOR_UNLOCKED.</p>
+<div class="mermaid">
+sequenceDiagram
+  participant Phone
+  participant HCE as Phone HCE/Keystore
+  participant ECU as ESP32 ECU
+  participant NVS as CCC NVS
+  participant Anchors
+  participant PC as PC Bridge
+  Note over Phone,NVS: One-time Phase A
+  ECU-&gt;&gt;HCE: SELECT + SPAKE2+ + GET DATA
+  HCE--&gt;&gt;ECU: phone P-256 public key + signed challenge
+  ECU-&gt;&gt;HCE: WRITE DATA vehicle identity + OP CONTROL
+  ECU-&gt;&gt;NVS: store owner slot 0, tok_0, optional fast artifact
+  ECU-&gt;&gt;HCE: PROVISION RESULT success
+  Note over Phone,ECU: Phase B session
+  Phone-&gt;&gt;ECU: BLE AUTH0
+  alt Standard
+    ECU--&gt;&gt;Phone: ECU ephemeral + vehicle signature
+    Phone-&gt;&gt;ECU: phone ephemeral + phone signature
+    ECU-&gt;&gt;ECU: verify + ECDH + HKDF
+  else Fast
+    ECU-&gt;&gt;NVS: load artifact
+    ECU-&gt;&gt;ECU: artifact HKDF
+  end
+  ECU--&gt;&gt;Phone: vehicle_id||nonce
+  Phone-&gt;&gt;ECU: EXCHANGE signed challenge
+  ECU--&gt;&gt;Phone: authenticated session ready
+  Phone-&gt;&gt;ECU: RANGING_START 0x84
+  ECU-&gt;&gt;PC: CMD:START_RANGING
+  PC-&gt;&gt;Anchors: start three sessions to phone 0x06C1
+  loop Fresh ranging rounds
+    Anchors--&gt;&gt;PC: d0,d1,d2
+    PC--&gt;&gt;ECU: RANGE:d0,d1,d2,valid
+    ECU-&gt;&gt;ECU: trilateration -&gt; EKF -&gt; geofence
+    ECU-&gt;&gt;ECU: append x,y,vx,vy -&gt; TFLM intent
+    ECU-&gt;&gt;ECU: door zone + speed&lt;0.4 + approach/not-away + AI thresholds + 3 hits
+  end
+  ECU-&gt;&gt;ECU: RELAY_PIN 5 HIGH for 500 ms
+  ECU--&gt;&gt;Phone: door state DOOR_UNLOCKED
+</div>
+</details>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+</script>
+</body>
+</html>
