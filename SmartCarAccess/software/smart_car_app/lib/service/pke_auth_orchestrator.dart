@@ -110,6 +110,7 @@ class PkeAuthOrchestrator {
     BluetoothDevice? device,
     Duration timeout = const Duration(seconds: 30),
     PkeAuthProgressCallback? onProgress,
+    bool? fastPath,
   }) async {
     debugPrint('=== Phase B Authentication ===');
     debugPrint('Target device: $deviceAddress');
@@ -132,6 +133,7 @@ class PkeAuthOrchestrator {
         deviceAddress: deviceAddress,
         device: device,
         timeout: timeout,
+        fastPath: fastPath,
         reportProgress: reportProgress,
       );
 
@@ -185,6 +187,7 @@ class PkeAuthOrchestrator {
     required String deviceAddress,
     BluetoothDevice? device,
     required Duration timeout,
+    bool? fastPath,
     required void Function(String step, String message) reportProgress,
   }) async {
     try {
@@ -336,7 +339,7 @@ class PkeAuthOrchestrator {
       reportProgress('Step 3', 'CCC_TX notifications enabled');
 
       final rolloutFlags = await PkeRolloutFlagsService().getFlags();
-      final tryFastPath = rolloutFlags.fastTransaction;
+      final tryFastPath = fastPath ?? rolloutFlags.fastTransaction;
       Uint8List auth0Data = Uint8List(0);
       var fastPathAccepted = false;
 

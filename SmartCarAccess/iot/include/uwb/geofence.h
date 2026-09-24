@@ -24,7 +24,7 @@ constexpr double kSeatX = -0.35;
 constexpr double kSeatY = 0.0;
 constexpr double kSeatRadiusM = 0.45;     // "sitting" radius around the seat
 
-constexpr double kWelcomeRadiusM = 4.0;   // from car centre (0,0)
+constexpr double kWelcomeRadiusM = 2.5;   // from car centre (0,0)
 
 // Pure geometric classification (no hysteresis). DRIVER_SEAT is checked first
 // because it is a subset of DRIVER_DOOR.

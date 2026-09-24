@@ -78,13 +78,19 @@ print(f"Total: {df['run_id'].nunique()} runs, {len(df)} rows")
 print("Label counts:\n", df["label"].value_counts().sort_index())
 
 # ---------------------------------------------------------------------------
-# 3. Train/test split by run (no leakage)
+# 3. Train/test split by run (no leakage, stratified per label)
 # ---------------------------------------------------------------------------
-runs = df["run_id"].unique()
+run_label = df.groupby("run_id")["label"].first()
 rng = np.random.RandomState(SEED)
-rng.shuffle(runs)
-split = int(len(runs) * (1 - TEST_SPLIT))
-train_runs, test_runs = runs[:split], runs[split:]
+train_runs, test_runs = [], []
+for label, group in run_label.groupby(run_label):
+    runs = group.index.to_numpy()
+    rng.shuffle(runs)
+    n_test = max(1, int(round(len(runs) * TEST_SPLIT)))
+    test_runs.extend(runs[:n_test])
+    train_runs.extend(runs[n_test:])
+train_runs = np.array(train_runs)
+test_runs = np.array(test_runs)
 train_df = df[df["run_id"].isin(train_runs)].copy()
 test_df = df[df["run_id"].isin(test_runs)].copy()
 print(f"Train runs: {len(train_runs)} | Test runs: {len(test_runs)}")
@@ -160,7 +166,8 @@ plt.ylabel("true")
 plt.xlabel("predicted")
 plt.title(f"Confusion matrix — acc {acc * 100:.1f}%")
 plt.show()
-print(classification_report(y_test, y_pred, target_names=CLASS_NAMES))
+print(classification_report(y_test, y_pred, target_names=CLASS_NAMES,
+                            labels=range(len(CLASS_NAMES)), zero_division=0))
 
 # ---------------------------------------------------------------------------
 # 8. Export TFLite C header

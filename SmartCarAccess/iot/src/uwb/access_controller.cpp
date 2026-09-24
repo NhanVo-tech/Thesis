@@ -101,6 +101,11 @@ void handlePosition(double x, double y) {
 }
 
 void handlePosition(double x, double y, double vx, double vy) {
+  handlePosition(x, y, vx, vy, nullptr);
+}
+
+void handlePosition(double x, double y, double vx, double vy,
+                    const float* intent) {
   last_x_m = x;
   last_y_m = y;
   last_distance_m = dist(x, y, Geofence::kDoorX, Geofence::kDoorY);
@@ -118,6 +123,13 @@ void handlePosition(double x, double y, double vx, double vy) {
     Serial.printf("[ZONE] %s\n", Geofence::zoneName(zone));
   }
 
+  // AI intent gate: active only when the model is available AND warmed up.
+  const bool ai_ok = AI_GATE_ENABLED && intent != nullptr;
+  const float p_approach = ai_ok ? intent[INTENT_APPROACH] : 1.0f;
+  const float p_seated   = ai_ok ? intent[INTENT_SEATED]   : 1.0f;
+  const float p_leave    = ai_ok ? intent[INTENT_LEAVE]    : 1.0f;
+  const float p_passing  = ai_ok ? intent[INTENT_PASSING]  : 0.0f;
+
   const bool moving_away = ENABLE_APPROACH_GATE &&
                            last_radial_mps > APPROACH_SPEED_MIN_MPS;
 
@@ -131,10 +143,17 @@ void handlePosition(double x, double y, double vx, double vy) {
         consecutive_close_reads = 0;
         return;
       }
+      // AI hard-block: a tangential pass-by must never unlock.
+      if (ai_ok && p_passing >= INTENT_PASSING_BLOCK) {
+        consecutive_close_reads = 0;
+        return;
+      }
       const bool near_door = (zone == Geofence::Zone::DRIVER_DOOR ||
                               zone == Geofence::Zone::DRIVER_SEAT);
       if (near_door && last_speed_mps < STILL_SPEED_MPS) {
-        if (++consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
+        if (ai_ok && p_approach < INTENT_APPROACH_THRESHOLD) {
+          consecutive_close_reads = 0;
+        } else if (++consecutive_close_reads >= REQUIRED_CONSECUTIVE_HITS) {
           fireRelayPulse();
           setState(State::DOOR_UNLOCKED);
           consecutive_close_reads = 0;
@@ -147,8 +166,12 @@ void handlePosition(double x, double y, double vx, double vy) {
 
     case State::DOOR_UNLOCKED: {
       // Sit still at the driver seat -> lock + authorize ignition.
-      if (zone == Geofence::Zone::DRIVER_SEAT &&
-          last_speed_mps < STILL_SPEED_MPS) {
+      const bool seat_zone_still =
+          (zone == Geofence::Zone::DRIVER_SEAT &&
+           last_speed_mps < STILL_SPEED_MPS);
+      const bool seated_ok =
+          seat_zone_still && (!ai_ok || p_seated >= INTENT_SEATED_THRESHOLD);
+      if (seat_zone_still && seated_ok) {
         if (!seat_timer_running) {
           seat_timer_running = true;
           seat_settle_start_ms = millis();
@@ -172,7 +195,9 @@ void handlePosition(double x, double y, double vx, double vy) {
     case State::OCCUPIED: {
       // User leaves the car -> revoke ignition + lock.
       if (zone == Geofence::Zone::OUTSIDE && moving_away) {
-        if (++leave_hits >= LEAVE_CONSECUTIVE_HITS) {
+        if (ai_ok && p_leave < INTENT_LEAVE_THRESHOLD) {
+          leave_hits = 0;
+        } else if (++leave_hits >= LEAVE_CONSECUTIVE_HITS) {
           setIgnition(false);
           lockDoor();
           setState(State::LOCKED);

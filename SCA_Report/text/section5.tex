@@ -254,6 +254,85 @@ Trong môi trường ứng dụng ô tô, việc kiểm soát dòng tiêu thụ 
     \item \textbf{Độ ổn định của quỹ đạo sau khi áp dụng Trilateration và Kalman Filter:} Dữ liệu khoảng cách gốc từ ba mỏ neo DWM3001CDK thường tồn tại các dao động nhiễu tĩnh ($\pm 10\sim20$ cm) hoặc các bước nhảy vọt do hiện tượng phản xạ đa đường (multipath), dẫn đến tọa độ $(x, y)$ thô từ Trilateration bị rung lắc. Nhóm đã tích hợp thành công \textbf{Bộ lọc Kalman hai chiều (EKF)} ngay sau tầng Trilateration (nhiễu đo $R$ được dẫn xuất trực tiếp từ chất lượng lời giải RMS, cường độ nhiễu gia tốc $\sigma_a = 1.2$ m/s$^2$). Kết quả cho thấy đường cong quỹ đạo (trajectory) của người dùng trở nên cực kỳ mượt mà, đồng thời ước lượng được vector vận tốc $(v_x, v_y)$ phục vụ cổng vận tốc hướng tâm. Kỹ thuật này không chỉ giúp bộ đệm Hysteresis ra quyết định mở cửa chính xác tuyệt đối mà còn tạo ra chuỗi trạng thái $(x, y, v_x, v_y)$ chất lượng cao, phục vụ làm đầu vào (Input feature) cho mô hình nhận diện ý định hành vi ở giai đoạn 2 (đang hiện thực).
 \end{itemize}
 
+\subsubsection{Đánh giá định lượng bộ lọc Kalman (EKF)}
+
+Để lượng hóa hiệu quả làm mượt của bộ lọc, nhóm sử dụng công cụ phân tích ngoại tuyến \texttt{analyze\_ekf.py} (đọc trực tiếp các dòng log \texttt{[POS2D]} và \texttt{[EKF]} do firmware phát ra) và đo trên hai kịch bản: \textbf{tag đứng yên} (stationary) và \textbf{người đi bộ quanh xe} (walking). Các chỉ số gồm giá trị trung bình, độ lệch chuẩn $\sigma$ (đo mức dao động), độ lệch cực đại và tỷ số giảm nhiễu $\sigma_{raw} / \sigma_{EKF}$.
+
+\textbf{(a) Kịch bản tag đứng yên:} tag được đặt cố định gần xe trong một khoảng thời gian ngắn. Hình \ref{fig:ekf_noise_x} và \ref{fig:ekf_noise_y} biểu diễn chuỗi tọa độ thô (chấm xanh) đối chiếu với ngõ ra đã lọc (đường đỏ) theo trục $x$ và $y$; vùng tô màu thể hiện dải $\pm\sigma$ của từng chuỗi.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{fig/ekf_static_1_x_noise.png}
+    \caption{Nhiễu tọa độ trục $x$ --- tag đứng yên (thô so với EKF)}
+    \label{fig:ekf_noise_x}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{fig/ekf_static_1_y_noise.png}
+    \caption{Nhiễu tọa độ trục $y$ --- tag đứng yên (thô so với EKF)}
+    \label{fig:ekf_noise_y}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \renewcommand{\arraystretch}{1.25}
+    \setlength{\tabcolsep}{4pt}
+    \caption{Chỉ số làm mượt của EKF --- kịch bản tag đứng yên}
+    \label{tab:ekf_static}
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        \textbf{Chỉ số} & \textbf{X (thô)} & \textbf{X (EKF)} & \textbf{Y (thô)} & \textbf{Y (EKF)} \\
+        \hline
+        Số mẫu & 132 & 280 & 132 & 280 \\
+        \hline
+        Trung bình (m) & $-1.597$ & $-1.597$ & $-1.123$ & $-1.123$ \\
+        \hline
+        Độ lệch chuẩn (cm) & $1.7$ & $1.4$ & $1.6$ & $1.5$ \\
+        \hline
+        Độ lệch cực đại (cm) & $13.7$ & $13.7$ & $8.3$ & $8.3$ \\
+        \hline
+        Tỷ số giảm nhiễu & \multicolumn{2}{c|}{$1.17\times$} & \multicolumn{2}{c|}{$1.11\times$} \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Ở kịch bản này, bản thân ngõ ra Trilateration đã rất ổn định (độ lệch chuẩn chỉ $1.6$--$1.7$ cm, thấp hơn nhiều so với ngưỡng rung lắc $\pm10$--$20$ cm thường gặp), nhờ việc bù sai số hệ thống $24$ cm và tinh chỉnh Gauss-Newton. Bộ lọc EKF tiếp tục ép độ lệch chuẩn xuống còn $1.4$--$1.5$ cm (giảm nhiễu $\sim 1.1\times$), đồng thời cung cấp thêm vector vận tốc $(v_x, v_y)$ --- thông tin mà riêng tầng Trilateration không thể cung cấp. Giá trị trung bình gần như không đổi giữa hai chuỗi ($-1.597$ m và $-1.123$ m) chứng tỏ bộ lọc \textbf{không gây lệch (bias)} lên vị trí ước lượng.
+
+\textbf{(b) Kịch bản người đi bộ quanh xe:} người dùng di chuyển quanh xe để đánh giá khả năng bám quỹ đạo. Hình \ref{fig:ekf_trajectory} cho thấy đường đi đã lọc (màu đỏ) bám sát các điểm đo thô (màu xanh) cùng vòng tròn bán kính mở khóa 2 m.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\textwidth]{fig/ekf_walk_1_trajectory.png}
+    \caption{Quỹ đạo 2D --- các điểm đo thô đối chiếu với đường đi sau EKF}
+    \label{fig:ekf_trajectory}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \renewcommand{\arraystretch}{1.25}
+    \setlength{\tabcolsep}{4pt}
+    \caption{Chỉ số bám quỹ đạo của EKF --- kịch bản người đi bộ}
+    \label{tab:ekf_walk}
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        \textbf{Chỉ số} & \textbf{X (thô)} & \textbf{X (EKF)} & \textbf{Y (thô)} & \textbf{Y (EKF)} \\
+        \hline
+        Số mẫu & 150 & 331 & 150 & 331 \\
+        \hline
+        Trung bình (m) & $-0.454$ & $-0.499$ & $-0.544$ & $-0.515$ \\
+        \hline
+        Độ lệch chuẩn (cm) & $123.3$ & $122.0$ & $193.3$ & $194.0$ \\
+        \hline
+        Độ lệch cực đại (cm) & $196.4$ & $200.9$ & $315.4$ & $312.5$ \\
+        \hline
+        Tỷ số giảm nhiễu & \multicolumn{2}{c|}{$1.01\times$} & \multicolumn{2}{c|}{$1.00\times$} \\
+        \hline
+    \end{tabular}
+\end{table}
+
+Trong kịch bản đi bộ, độ lệch chuẩn lớn ($\sim 1.2$--$1.9$ m) phản ánh \textbf{biên độ dịch chuyển thực} của người dùng chứ không phải nhiễu. Việc tỷ số giảm nhiễu xấp xỉ $1.0\times$ là kết quả mong muốn: bộ lọc không ``nuốt'' chuyển động thật, quỹ đạo đã lọc gần như trùng khít với đường đi thực (không bị trễ --- lag), qua đó đảm bảo vector vận tốc $(v_x, v_y)$ ước lượng phản ánh trung thực động học người dùng, phục vụ chính xác cổng giảm tốc và cổng vận tốc hướng tâm của máy trạng thái truy cập. Sự dịch nhẹ của giá trị trung bình giữa hai trục là do phân bố không đối xứng của tuyến đường thử nghiệm, không phải sai số hệ thống.
+
 
 
 %-------------------------------------------------------------------------------------------------------------

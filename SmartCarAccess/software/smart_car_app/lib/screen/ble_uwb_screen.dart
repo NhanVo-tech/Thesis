@@ -213,7 +213,7 @@ class _BleUwbScreenState extends State<BleUwbScreen> {
     }
   }
 
-  Future<void> _authenticate() async {
+  Future<void> _authenticate({required bool fast}) async {
     final device = _selectedDevice;
     if (device == null) {
       _notify('Select a vehicle first', error: true);
@@ -221,16 +221,16 @@ class _BleUwbScreenState extends State<BleUwbScreen> {
     }
     if (!await _ensurePermissions()) return;
 
-    final trusted = _isTrusted(device);
     setState(() => _stage = _AccessStage.authenticating);
-    _log(trusted
-        ? 'Quick unlock with trusted vehicle ${device.remoteId.str}...'
-        : 'Authenticating with vehicle ${device.remoteId.str}...');
+    _log(fast
+        ? 'Fast connect to ${device.remoteId.str} (skip full handshake)...'
+        : 'Authenticating with ${device.remoteId.str} (full handshake)...');
 
     try {
       final result = await _ble.testPhaseB(
         deviceAddress: device.remoteId.str,
         device: device,
+        fastPath: fast,
         onProgress: (step, message) => _log('[$step] $message'),
       );
 
@@ -246,8 +246,8 @@ class _BleUwbScreenState extends State<BleUwbScreen> {
           _stage = _AccessStage.secured;
         });
         _log('Secure session established. UWB ranging unlocked.');
-        _notify(trusted
-            ? 'Vehicle unlocked (trusted, fast path)'
+        _notify(fast
+            ? 'Vehicle unlocked (fast connect)'
             : 'Authenticated. Vehicle is now trusted.');
       } else {
         setState(() => _stage = _AccessStage.error);
@@ -456,7 +456,6 @@ class _BleUwbScreenState extends State<BleUwbScreen> {
 
   Widget _buildStep1Ble() {
     final selected = _selectedDevice;
-    final trusted = _isTrusted(selected);
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 16, 12, 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -507,27 +506,46 @@ class _BleUwbScreenState extends State<BleUwbScreen> {
               ),
             const SizedBox(height: 12),
             if (!_sessionReady)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: (_isBusy || selected == null)
-                      ? null
-                      : _authenticate,
-                  icon: Icon(trusted ? Icons.lock_open : Icons.verified_user),
-                  label: Text(
-                    trusted
-                        ? 'Quick unlock (trusted)'
-                        : 'Authenticate & secure session',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: trusted ? Colors.green.shade600 : _primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: (_isBusy || selected == null)
+                          ? null
+                          : () => _authenticate(fast: false),
+                      icon: const Icon(Icons.verified_user),
+                      label: const Text('Authenticate BLE'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: (_isBusy || selected == null)
+                          ? null
+                          : () => _authenticate(fast: true),
+                      icon: const Icon(Icons.lock_open),
+                      label: const Text('Connect fast'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.green.shade700,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.green.shade400),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               )
             else
               SizedBox(

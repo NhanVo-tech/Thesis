@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 1 - Phan tich EKF (UWB Localization)</title>
+<style>
+  body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; margin:0; background:#f7f8fa; color:#1f2937; line-height:1.65; }
+  .wrap { max-width: 960px; margin:0 auto; padding:24px 20px 80px; }
+  h1 { color:#0b3d91; border-bottom:3px solid #1e88e5; padding-bottom:10px; }
+  h2 { color:#0b3d91; margin-top:36px; border-left:5px solid #1e88e5; padding-left:10px; }
+  h3 { color:#37474f; margin-top:24px; }
+  code, pre { font-family:'Consolas','Courier New',monospace; }
+  code { background:#eef2f7; padding:2px 6px; border-radius:4px; font-size:0.92em; }
+  pre { background:#0f172a; color:#e2e8f0; padding:14px 16px; border-radius:8px; overflow-x:auto; font-size:0.88em; line-height:1.5; }
+  .box { border-radius:8px; padding:12px 16px; margin:16px 0; }
+  .ok { background:#e8f5e9; border-left:5px solid #2e7d32; }
+  .warn { background:#fff3e0; border-left:5px solid #e65100; }
+  .err { background:#ffebee; border-left:5px solid #c62828; }
+  .info { background:#e3f2fd; border-left:5px solid #1e88e5; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; background:#fff; }
+  th,td { border:1px solid #d0d7de; padding:8px 10px; text-align:left; font-size:0.95em; }
+  th { background:#eceff1; }
+  .step { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:14px 18px; margin:14px 0; }
+  .n { display:inline-block; background:#1e88e5; color:#fff; width:26px; height:26px; line-height:26px; text-align:center; border-radius:50%; font-weight:bold; margin-right:8px; }
+  .hl { color:#c62828; font-weight:bold; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Task 1 - Phan tich EKF (Extended Kalman Filter)</h1>
+<p><strong>Muc tieu:</strong> chung minh bang <strong>so lieu</strong> va <strong>hinh anh</strong> rang bo loc EKF giup lam muot (giam nhieu) vi tri tinh tu trilateration nhu the nao, de dua vao bao cao / luan van.</p>
+
+<div class="box info">
+<strong>Cong cu:</strong> <code>iot\tools\analyze_ekf.py</code> - doc log serial cua ESP32, parse cac dong <code>[POS2D]</code> (ket qua trilateration tho) va <code>[EKF]</code> (vi tri da loc), roi in bang so lieu + ve bieu do.
+</div>
+
+<h2>1. Loi da gap va cach khac phuc (da xu ly)</h2>
+
+<div class="box err">
+<p><strong>Loi ban dau:</strong></p>
+<pre>FileNotFoundError: [Errno 2] No such file or directory:
+'C:\DATN\SCA_Report\fig\ekf_noise.png'</pre>
+<p><strong>Nguyen nhan:</strong> thu muc <code>C:\DATN\SCA_Report\fig\</code> chua ton tai, trong khi script khong tu tao thu muc cha truoc khi luu anh.</p>
+</div>
+
+<div class="box ok">
+<p><strong>Da sua xong:</strong> da bo sung vao <code>analyze_ekf.py</code> (ham <code>_finish</code>) lenh tu tao thu muc bang <code>os.makedirs(..., exist_ok=True)</code>. Tu gio khong can tu tao thu muc nua.</p>
+</div>
+
+<div class="box warn">
+<p><strong>Luu y quan trong ve ket qua lan chay dau tien:</strong> voi <code>capture.log</code> co san, ket qua la <code>noise reduction = 1.10x</code> (rat thap). Day <span class="hl">khong phai loi</span> - vi <code>capture.log</code> la du lieu <strong>nguoi dang di bo</strong>, khong phai tag dung yen. Chi khi tag <strong>dung yen</strong>, bo loc EKF moi the hien ro tac dung (std giam manh). Xem Buoc 3 de thu du lieu dung yen.</p>
+</div>
+
+<h2>2. Cac mode cua analyze_ekf.py</h2>
+<table>
+  <tr><th>Mode</th><th>Ket qua</th></tr>
+  <tr><td><code>metrics</code></td><td>Bang so lieu console: mean / std / max deviation / noise-reduction ratio</td></tr>
+  <tr><td><code>noise</code></td><td>Bieu do chuoi thoi gian 1 truc toa do: raw vs EKF (dung cho tag dung yen)</td></tr>
+  <tr><td><code>trajectory</code></td><td>Bieu do 2D: cac diem trilateration tho vs duong di EKF (kem vong tron unlock 2m)</td></tr>
+  <tr><td><code>sweep</code></td><td>Loc lai du lieu tho voi nhieu gia tri <code>kAccelStd</code> roi chong len nhau (de chon tham so)</td></tr>
+  <tr><td><code>all</code></td><td><code>metrics</code> + <code>noise</code> + <code>trajectory</code> (mac dinh)</td></tr>
+</table>
+
+<p>Cu phap chung:</p>
+<pre>python analyze_ekf.py --log capture.log [--mode MODE] [--axis x|y] [--out PREFIX] [--sweep-kaccel ...]</pre>
+
+<h2>3. Cac buoc thuc hien chi tiet</h2>
+
+<div class="step">
+<span class="n">1</span><strong>Chay thu tren log co san (khong can phan cung)</strong>
+<p>Dung de xac nhan tool chay on. Log <code>C:\DATN\capture.log</code> da co san (81 mau POS2D, 178 mau EKF).</p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\analyze_ekf.py" --log "C:\DATN\capture.log" --mode all --out "C:\DATN\SCA_Report\fig\ekf"</pre>
+<p>Ket qua: bang metrics + 2 file <code>ekf_noise.png</code> va <code>ekf_trajectory.png</code> trong <code>C:\DATN\SCA_Report\fig\</code>.</p>
+</div>
+
+<div class="step">
+<span class="n">2</span><strong>Thu log tag DUNG YEN (so lieu quan trong nhat)</strong>
+<p>Day la so lieu the hien ro tac dung giam nhieu cua EKF: tag dung yen -&gt; raw jitter khoang 10-30 cm, EKF gan nhu nam ngang (std &lt; 5 cm).</p>
+<p>Thiet lap truoc khi chay (chi can 1 lan cho moi cua so PowerShell):</p>
+<pre>$env:PYTHONPATH = "C:\DATN\DW3_QM33_SDK_1.1.1\SDK\Tools\uwb-qorvo-tools\lib\uwb-uci;C:\DATN\DW3_QM33_SDK_1.1.1\SDK\Tools\uwb-qorvo-tools\lib\uqt-utils"</pre>
+<p>Chay demo va capture ra file <code>ekf_static.log</code> (dung <code>--autostart</code> de anchor chay ngay; dat tag DUNG YEN canh cua 20-30 giay roi Ctrl+C):</p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\localization_demo.py" -p COM11 COM19 COM12 --macs 0 1 2 --esp-port COM5 --autostart --capture ekf_static.log</pre>
+<p>Sau do phan tich (mode noise, truc X):</p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\analyze_ekf.py" --log ekf_static.log --axis x --mode noise --out "C:\DATN\SCA_Report\fig\ekf_static"</pre>
+<p>Lap lai voi <code>--axis y</code> neu muon ca hai truc.</p>
+</div>
+
+<div class="step">
+<span class="n">3</span><strong>Thu log DI BO (cho bieu do quy dao)</strong>
+<p>Di vong quanh xe (hoac di toi cua roi dung) khoang 30 giay, capture tuong tu:</p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\localization_demo.py" -p COM11 COM19 COM12 --macs 0 1 2 --esp-port COM5 --autostart --capture ekf_walk.log</pre>
+<p>Phan tich quy dao 2D:</p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\analyze_ekf.py" --log ekf_walk.log --mode trajectory --out "C:\DATN\SCA_Report\fig\ekf_walk"</pre>
+</div>
+
+<div class="step">
+<span class="n">4</span><strong>Sweep kAccelStd (chon tham so co can cu)</strong>
+<p>Chay tren log dung yen, thu nhieu gia tri <code>kAccelStd</code> de giai thich vi sao chon gia tri hien tai (1.2 trong firmware):</p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\analyze_ekf.py" --log ekf_static.log --axis x --mode sweep --sweep-kaccel 0.3,0.6,1.0,1.5,2.5 --out "C:\DATN\SCA_Report\fig\ekf_sweep"</pre>
+<p>Chon gia tri <code>kAccelStd</code> nho nhat ma duong loc van bam duoc quy dao that (can bang giua lag khi re va nhieu lot qua).</p>
+</div>
+
+<h2>4. Cach doc ket qua (bang metrics)</h2>
+<table>
+  <tr><th>Chi so</th><th>Y nghia</th></tr>
+  <tr><td><code>mean</code></td><td>Do lech tam (bias) cua uoc luong quanh tam cua no</td></tr>
+  <tr><td><code>std (stationary)</code></td><td>Do phan tan: raw nen ~10-30 cm, filtered &lt; ~5 cm</td></tr>
+  <tr><td><code>max |dev|</code></td><td>Do lech toi nhat cua 1 mau (bien do nhieu dinh)</td></tr>
+  <tr><td><code>noise reduction</code></td><td><code>raw_std / filtered_std</code>; &gt; 3x la ket qua lam muot tot</td></tr>
+</table>
+
+<div class="box warn">
+<p><strong>Luu y:</strong> metrics tinh tren TOAN BO log. De so lieu "dung yen" co y nghia, phai capture mot doan tag DUNG YEN (hoac cat log chi giu doan dung yen).</p>
+</div>
+
+<h2>5. Ket qua mong doi (de dua vao bao cao)</h2>
+<ul>
+  <li><strong>Tag dung yen:</strong> <code>noise reduction</code> dat khoang 3x - 6x (vi du: raw std 12 cm, filtered std 2-3 cm).</li>
+  <li><strong>Bieu do noise:</strong> duong xanh (raw) giao dong manh, duong do (EKF) gan nhu thang.</li>
+  <li><strong>Bieu do trajectory:</strong> duong do (EKF) ban theo cum diem xanh (raw) ma khong bi giat lung tung.</li>
+  <li><strong>Bieu do sweep:</strong> giai thich vi sao <code>kAccelStd = 1.2</code> la lua chon can bang.</li>
+</ul>
+
+</div>
+</body>
+</html>

@@ -4,6 +4,7 @@
 #include "uwb/trilateration.h"
 #include "uwb/ekf_stub.h"
 #include "uwb/access_controller.h"
+#include "uwb/traj_inference.h"
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -17,6 +18,7 @@ QueueHandle_t g_frameQueue = nullptr;
 bool g_ranging = false;
 uint32_t g_lastDriveMs = 0;  // last time the door logic was driven
 uint32_t g_lastFixMs = 0;    // last time a trilateration fix corrected the EKF
+TrajInference g_trajInference;
 
 // Cadence at which the EKF estimate drives the access controller. Decoupling
 // this from the raw RANGE rate keeps the unlock debounce timing consistent and
@@ -56,6 +58,7 @@ void begin() {
     g_frameQueue = xQueueCreate(8, sizeof(RangingFrame));
   }
   g_ranging = false;
+  g_trajInference.begin();
   Serial.println("[BRIDGE] UWB PC bridge ready (RANGE/CMD over USB-CDC)");
 }
 
@@ -80,9 +83,14 @@ void tick() {
   // 1. Drain RANGE frames: each one corrects the EKF (no direct door drive).
   RangingFrame f;
   while (xQueueReceive(g_frameQueue, &f, 0) == pdTRUE) {
-    Serial.printf("[RANGE3] t=%lu d0=%.2f d1=%.2f d2=%.2f valid=%u\n",
-                  (unsigned long)f.t_ms, f.d[0], f.d[1], f.d[2],
-                  (unsigned)f.valid_mask);
+    // valid_mask bits are d2 d1 d0 (MSB..LSB); n = number of fresh anchors.
+    const unsigned n = (f.valid_mask & 1u) + ((f.valid_mask >> 1) & 1u) +
+                       ((f.valid_mask >> 2) & 1u);
+    Serial.printf("[RANGE3] t=%lu d0=%.2f d1=%.2f d2=%.2f n=%u mask=%c%c%c\n",
+                  (unsigned long)f.t_ms, f.d[0], f.d[1], f.d[2], n,
+                  (f.valid_mask & 4u) ? '1' : '0',
+                  (f.valid_mask & 2u) ? '1' : '0',
+                  (f.valid_mask & 1u) ? '1' : '0');
     if (f.valid_mask == 0) continue;
 
     Trilateration::Result r = Trilateration::solve(
@@ -97,25 +105,35 @@ void tick() {
   }
 
   // 2. Fixed-rate drive: emit the fused position + velocity to the door logic.
-  //    There is NO prediction/coasting between fixes — the estimate is frozen
-  //    at the last corrected position, so when ranging drops out the UI stops
-  //    moving instead of drawing a fake straight-line trajectory.
+  //    There is NO prediction/coasting between fixes — the position is frozen
+  //    at the last corrected value, so when ranging drops out the UI stops
+  //    moving instead of drawing a fake straight-line trajectory. The velocity
+  //    is reported as-is (it is the EKF's last corrected estimate) because the
+  //    access controller's speed/deceleration gates depend on an accurate value;
+  //    zeroing it here made "pass-by" reads look stationary and unlock the door.
   const uint32_t now = millis();
   if (now - g_lastDriveMs >= kDrivePeriodMs) {
     g_lastDriveMs = now;
     if (now - g_lastFixMs <= kMaxCoastMs && Ekf::initialized()) {
       const double fx = Ekf::x();
       const double fy = Ekf::y();
-      // Report zero velocity once the fix is older than one drive period, so a
-      // stale velocity does not keep drawing a direction cone or feed a bogus
-      // "moving away" signal to the access controller.
-      const bool fresh = (now - g_lastFixMs) <= kDrivePeriodMs;
-      const double vx = fresh ? Ekf::vx() : 0.0;
-      const double vy = fresh ? Ekf::vy() : 0.0;
-      const double spd = fresh ? Ekf::speed() : 0.0;
       Serial.printf("[EKF] t=%lu x=%.2f y=%.2f vx=%.2f vy=%.2f v=%.2f\n",
-                    (unsigned long)now, fx, fy, vx, vy, spd);
-      AccessController::handlePosition(fx, fy, vx, vy);
+                    (unsigned long)now, fx, fy, Ekf::vx(), Ekf::vy(),
+                    Ekf::speed());
+      float intent[TrajInference::NUM_CLASSES] = {0.0f, 0.0f, 0.0f, 0.0f};
+      const float* intent_ptr = nullptr;
+      if (g_trajInference.predict(static_cast<float>(fx),
+                                  static_cast<float>(fy),
+                                  static_cast<float>(Ekf::vx()),
+                                  static_cast<float>(Ekf::vy()),
+                                  intent)) {
+        Serial.printf("[INTENT] p_approach=%.3f p_seated=%.3f "
+                      "p_leave=%.3f p_passing=%.3f\n",
+                      intent[0], intent[1], intent[2], intent[3]);
+        intent_ptr = intent;
+      }
+      AccessController::handlePosition(fx, fy, Ekf::vx(), Ekf::vy(),
+                                       intent_ptr);
     }
   }
 }

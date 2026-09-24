@@ -75,12 +75,14 @@ class BlePhaseTestService {
     BluetoothDevice? device,
     Duration timeout = const Duration(seconds: 30),
     ProgressCallback? onProgress,
+    bool? fastPath,
   }) {
     return _authOrchestrator.authenticate(
       deviceAddress: deviceAddress,
       device: device,
       timeout: timeout,
       onProgress: onProgress,
+      fastPath: fastPath,
     );
   }
 

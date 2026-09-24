@@ -6,21 +6,23 @@
 \contentsline {table}{\numberline {2.4}{\ignorespaces So sánh Bluetooth Low Energy (BLE) và Bluetooth Classic \cite {bluetooth40,ble_core,gomez2012overview}}}{34}{table.caption.24}%
 \contentsline {table}{\numberline {2.5}{\ignorespaces Các thuộc tính của GATT Characteristic}}{37}{table.caption.27}%
 \contentsline {table}{\numberline {2.6}{\ignorespaces Thông số kỹ thuật của UWB}}{42}{table.caption.31}%
-\contentsline {table}{\numberline {2.7}{\ignorespaces Các vi mạch UWB phổ biến và vai trò triển khai}}{57}{table.caption.39}%
+\contentsline {table}{\numberline {2.7}{\ignorespaces Các vi mạch UWB phổ biến và vai trò triển khai}}{58}{table.caption.39}%
 \contentsline {table}{\numberline {2.8}{\ignorespaces So sánh mức độ phù hợp của NFC, BLE và UWB}}{58}{table.caption.40}%
-\contentsline {table}{\numberline {2.9}{\ignorespaces Chuẩn mật mã được áp dụng}}{70}{table.caption.48}%
+\contentsline {table}{\numberline {2.9}{\ignorespaces Chuẩn mật mã được áp dụng}}{71}{table.caption.48}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {3.1}{\ignorespaces Tương quan kiến trúc phần mềm giữa Mobile App và ECU}}{82}{table.caption.52}%
-\contentsline {table}{\numberline {3.2}{\ignorespaces So sánh Automotive ECU và ESP32-S3}}{84}{table.caption.53}%
+\contentsline {table}{\numberline {3.1}{\ignorespaces Tương quan kiến trúc phần mềm giữa Mobile App và ECU}}{83}{table.caption.52}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces So sánh Automotive ECU và ESP32-S3}}{85}{table.caption.53}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {4.1}{\ignorespaces Đặc tả các giao thức truyền thông trong hệ thống}}{100}{table.caption.59}%
-\contentsline {table}{\numberline {4.2}{\ignorespaces Danh sách thư viện phần mềm cốt lõi trên ESP32}}{101}{table.caption.60}%
-\contentsline {table}{\numberline {4.3}{\ignorespaces Danh sách các gói thư viện chủ đạo trên Ứng dụng Mobile}}{102}{table.caption.61}%
+\contentsline {table}{\numberline {4.1}{\ignorespaces Đặc tả các giao thức truyền thông trong hệ thống}}{101}{table.caption.59}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Danh sách thư viện phần mềm cốt lõi trên ESP32}}{102}{table.caption.60}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Danh sách các gói thư viện chủ đạo trên Ứng dụng Mobile}}{103}{table.caption.61}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {5.1}{\ignorespaces Thời gian xử lý thực tế quá trình Mở khóa thụ động (Giao dịch Tiêu chuẩn)}}{121}{table.caption.69}%
-\contentsline {table}{\numberline {5.2}{\ignorespaces Phân rã độ trễ chuyển giao từ BLE sang UWB (Dựa trên Log thực nghiệm)}}{122}{table.caption.70}%
-\contentsline {table}{\numberline {5.3}{\ignorespaces Thống kê tiêu thụ tài nguyên trên ESP32-S3}}{122}{table.caption.71}%
-\contentsline {table}{\numberline {5.4}{\ignorespaces Phân tích dòng tiêu thụ chi tiết ở các chế độ (Nguồn cấp 5V qua LDO)}}{123}{table.caption.72}%
+\contentsline {table}{\numberline {5.1}{\ignorespaces Thời gian xử lý thực tế quá trình Mở khóa thụ động (Giao dịch Tiêu chuẩn)}}{122}{table.caption.69}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Phân rã độ trễ chuyển giao từ BLE sang UWB (Dựa trên Log thực nghiệm)}}{123}{table.caption.70}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Thống kê tiêu thụ tài nguyên trên ESP32-S3}}{123}{table.caption.71}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Phân tích dòng tiêu thụ chi tiết ở các chế độ (Nguồn cấp 5V qua LDO)}}{124}{table.caption.72}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Chỉ số làm mượt của EKF --- kịch bản tag đứng yên}}{126}{table.caption.75}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Chỉ số bám quỹ đạo của EKF --- kịch bản người đi bộ}}{127}{table.caption.77}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \contentsfinish 

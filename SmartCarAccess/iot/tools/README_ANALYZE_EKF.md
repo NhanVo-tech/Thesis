@@ -25,7 +25,7 @@ pip install -r requirements.txt
 The tool parses two lines produced by the firmware (`uwb_bridge.cpp`):
 
 ```
-[RANGE3] t=<ms> d0=.. d1=.. d2=.. valid=..
+[RANGE3] t=<ms> d0=.. d1=.. d2=.. n=.. mask=..   # n = #fresh anchors, mask bits d2 d1 d0
 [POS2D]  t=<ms> x=.. y=.. rms=..        # raw trilateration fix
 [EKF]    t=<ms> x=.. y=.. vx=.. vy=.. v=..  # EKF output
 ```

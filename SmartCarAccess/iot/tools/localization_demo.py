@@ -6,14 +6,9 @@ Starts the 3 UWB anchors as FiRa responders, forwards their distances to the
 ESP32-S3 over USB-CDC (exactly like run_fira_bridge.py), and live-visualizes the
 EKF position of a person walking around the car on a clean 2D localization map.
 
-Layout (portrait):
-  * top ~66% — top-down map: car (4 m x 2 m, front up), 3 colour-coded UWB
-    anchors (with ranging rings), a dashed localization boundary, and the EKF
-    estimate (blue) with its trajectory and a translucent direction cone.
-  * bottom ~34% — dashboard: live anchor distances d0/d1/d2 plus
-    x / y / speed / heading tiles.
-The map is zoomed out (±6.5 m) and shows a live, colour-coded access-state
-banner (locked / door open / seated) plus a recent-events feed in the corners.
+Display is the Tkinter top-down map from car_position_display.py: a metric-native
+car body with the 3 UWB anchors, range circles, the live EKF position and trail,
+plus a side panel with anchor ranges, position readout, and access state.
 
 Usage (set PYTHONPATH to the uci + uqt-utils libs first, as for run_fira_bridge.py):
 
@@ -24,6 +19,10 @@ Replay a previously captured log instead of running live:
 
     python localization_demo.py --log capture.log
 
+Run the geometry + solver + Tk UI simulation without hardware:
+
+    python localization_demo.py --simulate 200
+
 Simulate a lost anchor (default: right-side anchor, index 1) without touching
 hardware — its distance is forced to 0 so the ESP32 falls back to its 2-anchor
 trilateration path:
@@ -31,14 +30,15 @@ trilateration path:
     python localization_demo.py ... --drop-anchor 1   # -1 disables
 
 Parsed ESP32 lines (same format as analyze_ekf.py):
-    [RANGE3] t=<ms> d0=.. d1=.. d2=.. valid=..
+    [RANGE3] t=<ms> d0=.. d1=.. d2=.. n=.. mask=..   (n = #fresh anchors, mask bits d2 d1 d0)
     [POS2D]  t=<ms> x=.. y=.. rms=..
     [EKF]    t=<ms> x=.. y=.. vx=.. vy=.. v=..
+    [INTENT] p_approach=.. p_seated=.. p_leave=.. p_passing=..
 """
 
 import argparse
-import collections
 import math
+import os
 import queue
 import re
 import sys
@@ -46,10 +46,6 @@ import threading
 import time
 
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-from matplotlib.patches import Rectangle, Circle, Wedge
 
 try:
     import serial
@@ -70,33 +66,19 @@ ANCHORS = [
     (0.95, 0.0),    # anchor 1 (d1, COM19) — right side
     (-0.95, 0.0),   # anchor 2 (d2, COM12) — left B-pillar (driver door)
 ]
-ANCHOR_NAMES = ["d0 · rear", "d1 · right", "d2 · left"]
-ANCHOR_COLORS = ["#43a047", "#43a047", "#43a047"]
-ANCHOR_EDGES = ["#1b5e20", "#0d47a1", "#bf360c"]
 CAR_LENGTH = 4.0
-CAR_WIDTH = 2.0
+CAR_WIDTH = 1.9
 UNLOCK_POINT = ANCHORS[2]   # left B-pillar (driver door)
 UNLOCK_RADIUS = 1.0         # unlock zone radius (matches Geofence::kDoorRadiusM)
 SEAT_POINT = (-0.35, 0.0)   # driver seat (slightly inside the door)
 SEAT_RADIUS = 0.45
-VIEW_LIMIT = 6.5            # map half-extent in metres (zoomed out)
 
-EKF_KEEP = 120     # blue EKF trail length
-CONE_HALF_ANGLE = 28.0   # degrees, half-width of the direction cone
-CONE_LENGTH = 0.9        # metres, direction cone length
-MIN_SPEED_FOR_CONE = 0.05  # m/s, below this the cone is hidden
-
-METRIC_LABELS = ["x (m)", "y (m)", "speed (m/s)", "heading (\u00b0)"]
-
-STATE_LABEL = {
-    "LOCKED": ("DOOR: ĐANG KHÓA", "#e53935"),
-    "DOOR_UNLOCKED": ("DOOR: CỬA ĐÃ MỞ", "#2e7d32"),
-    "OCCUPIED": ("DOOR: ĐÃ NGỒI", "#1565c0"),
-}
-STATE_EVENT = {
-    "LOCKED": "Cửa đã khóa",
-    "DOOR_UNLOCKED": "Cửa đã mở",
-    "OCCUPIED": "Đã ngồi · cho phép nổ máy",
+INTENT_NAMES = ("approach", "seated", "leave", "passing")
+INTENT_DECISION = {
+    "approach": "Allow unlock",
+    "seated": "Lock door & start engine",
+    "leave": "Lock door",
+    "passing": "Deny unlock",
 }
 
 EKF_RE = re.compile(
@@ -105,9 +87,200 @@ EKF_RE = re.compile(
 )
 STATE_RE = re.compile(r"\[STATE\]\s+(LOCKED|DOOR_UNLOCKED|OCCUPIED)")
 IGNITION_RE = re.compile(r"\[IGNITION\]\s+(ON|OFF)")
-RANGE_RE = re.compile(
-    r"\[RANGE3\]\s+(?:t=\d+\s+)?d0=(-?[\d.]+)\s+d1=(-?[\d.]+)\s+d2=(-?[\d.]+)\s+valid=(\d+)"
+INTENT_RE = re.compile(
+    r"\[INTENT\]\s+p_approach=(-?[\d.]+)\s+p_seated=(-?[\d.]+)\s+"
+    r"p_leave=(-?[\d.]+)\s+p_passing=(-?[\d.]+)"
 )
+RANGE_RE = re.compile(
+    r"\[RANGE3\]\s+(?:t=\d+\s+)?d0=(-?[\d.]+)\s+d1=(-?[\d.]+)\s+d2=(-?[\d.]+)\s+n=(\d+)\s+mask=([01]{3})"
+)
+
+
+def intent_text(probabilities):
+    winner = max(range(len(INTENT_NAMES)), key=probabilities.__getitem__)
+    name = INTENT_NAMES[winner]
+    return (f"AI: {name} ({probabilities[winner]:.0%})\n"
+            f"DECISION: {INTENT_DECISION[name]}")
+
+
+# -----------------------------------------------------------------------------
+# Simulation: no hardware; verifies geometry + solver + Tk UI.
+# -----------------------------------------------------------------------------
+def _sim_true_pose(k, dt=0.05):
+    """A person-sized path around the fixed car body, in metres."""
+    t = k * dt
+    theta = t * 0.55
+    c = math.cos(theta)
+    s = math.sin(theta)
+    standoff = 0.32 + 0.10 * math.sin(t * 0.37)
+    half_w = CAR_WIDTH / 2.0
+    half_l = CAR_LENGTH / 2.0
+
+    # Radial intersection with a rectangle, plus a small standoff. This walks
+    # around the car instead of around an arbitrary anchor bounding box.
+    sx = half_w / max(abs(c), 1e-6)
+    sy = half_l / max(abs(s), 1e-6)
+    r = min(sx, sy) + standoff
+    x = r * c
+    y = r * s
+
+    # Once per lap, step toward the seat and back so the Access panel exercises
+    # driver-detected / occupied / ignition states too.
+    phase = (theta % (2.0 * math.pi)) / (2.0 * math.pi)
+    seat = np.array(SEAT_POINT, dtype=float)
+    if 0.46 <= phase <= 0.54:
+        edge = np.array([-half_w - standoff, 0.0])
+        blend = 1.0 - abs(phase - 0.50) / 0.04
+        blend = min(max(blend, 0.0), 1.0)
+        x, y = (1.0 - blend) * edge + blend * seat
+
+    return float(x), float(y)
+
+
+def simulate_ranges(k, rng, noise_m=0.03, drop_anchor=-1, drop_rate=0.0):
+    """Synthetic UWB ranges from the SmartCarAccess anchor geometry."""
+    x, y = _sim_true_pose(k)
+    distances = []
+    for i, (ax, ay) in enumerate(ANCHORS):
+        if i == drop_anchor or (drop_rate > 0.0 and rng.random() < drop_rate):
+            distances.append(0.0)
+            continue
+        measured = math.hypot(x - ax, y - ay) + float(rng.normal(0.0, noise_m))
+        distances.append(max(measured, 0.0))
+    return (x, y), distances
+
+
+def solve_position_from_ranges(distances):
+    """Simulation-only trilateration solver used to validate the geometry."""
+    valid = [
+        (np.array(ANCHORS[i], dtype=float), float(d))
+        for i, d in enumerate(distances)
+        if d is not None and math.isfinite(d) and d > 0.0
+    ]
+    if len(valid) < 3:
+        return None, float("nan")
+
+    p0, r0 = valid[0]
+    rows = []
+    rhs = []
+    for pi, ri in valid[1:]:
+        rows.append(2.0 * (pi - p0))
+        rhs.append(r0 * r0 - ri * ri + float(pi @ pi) - float(p0 @ p0))
+    a = np.vstack(rows)
+    b = np.array(rhs, dtype=float)
+    try:
+        xy, *_ = np.linalg.lstsq(a, b, rcond=None)
+    except np.linalg.LinAlgError:
+        return None, float("nan")
+
+    # Refine the range fit. This mirrors the spirit of UI-Demo's Python solver
+    # without pulling in csmn_localization or changing the live ESP32 path.
+    for _ in range(8):
+        h_rows = []
+        residuals = []
+        for pi, ri in valid:
+            diff = xy - pi
+            pred = float(np.linalg.norm(diff))
+            if pred < 1e-9:
+                continue
+            h_rows.append(diff / pred)
+            residuals.append(ri - pred)
+        if len(h_rows) < 2:
+            break
+        h = np.vstack(h_rows)
+        r = np.array(residuals, dtype=float)
+        try:
+            step, *_ = np.linalg.lstsq(h, r, rcond=None)
+        except np.linalg.LinAlgError:
+            break
+        xy = xy + step
+        if float(np.linalg.norm(step)) < 1e-5:
+            break
+
+    errors = []
+    for pi, ri in valid:
+        errors.append(float(np.linalg.norm(xy - pi)) - ri)
+    residual_rms = math.sqrt(float(np.mean(np.square(errors)))) if errors else float("nan")
+    return (float(xy[0]), float(xy[1])), residual_rms
+
+
+def access_state_for_position(x, y):
+    if math.hypot(x - SEAT_POINT[0], y - SEAT_POINT[1]) <= SEAT_RADIUS:
+        return "OCCUPIED", True
+    if math.hypot(x - UNLOCK_POINT[0], y - UNLOCK_POINT[1]) <= UNLOCK_RADIUS:
+        return "DOOR_UNLOCKED", False
+    return "LOCKED", False
+
+
+def run_simulation(args):
+    """Run synthetic ranges through the local solver and Tk display."""
+    try:
+        from car_position_display import PositionFix, create_position_window
+    except Exception as e:  # pragma: no cover
+        sys.exit(f"Simulation UI needs Tkinter: {e}")
+
+    total = max(int(args.simulate), 1)
+    rng = np.random.default_rng(0)
+    win = create_position_window("UWB Localization (simulation)")
+    stats = {"k": 0, "prev": None, "errors": [], "residuals": []}
+    dt = 0.05
+
+    print(f"SIMULATION MODE - no serial ports opened, {total} synthetic frames.")
+    print("Close the window to exit after the simulation finishes.")
+
+    def step():
+        if win.closed:
+            return
+        k = stats["k"]
+        true_xy, distances = simulate_ranges(
+            k, rng, noise_m=args.sim_noise,
+            drop_anchor=args.drop_anchor, drop_rate=args.sim_drop_rate)
+        solved_xy, residual = solve_position_from_ranges(distances)
+
+        win.update_ranges(distances)
+        if solved_xy is not None:
+            if stats["prev"] is None:
+                vx = vy = 0.0
+            else:
+                _pt, px, py = stats["prev"]
+                vx = (solved_xy[0] - px) / dt
+                vy = (solved_xy[1] - py) / dt
+            stats["prev"] = (k * dt, solved_xy[0], solved_xy[1])
+            stats["errors"].append(math.hypot(
+                solved_xy[0] - true_xy[0], solved_xy[1] - true_xy[1]))
+            if math.isfinite(residual):
+                stats["residuals"].append(residual)
+            win.update_position(PositionFix(
+                x=solved_xy[0], y=solved_xy[1], vx=vx, vy=vy, valid=True,
+                residual_m=residual, timestamp=time.monotonic()))
+
+            door, ignition = access_state_for_position(solved_xy[0], solved_xy[1])
+            win.update_access(door, ignition)
+
+        stats["k"] += 1
+        if stats["k"] < total:
+            win.after(int(dt * 1000), step)
+        else:
+            errors = stats["errors"]
+            residuals = stats["residuals"]
+            if errors:
+                print(
+                    "simulation: mean position error %.3f m over %d fixes "
+                    "(%.0f mm range noise injected)"
+                    % (float(np.mean(errors)), len(errors), args.sim_noise * 1000.0)
+                )
+            if residuals:
+                print("simulation: mean range residual %.3f m" %
+                      float(np.mean(residuals)))
+            print("Simulation complete. Close the window to exit.")
+
+    win.after(50, step)
+    try:
+        win.run()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print("Stopped.")
 
 
 # -----------------------------------------------------------------------------
@@ -116,21 +289,41 @@ RANGE_RE = re.compile(
 class AnchorState:
     def __init__(self):
         self._lock = threading.Lock()
-        self._distance = None
+        self._distance = None   # metres; meaningful only when status == "Ok"
+        self._status = None     # last Status name (str) or None
+        self._nlos = None       # bool or None
+        self._fom = None        # AoA azimuth FOM (%) or None
+        self._rssi = None       # dBm or None
+        self._slot_err = None   # error slot number or None
+        self._seq = -1          # ranging-round sequence counter (RangingData.idx)
         self._ts = 0.0
 
-    def update(self, distance_m, _seq):
+    def update(self, distance_m, status, nlos, fom, rssi, slot_err, seq):
         with self._lock:
             self._distance = distance_m
+            self._status = status
+            self._nlos = nlos
+            self._fom = fom
+            self._rssi = rssi
+            self._slot_err = slot_err
+            self._seq = seq
             self._ts = time.monotonic()
 
     def snapshot(self):
         with self._lock:
-            return self._distance, self._ts
+            return (self._distance, self._ts, self._status,
+                    self._nlos, self._fom, self._rssi, self._slot_err,
+                    self._seq)
 
     def reset(self):
         with self._lock:
             self._distance = None
+            self._status = None
+            self._nlos = None
+            self._fom = None
+            self._rssi = None
+            self._slot_err = None
+            self._seq = -1
             self._ts = 0.0
 
 
@@ -140,10 +333,20 @@ def make_range_handler(state):
             rd = RangingData(payload)
         except Exception:
             return
-        for meas in rd.meas:
-            if meas.status == Status.Ok:
-                state.update(meas.distance / 100.0, rd.idx)
-                break
+        if not rd.meas:
+            return
+        meas = rd.meas[0]
+        ok = meas.status == Status.Ok
+        status_name = getattr(meas.status, "name", None) or str(meas.status)
+        state.update(
+            distance_m=meas.distance / 100.0 if ok else None,
+            status=status_name,
+            nlos=bool(meas.nlos) if meas.nlos is not None else None,
+            fom=meas.aoa_tetha_fom,
+            rssi=meas.rssi,
+            slot_err=meas.slot_in_error,
+            seq=rd.idx,
+        )
     return handler
 
 
@@ -183,7 +386,7 @@ def start_anchor(client, mac, dest_mac, args):
         (App.UwbInitiationTime, 0), (App.PreambleCodeIndex, args.preamble_idx),
         (App.SfdId, 2), (App.SlotDuration, 2400), (App.RangingInterval, 200),
         (App.SlotsPerRr, 25), (App.MaxNumberOfMeasurements, 0),
-        (App.HoppingMode, 0), (App.RssiReporting, 0),
+        (App.HoppingMode, 0), (App.RssiReporting, 1),
         (App.BlockStrideLength, 0), (App.NumberOfControlees, 1),
         (App.DstMacAddress, [dest_mac]), (App.StsLength, 1),
     ]
@@ -335,6 +538,11 @@ class DemoBridge:
         if m:
             self._viz.put(("ignition", m.group(1) == "ON"))
             return
+        m = INTENT_RE.search(line)
+        if m:
+            self._viz.put(("intent", float(m.group(1)), float(m.group(2)),
+                           float(m.group(3)), float(m.group(4))))
+            return
         m = RANGE_RE.search(line)
         if m:
             self._viz.put(("range", float(m.group(1)), float(m.group(2)),
@@ -371,12 +579,43 @@ class DemoBridge:
             for i, s in enumerate(self._states):
                 if i == self._args.drop_anchor:
                     continue  # simulated lost anchor: distance stays 0
-                d, ts = s.snapshot()
+                d, ts, *_ = s.snapshot()
                 fresh = d is not None and (now - ts) <= fresh_s
                 in_bounds = fresh and (dmin <= d <= dmax)
                 if in_bounds and i < 3:
                     dists[i] = d
                     n_usable += 1
+            if self._args.esp_debug:
+                parts = []
+                for i, s in enumerate(self._states):
+                    if i == self._args.drop_anchor:
+                        parts.append(f"d{i}=SIM")
+                        continue
+                    d, ts, status, nlos, fom, rssi, slot_err, seq = s.snapshot()
+                    if status is None:
+                        parts.append(f"d{i}=no-ntf")
+                        continue
+                    age_ms = (now - ts) * 1000.0
+                    bits = [f"d{i}"]
+                    if d is not None:
+                        bits.append(f"d={d:.2f}")
+                    bits.append(f"seq={seq}")
+                    bits.append(f"age={age_ms:.0f}ms")
+                    bits.append(status)
+                    if nlos:
+                        bits.append("nlos")
+                    if fom is not None:
+                        bits.append(f"fom={fom:.0f}")
+                    if rssi is not None:
+                        bits.append(f"rssi={rssi:.0f}")
+                    if slot_err is not None:
+                        bits.append(f"slot={slot_err}")
+                    parts.append(" ".join(bits))
+                line = "[DIAG] " + " | ".join(parts)
+                print(line)
+                if self._capture is not None:
+                    self._capture.write(line + "\n")
+                    self._capture.flush()
             # informational only: the ESP32 derives the per-anchor mask from
             # which distances are > 0, so stale anchors are zeroed above.
             valid = 1 if n_usable >= 2 else 0
@@ -396,140 +635,30 @@ class DemoBridge:
 
 
 # -----------------------------------------------------------------------------
-# Visualization
+# Visualization (Tkinter top-down map from car_position_display.py)
 # -----------------------------------------------------------------------------
-def build_figure(drop_anchor=-1):
-    fig = plt.figure(figsize=(7.4, 10), facecolor="#faf7f0")
-    gs = fig.add_gridspec(2, 1, height_ratios=[6.6, 3.4], hspace=0.14,
-                          left=0.07, right=0.93, top=0.98, bottom=0.04)
-
-    ax = fig.add_subplot(gs[0])
-    ax.set_facecolor("#f6efdd")
-    ax.set_aspect("equal")
-    ax.set_xlim(-VIEW_LIMIT, VIEW_LIMIT)
-    ax.set_ylim(-VIEW_LIMIT, VIEW_LIMIT)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_axis_off()
-
-    # Localization boundary (soft grey).
-    ax.add_patch(Rectangle((-6.0, -6.0), 12.0, 12.0, fill=False,
-                           ec="#cfd8dc", ls="--", lw=1.4))
-
-    # Car: 4 m x 2 m, front pointing up.
-    ax.add_patch(Rectangle((-CAR_WIDTH / 2, -CAR_LENGTH / 2),
-                           CAR_WIDTH, CAR_LENGTH,
-                           facecolor="#e7dcc3", edgecolor="#4a4a4a", lw=2.2))
-    ax.plot([-CAR_WIDTH / 2, CAR_WIDTH / 2],
-            [CAR_LENGTH / 2 - 0.45, CAR_LENGTH / 2 - 0.45],
-            color="#4a4a4a", lw=1.6)
-
-    # Anchors: colour-coded circle + outline + concentric ranging rings.
-    for i, (axx, ayy) in enumerate(ANCHORS):
-        c = ANCHOR_COLORS[i]
-        e = ANCHOR_EDGES[i]
-        ax.add_patch(Circle((axx, ayy), 0.30, fill=False,
-                            ec=c, lw=1.0, alpha=0.55))
-        ax.add_patch(Circle((axx, ayy), 0.18, fill=False,
-                            ec=c, lw=1.2, alpha=0.8))
-        ax.plot(axx, ayy, marker="o", ms=9, color=c, mec=e, mew=1.5, zorder=6)
-
-    # Mark a simulated dropped anchor with a red X.
-    if drop_anchor is not None and 0 <= drop_anchor < len(ANCHORS):
-        axx, ayy = ANCHORS[drop_anchor]
-        ax.plot([axx - 0.24, axx + 0.24], [ayy - 0.24, ayy + 0.24],
-                color="#d32f2f", lw=2.2, zorder=7)
-        ax.plot([axx - 0.24, axx + 0.24], [ayy + 0.24, ayy - 0.24],
-                color="#d32f2f", lw=2.2, zorder=7)
-
-    # Unlock zone around the driver door.
-    ax.add_patch(Circle(UNLOCK_POINT, UNLOCK_RADIUS, fill=False,
-                        ec="#27ae60", ls=":", lw=1.1, alpha=0.7))
-
-    # Driver seat point + zone (target for the "seated" state).
-    ax.add_patch(Circle(SEAT_POINT, SEAT_RADIUS, fill=True,
-                        facecolor="#ffb74d", alpha=0.18, ec="#e65100",
-                        ls="--", lw=1.0))
-    ax.plot(SEAT_POINT[0], SEAT_POINT[1], marker="s", ms=8,
-            color="#ef6c00", mec="#bf360c", mew=1.2, zorder=6)
-
-    # Dynamic artists.
-    ekf_line, = ax.plot([], [], color="#1e88e5", lw=1.8, zorder=4)
-    ekf_pt, = ax.plot([], [], marker="o", ms=8, color="#1565c0",
-                      mfc="#42a5f5", mec="#0d47a1", mew=1.2, zorder=5)
-    cone = Wedge((0, 0), CONE_LENGTH, 0, 360, color="#1e88e5", alpha=0.0,
-                 zorder=3)
-    ax.add_patch(cone)
-
-    # Access-state status banner (top-left of the map).
-    status_text = ax.text(-6.15, 6.15, "", fontsize=10.5, weight="bold",
-                          va="top", ha="left", color="#273671",
-                          family="monospace")
-
-    # Recent access events (top-right of the map).
-    event_text = ax.text(6.15, 6.15, "", fontsize=8.5, va="top", ha="right",
-                         color="#37474f", family="monospace")
-
-    # Legend at bottom edge of the map.
-    ax.plot(-5.6, -6.0, marker="o", ms=7, color="#43a047", mec="#1b5e20",
-            mew=1.2)
-    ax.text(-5.42, -6.0, "anchor (d0/d1/d2)", fontsize=8, va="center")
-    ax.plot(-2.9, -6.0, marker="o", ms=7, color="#42a5f5", mec="#0d47a1",
-            mew=1.2)
-    ax.text(-2.72, -6.0, "estimated position", fontsize=8, va="center")
-
-    # ---- Dashboard ----------------------------------------------------------
-    gsd = gs[1].subgridspec(2, 1, height_ratios=[1.0, 1.25], hspace=0.55)
-
-    # Row 1: live anchor distances d0 / d1 / d2.
-    gsd0 = gsd[0].subgridspec(1, 3, wspace=0.18)
-    dist_axes = [fig.add_subplot(gsd0[0, j]) for j in range(3)]
-    for j, a in enumerate(dist_axes):
-        a.set_axis_off()
-        a.set_xlim(0, 1)
-        a.set_ylim(0, 1)
-        a.text(0.5, 0.70, "--", ha="center", va="center",
-               fontsize=20, weight="bold", color=ANCHOR_COLORS[j])
-        a.text(0.5, 0.28, ANCHOR_NAMES[j], ha="center", va="center",
-               fontsize=9, color="#6b7280")
-
-    # Row 2: x / y / speed / heading.
-    gsd1 = gsd[1].subgridspec(1, 4, wspace=0.25)
-    metric_axes = [fig.add_subplot(gsd1[0, j]) for j in range(4)]
-    for j, a in enumerate(metric_axes):
-        a.set_axis_off()
-        a.set_xlim(0, 1)
-        a.set_ylim(0, 1)
-        a.text(0.5, 0.66, "--", ha="center", va="center",
-               fontsize=24, weight="bold", color="#273671")
-        a.text(0.5, 0.20, METRIC_LABELS[j], ha="center", va="center",
-               fontsize=10, color="#8a8f98")
-
-    return (fig, ax, ekf_line, ekf_pt, cone, metric_axes, dist_axes,
-            status_text, event_text)
-
-
 def run_hmi(args, viz, bridge, capture_fh):
-    """Drive the PyQt6 High-Performance HMI dashboard from the viz queue.
+    """Drive the Tkinter top-down localization map from the viz queue.
 
-    The bridge threads keep feeding `viz`; a QTimer drains it at 30 fps and
-    forwards the latest pose/ranging/access state through the fixed
-    dashboard.set_data() contract.
+    The bridge threads keep feeding `viz`; a Tk after() timer drains it at
+    roughly 30 fps and forwards only display data to the window.
     """
     try:
-        from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtCore import QTimer
-        from dashboard_hmi import DashboardWindow
+        from car_position_display import PositionFix, create_position_window
     except Exception as e:  # pragma: no cover
-        sys.exit(f"HMI mode needs PyQt6 + pyqtgraph: {e}")
+        sys.exit(f"HMI mode needs Tkinter: {e}")
 
-    app = QApplication.instance() or QApplication(sys.argv)
-    win = DashboardWindow()
-    win.show()
+    win = create_position_window()
 
-    state = {"x": 0.0, "y": 0.0, "vx": 0.0, "vy": 0.0, "seen": False}
+    import tkinter as tk
+    intent_var = tk.StringVar(value="")
+    intent_label = tk.Label(
+        win.view, textvariable=intent_var, justify="left", anchor="nw",
+        background="#ffffff", foreground="#273671",
+        font=("Segoe UI Semibold", 11), padx=7, pady=5)
+    intent_label.place(relx=0.5, x=0, y=12, anchor="n")
+
     dists = [0.0, 0.0, 0.0]
-    access = {"door": "LOCKED", "ignition": False}
 
     def drain():
         while True:
@@ -540,31 +669,24 @@ def run_hmi(args, viz, bridge, capture_fh):
             if ev[0] == "range":
                 _, d0, d1, d2, _valid = ev
                 dists[0], dists[1], dists[2] = d0, d1, d2
+                win.update_ranges(dists)
             elif ev[0] == "state":
-                access["door"] = ev[1]
+                win.update_access(state=ev[1])
             elif ev[0] == "ignition":
-                access["ignition"] = ev[1]
+                win.update_access(ignition=ev[1])
+            elif ev[0] == "intent":
+                intent_var.set(intent_text(ev[1:]))
             elif ev[0] == "ekf":
                 _, x, y, vx, vy = ev
-                state["x"], state["y"] = x, y
-                state["vx"], state["vy"] = vx, vy
-                state["seen"] = True
-
-        if not state["seen"]:
-            return
-        speed = math.hypot(state["vx"], state["vy"])
-        heading = math.degrees(math.atan2(state["vy"], state["vx"])) % 360.0
-        win.set_data(
-            dists[0], dists[1], dists[2],
-            state["x"], state["y"], speed, heading,
-            access["door"] != "LOCKED", access["ignition"])
-
-    timer = QTimer()
-    timer.timeout.connect(drain)
-    timer.start(33)
+                win.update_position(PositionFix(
+                    x=x, y=y, vx=vx, vy=vy, valid=True,
+                    timestamp=time.monotonic()))
+        if not win.closed:
+            win.after(33, drain)
 
     try:
-        app.exec()
+        win.after(33, drain)
+        win.run()
     except KeyboardInterrupt:
         pass
     finally:
@@ -597,25 +719,32 @@ def main():
     ap.add_argument("--dmin", type=float, default=0.1)
     ap.add_argument("--dmax", type=float, default=30.0)
     ap.add_argument("--autostart", action="store_true")
-    ap.add_argument("--drop-anchor", type=int, default=1,
+    ap.add_argument("--drop-anchor", type=int, default=-1,
                     help="simulate a lost anchor: force its distance to 0 "
-                         "(default 1 = right side; -1 to disable)")
+                         "(-1 disables)")
+    ap.add_argument("--simulate", type=int, default=0,
+                    help="run N synthetic frames with no hardware; verifies "
+                         "SmartCarAccess geometry, the simulation solver, and "
+                         "the Tk localization UI")
+    ap.add_argument("--sim-noise", type=float, default=0.03,
+                    help="standard deviation of synthetic range noise in metres "
+                         "(default 0.03)")
+    ap.add_argument("--sim-drop-rate", type=float, default=0.0,
+                    help="per-anchor random dropout probability for simulation "
+                         "frames (default 0.0)")
     ap.add_argument("--esp-debug", action="store_true",
                     help="echo every ESP32 line to the console (like run_fira_bridge.py)")
     ap.add_argument("--log", default=None, help="replay a captured log file")
     ap.add_argument("--capture", default=None,
                     help="tee raw ESP32 lines to this file (for collect_traj.py)")
-    ap.add_argument("--hmi", action="store_true",
-                    help="use the PyQt6 + pyqtgraph High-Performance HMI "
-                         "dashboard instead of the matplotlib view")
     args = ap.parse_args()
+
+    if args.simulate:
+        run_simulation(args)
+        return
 
     if args.log is None and (not args.ports or not args.esp_port):
         ap.error("provide --log (replay) or -p PORTS --esp-port (live)")
-
-    if not args.hmi:
-        (fig, ax, ekf_line, ekf_pt, cone, metric_axes, dist_axes,
-         status_text, event_text) = build_figure(args.drop_anchor)
 
     viz = queue.Queue()
     bridge = None
@@ -634,6 +763,11 @@ def main():
                     m = IGNITION_RE.search(line)
                     if m:
                         viz.put(("ignition", m.group(1) == "ON"))
+                        continue
+                    m = INTENT_RE.search(line)
+                    if m:
+                        viz.put(("intent", float(m.group(1)), float(m.group(2)),
+                                 float(m.group(3)), float(m.group(4))))
                         continue
                     m = RANGE_RE.search(line)
                     if m:
@@ -679,8 +813,9 @@ def main():
 
         capture_fh = None
         if args.capture:
-            capture_fh = open(args.capture, "a", encoding="utf-8")
-            print(f"Capturing raw ESP32 lines -> {args.capture}")
+            capture_path = os.path.abspath(args.capture)
+            capture_fh = open(capture_path, "a", encoding="utf-8")
+            print(f"Capturing raw ESP32 lines -> {capture_path}")
 
         bridge = DemoBridge(clients, macs, states, dest_mac, esp, args, viz,
                             capture=capture_fh, restart_queue=restart_queue)
@@ -692,117 +827,7 @@ def main():
             t.start()
         print(f"Anchors: {', '.join(args.ports)}   ESP32: {args.esp_port}")
 
-    if args.hmi:
-        run_hmi(args, viz, bridge, capture_fh)
-        return
-
-    ekf_hist = collections.deque(maxlen=EKF_KEEP)
-    state = {"x": None, "y": None, "vx": 0.0, "vy": 0.0, "n": 0}
-    dists = [0.0, 0.0, 0.0]
-    access = {"door": "LOCKED", "ignition": False}
-    events = collections.deque(maxlen=8)
-
-    def update(_frame):
-        while True:
-            try:
-                ev = viz.get_nowait()
-            except queue.Empty:
-                break
-            if ev[0] == "range":
-                _, d0, d1, d2, _valid = ev
-                dists[0], dists[1], dists[2] = d0, d1, d2
-            elif ev[0] == "state":
-                if ev[1] != access["door"]:
-                    access["door"] = ev[1]
-                    events.appendleft(STATE_EVENT.get(ev[1], ev[1]))
-            elif ev[0] == "ignition":
-                if ev[1] != access["ignition"]:
-                    access["ignition"] = ev[1]
-                    events.appendleft("Nổ máy: CHO PHÉP" if ev[1]
-                                      else "Nổ máy: TẮT")
-            else:
-                _, x, y, vx, vy = ev
-                if state["x"] is not None and state["n"] > 0:
-                    # Teleport / re-lock gap: break the trail so the UI does
-                    # not draw a long jump line.
-                    if math.hypot(x - state["x"], y - state["y"]) > 1.5:
-                        ekf_hist.clear()
-                state["x"], state["y"] = x, y
-                state["vx"], state["vy"] = vx, vy
-                state["n"] += 1
-                ekf_hist.append((x, y))
-
-        if ekf_hist:
-            eh = np.array(ekf_hist)
-            ekf_line.set_data(eh[:, 0], eh[:, 1])
-            ekf_pt.set_data([eh[-1, 0]], [eh[-1, 1]])
-
-        # Direction cone from EKF velocity.
-        speed = math.hypot(state["vx"], state["vy"])
-        if state["x"] is not None and speed >= MIN_SPEED_FOR_CONE:
-            heading = math.degrees(math.atan2(state["vy"], state["vx"]))
-            cone.set_center((state["x"], state["y"]))
-            cone.set_theta1(heading - CONE_HALF_ANGLE)
-            cone.set_theta2(heading + CONE_HALF_ANGLE)
-            cone.set_alpha(0.18)
-        else:
-            cone.set_alpha(0.0)
-
-        # Metrics.
-        if state["x"] is not None:
-            heading = math.degrees(math.atan2(state["vy"], state["vx"])) % 360
-            values = [
-                f"{state['x']:+.2f}",
-                f"{state['y']:+.2f}",
-                f"{speed:.2f}",
-                f"{heading:.0f}",
-            ]
-        else:
-            values = ["--", "--", "--", "--"]
-        for j in range(4):
-            metric_axes[j].texts[0].set_text(values[j])
-            metric_axes[j].texts[1].set_text(METRIC_LABELS[j])
-
-        # Anchor distances: grey out any anchor that is currently lost (d <= 0).
-        for j in range(3):
-            d = dists[j]
-            if d > 0.0:
-                dist_axes[j].texts[0].set_text(f"{d:.2f}")
-                dist_axes[j].texts[0].set_color(ANCHOR_COLORS[j])
-            else:
-                dist_axes[j].texts[0].set_text("--")
-                dist_axes[j].texts[0].set_color("#c5c5c5")
-            dist_axes[j].texts[1].set_text(ANCHOR_NAMES[j])
-
-        # Access-state banner (color-coded) + event feed.
-        door_label, door_color = STATE_LABEL.get(
-            access["door"], (access["door"].replace("_", " "), "#757575"))
-        ign = "NỔ MÁY: CHO PHÉP" if access["ignition"] else "NỔ MÁY: TẮT"
-        banner = f"{door_label}\n{ign}"
-        if 0 <= args.drop_anchor < len(ANCHORS):
-            banner += f"\nDROPPED: anchor {args.drop_anchor} (sim)"
-        status_text.set_text(banner)
-        status_text.set_color(door_color)
-        event_text.set_text("\n".join(events))
-
-        return [ekf_line, ekf_pt, cone, status_text, event_text]
-
-    anim = FuncAnimation(fig, update, interval=50, blit=False,
-                         cache_frame_data=False)
-
-    try:
-        plt.show()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if bridge:
-            bridge.close()
-        if args.capture and capture_fh is not None:
-            try:
-                capture_fh.close()
-            except Exception:
-                pass
-        print("Stopped.")
+    run_hmi(args, viz, bridge, capture_fh)
 
 
 if __name__ == "__main__":

@@ -40,6 +40,10 @@ EKF_RE = re.compile(
     r"\[EKF\]\s+(?:t=(\d+)\s+)?x=(-?[\d.]+)\s+y=(-?[\d.]+)\s+"
     r"vx=(-?[\d.]+)\s+vy=(-?[\d.]+)\s+v=(-?[\d.]+)"
 )
+RANGE_RE = re.compile(
+    r"\[RANGE3\]\s+(?:t=\d+\s+)?d0=-?[\d.]+\s+d1=-?[\d.]+\s+d2=-?[\d.]+\s+"
+    r"n=(\d+)\s+mask=([01]{3})"
+)
 
 LABELS = {0: "approach", 1: "seated", 2: "leave", 3: "passing"}
 
@@ -65,6 +69,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("-o", "--output", type=Path,
                    default=Path("uwb_traj_data.csv"),
                    help="output CSV path (append mode)")
+    p.add_argument("--drop-dropout", action="store_true",
+                   help="drop [EKF] frames emitted while all anchors are lost "
+                        "(mask=000) instead of zeroing their vx/vy")
     return p.parse_args()
 
 
@@ -112,19 +119,36 @@ def main() -> int:
                 yield raw.decode("utf-8", errors="ignore")
 
     header = ["run_id", "timestamp_ms", "x", "y", "vx", "vy", "label"]
+    last_n = None
+    written = 0
+    dropped_degenerate = 0
+    dropped_dropout = 0
     try:
         with args.output.open("a", newline="") as csv_file:
             writer = csv.writer(csv_file)
             if csv_file.tell() == 0:
                 writer.writerow(header)
             for line in lines():
+                m = RANGE_RE.search(line)
+                if m:
+                    last_n = int(m.group(1))
+                    continue
                 m = EKF_RE.search(line)
                 if not m:
                     continue
                 ts = m.group(1) if m.group(1) is not None else "0"
                 x, y = float(m.group(2)), float(m.group(3))
                 vx, vy = float(m.group(4)), float(m.group(5))
+                if last_n == 0:
+                    if args.drop_dropout:
+                        dropped_dropout += 1
+                        continue
+                    vx, vy = 0.0, 0.0
+                elif last_n is not None and last_n < 3:
+                    dropped_degenerate += 1
+                    continue
                 writer.writerow([args.run, ts, x, y, vx, vy, args.label])
+                written += 1
                 csv_file.flush()
     except KeyboardInterrupt:
         print("\n[TRAJ] stopped")
@@ -134,6 +158,8 @@ def main() -> int:
                 ser.close()
             except Exception:
                 pass
+    print(f"[TRAJ] wrote {written} rows "
+          f"(dropped degenerate={dropped_degenerate}, dropout={dropped_dropout})")
     return 0
 
 

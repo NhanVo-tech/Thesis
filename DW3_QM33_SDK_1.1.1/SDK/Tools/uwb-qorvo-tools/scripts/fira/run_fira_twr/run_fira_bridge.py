@@ -270,6 +270,18 @@ class Bridge:
                 if i < 3:
                     dists[i] = d if d is not None else 0.0
 
+            if self._args.esp_debug:
+                parts = []
+                for i, s in enumerate(self._states):
+                    d, ts = s.snapshot()
+                    if d is None:
+                        parts.append(f"d{i}=--")
+                        continue
+                    age_ms = (now - ts) * 1000.0
+                    tag = "ok" if age_ms <= self._args.fresh_ms and dmin <= d <= dmax else "stale"
+                    parts.append(f"d{i}={d:.2f}@{age_ms:.0f}ms[{tag}]")
+                print(f"[FRESH] " + " ".join(parts))
+
             valid = 1 if all_valid else 0
             self._esp.send(
                 f"RANGE:d0={dists[0]:.3f},d1={dists[1]:.3f},"

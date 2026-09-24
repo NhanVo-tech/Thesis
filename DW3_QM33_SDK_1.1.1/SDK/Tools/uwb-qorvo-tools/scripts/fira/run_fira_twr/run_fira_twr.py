@@ -245,6 +245,13 @@ def main():
         help="Enables Statistics report at end of the run. (default: %(default)s)",
     )
     parser.add_argument(
+        "--capture",
+        type=str,
+        default=None,
+        help="Tee decoded RANGE_DATA notifications to this file. "
+        "Implies --stats. (default: %(default)s)",
+    )
+    parser.add_argument(
         "--diag_dump",
         action="store_true",
         default=False,
@@ -434,6 +441,13 @@ def main():
         print(f'Error while handling user input "{p}":\n{e}')
         sys.exit(uqt_errno(2))
 
+    capture_fh = None
+    if opts.capture:
+        opts.stats = True
+        capture_path = os.path.abspath(opts.capture)
+        capture_fh = open(capture_path, "a", encoding="utf-8")
+        print(f"Capturing range notifications -> {capture_path}")
+
     if opts.stats:
         range_ntf_queue = Queue()
         diag_ntf_queue = Queue()
@@ -451,6 +465,9 @@ def main():
                 ntf_message = f"{decoded_ntf}"
 
             print(ntf_message)
+            if capture_fh is not None:
+                capture_fh.write(ntf_message + "\n")
+                capture_fh.flush()
 
         def process_range_diagnostic_ntf(payload):
             r = RangingDiagData(payload)
@@ -659,6 +676,12 @@ def main():
         stats = RangingStats(range_ntf, diag_ntf)
 
         print(stats)
+
+    if capture_fh is not None:
+        try:
+            capture_fh.close()
+        except Exception:
+            pass
 
     sys.exit(uqt_errno(rts))
 

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task 2 - Collect data, Train AI, Nhung (log INTENT)</title>
+<style>
+  body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; margin:0; background:#f7f8fa; color:#1f2937; line-height:1.65; }
+  .wrap { max-width: 960px; margin:0 auto; padding:24px 20px 80px; }
+  h1 { color:#0b3d91; border-bottom:3px solid #1e88e5; padding-bottom:10px; }
+  h2 { color:#0b3d91; margin-top:34px; border-left:5px solid #1e88e5; padding-left:10px; }
+  code, pre { font-family:'Consolas','Courier New',monospace; }
+  code { background:#eef2f7; padding:2px 6px; border-radius:4px; font-size:0.92em; }
+  pre { background:#0f172a; color:#e2e8f0; padding:14px 16px; border-radius:8px; overflow-x:auto; font-size:0.88em; line-height:1.5; }
+  .box { border-radius:8px; padding:12px 16px; margin:16px 0; }
+  .ok { background:#e8f5e9; border-left:5px solid #2e7d32; }
+  .warn { background:#fff3e0; border-left:5px solid #e65100; }
+  .info { background:#e3f2fd; border-left:5px solid #1e88e5; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; background:#fff; }
+  th,td { border:1px solid #d0d7de; padding:8px 10px; text-align:left; font-size:0.95em; }
+  th { background:#eceff1; }
+  .step { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:14px 18px; margin:14px 0; }
+  .n { display:inline-block; background:#1e88e5; color:#fff; width:26px; height:26px; line-height:26px; text-align:center; border-radius:50%; font-weight:bold; margin-right:8px; }
+  .hl { color:#c62828; font-weight:bold; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Task 2 - Collect data, Train AI, Nhung (chi log INTENT)</h1>
+<p><strong>Muc tieu:</strong> thu thap du lieu quy dao UWB (4 lop hanh vi), train mo hinh Conv1D tren Google Colab, roi nhung vao ESP32 bang TensorFlow Lite Micro de in xac suat <code>[INTENT]</code> len serial va gate quyet dinh cua AccessController.</p>
+
+<div class="box info">
+<strong>Pham vi da chot:</strong>
+<ul>
+  <li>Train o <strong>Google Colab</strong> (may local Python 3.14 chua co TensorFlow).</li>
+  <li>Nhung: vua log <code>[INTENT]</code> vua <strong>gate AccessController</strong> (approach/seated/leave/passing). Neu model chua san sang (warm-up / thieu model) thi tu dong bo qua gate, van chay logic toan hoc (fail-safe).</li>
+</ul>
+</div>
+
+<div class="box ok">
+<strong>Trang thai hien tai (da lam xong):</strong>
+<ul>
+  <li>Firmware: da tao <code>traj_inference.h/.cpp</code> + sua <code>uwb_bridge.cpp</code> (log <code>[INTENT]</code>) + <strong>wire intent vao AccessController</strong> (gate 4 lop) - <strong>da build OK</strong>.</li>
+  <li>UI: <code>localization_demo.py</code> da hien thi intent (lop thang + do tin cay + quyet dinh) o ca matplotlib va Tk - <strong>da kiem tra OK</strong>.</li>
+  <li>Con thieu: <strong>thu thap du lieu</strong> (muc 2) -&gt; train (muc 3) -&gt; dat model + scaler (muc 3b) -&gt; flash + test (muc 5).</li>
+</ul>
+</div>
+
+<h2>1. Tong quan (4 lop hanh vi)</h2>
+<table>
+  <tr><th>idx</th><th>Lop</th><th>Mo ta hanh vi</th></tr>
+  <tr><td>0</td><td>approach</td><td>Di toi cua: khoang cach giam, giam toc, dung gan cua (-0.95, 0)</td></tr>
+  <tr><td>1</td><td>seated</td><td>Dung yen tai ghe lai (-0.35, 0), toc do ~0</td></tr>
+  <tr><td>2</td><td>leave</td><td>Di ra xa xe: khoang cach tang, ra qua 4 m</td></tr>
+  <tr><td>3</td><td>passing</td><td>Di ngang qua xe khong dung: khoang cach giam roi tang, toc do deu</td></tr>
+</table>
+<p>Moi frame la vector <code>[x, y, vx, vy]</code> (tu EKF), cua so truot 25 frame @ 10 Hz (~2.5 giay).</p>
+
+<h2>2. Buoc 2.1 - Thu thap du lieu (M-D)</h2>
+
+<div class="box info">
+<strong>Dieu kien tien quyet:</strong>
+<ul>
+  <li>Firmware da log dong <code>[EKF]</code> (da co san).</li>
+  <li>3 anchor tren tripod, phone luon line-of-sight.</li>
+  <li>Chay app Android de phone lam UWB initiator.</li>
+</ul>
+</div>
+
+<p><strong>Mo PowerShell, thiet lap PYTHONPATH (1 lan):</strong></p>
+<pre>$env:PYTHONPATH = "C:\DATN\DW3_QM33_SDK_1.1.1\SDK\Tools\uwb-qorvo-tools\lib\uwb-uci;C:\DATN\DW3_QM33_SDK_1.1.1\SDK\Tools\uwb-qorvo-tools\lib\uqt-utils"</pre>
+
+<p><strong>Thu tung lop (moi lop 10-15 run, moi run 5-10 giay, da dang goc/toc do):</strong></p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\localization_demo.py" -p COM11 COM19 COM12 --macs 0 1 2 --esp-port COM5 --autostart --capture approach.log</pre>
+<p>Dien hanh vi roi <strong>Ctrl+C</strong> khi xong 1 run. Lap lai cho <code>seated.log</code>, <code>leave.log</code>, <code>passing.log</code>.</p>
+
+<table>
+  <tr><th>Lop</th><th>Cach dien hanh vi</th></tr>
+  <tr><td>approach</td><td>Bat dau &gt;4m, di ve cua, <strong>giam toc roi dung</strong> tai cua</td></tr>
+  <tr><td>seated</td><td>Dung tai ghe (-0.35, 0) giu yen; thay doi huong tien vao</td></tr>
+  <tr><td>leave</td><td>Tu cua/ghe di ra xa dut khoat qua 4m</td></tr>
+  <tr><td>passing</td><td>Di duong tiep tuyen qua cua, toc do deu, khong dung</td></tr>
+</table>
+
+<p><strong>Chuyen log thanh CSV co nhan (tang <code>--run</code> cho moi session; file append):</strong></p>
+<pre>&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\collect_traj.py" --log approach.log --label 0 --run 1 -o uwb_traj_data_label0.csv
+&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\collect_traj.py" --log seated.log   --label 1 --run 1 -o uwb_traj_data_label1.csv
+&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\collect_traj.py" --log leave.log    --label 2 --run 1 -o uwb_traj_data_label2.csv
+&amp; "C:\DATN\venv\Scripts\python.exe" "C:\DATN\SmartCarAccess\iot\tools\collect_traj.py" --log passing.log  --label 3 --run 1 -o uwb_traj_data_label3.csv</pre>
+<p>CSV cot: <code>run_id, timestamp_ms, x, y, vx, vy, label</code>.</p>
+
+<div class="box ok">
+<strong>Kiem tra chat luong truoc khi train:</strong> moi lop &gt;= 5 run va &gt;= 300 dong; khong run nao ngan hon 25 frame; phan bo label tuong doi can bang.
+</div>
+
+<h2>3. Buoc 2.2 - Train o Google Colab (M-E)</h2>
+<div class="step">
+<span class="n">1</span><strong>Chuan bi</strong>
+<p>Moi Colab: <code>colab.research.google.com</code> -&gt; New Notebook -&gt; Runtime &gt; Change runtime type &gt; T4 GPU (tuy chon).</p>
+</div>
+<div class="step">
+<span class="n">2</span><strong>Tai len 4 file CSV + train_traj_model.py</strong>
+<p>Khung trai -&gt; tab Files -&gt; Upload: <code>uwb_traj_data_label0.csv</code> ... <code>label3.csv</code> va <code>train_traj_model.py</code> (lay tu <code>C:\DATN\SmartCarAccess\iot\tools\</code>).</p>
+</div>
+<div class="step">
+<span class="n">3</span><strong>Cai thu vien va chay</strong>
+<pre>!pip install -q tensorflow scikit-learn matplotlib seaborn</pre>
+<pre>%run train_traj_model.py</pre>
+</div>
+<div class="step">
+<span class="n">4</span><strong>Kiem tra ket qua</strong>
+<ul>
+  <li>Test accuracy muc tieu &gt;= 77%.</li>
+  <li>Confusion matrix: xem <code>passing</code> va <code>approach</code> co bi nham khong; neu <code>seated</code> nham voi <code>approach</code> thi tang du lieu seated / keo dai run seated.</li>
+</ul>
+</div>
+<div class="step">
+<span class="n">5</span><strong>Tai 2 output ve (sau khi train xong)</strong>
+<ul>
+  <li><code>uwb_traj_model.h</code> (Colab tao ra) -&gt; copy vao <code>C:\DATN\SmartCarAccess\iot\include\uwb\uwb_traj_model.h</code> (ghi de file neu da co).</li>
+  <li>Hai dong <code>const float scaler_mean[NUM_FEATURES] = {...}</code> va <code>const float scaler_scale[NUM_FEATURES] = {...}</code> in ra console -&gt; paste thay the cho 2 mang <code>scaler_mean</code> / <code>scaler_scale</code> trong <code>C:\DATN\SmartCarAccess\iot\include\uwb\traj_inference.h</code> (dang la gia tri tam 0/1).</li>
+</ul>
+</div>
+
+<h2>3b. Sau khi train xong - bo model vao dau (tom tat)</h2>
+<table>
+  <tr><th>Output tu Colab</th><th>Dat vao dau</th></tr>
+  <tr><td><code>uwb_traj_model.h</code></td><td><code>iot\include\uwb\uwb_traj_model.h</code></td></tr>
+  <tr><td>Hai dong <code>scaler_mean</code> / <code>scaler_scale</code></td><td>Paste vao 2 mang trong <code>iot\include\uwb\traj_inference.h</code></td></tr>
+</table>
+<div class="box warn">
+<p><strong>Luu y:</strong> Codex da dat 2 mang <code>scaler_mean</code>/<code>scaler_scale</code> trong <code>traj_inference.h</code> (khong phai .cpp). Truoc khi build, phai thay gia tri tam bang gia tri thuc tu Colab, khong thi model se nhan dau vao sai scale (ket qua [INTENT] se sai).</p>
+</div>
+
+<h2>4. Buoc 2.3 - Nhung vao firmware (M-F) - DA CODE XONG</h2>
+<div class="box ok">
+<strong>Trang thai: Codex da hoan thanh va da build OK (da kiem tra lai).</strong>
+<ul>
+  <li>Da tao <code>iot/include/uwb/traj_inference.h</code> + <code>iot/src/uwb/traj_inference.cpp</code> (NUM_FEATURES=4, NUM_CLASSES=4, TIME_STEPS=25).</li>
+  <li>Da sua <code>iot/src/uwb/uwb_bridge.cpp</code>: goi <code>g_trajInference.predict(...)</code> trong vong lap 10 Hz (cho in <code>[EKF]</code>) va log <code>[INTENT]</code>.</li>
+  <li>Code co guard <code>__has_include("uwb/uwb_traj_model.h")</code>: neu chua co file model, firmware van build duoc (boot se in <code>[AI] begin skipped</code>).</li>
+</ul>
+</div>
+<div class="box warn">
+<strong>Dieu con thieu (ban tu lam sau khi train):</strong>
+<ul>
+  <li>Dat file <code>uwb_traj_model.h</code> vao <code>include\uwb\</code> (xem muc 3b).</li>
+  <li>Thay 2 mang <code>scaler_mean</code>/<code>scaler_scale</code> trong <code>traj_inference.h</code> bang gia tri thuc (xem muc 3b).</li>
+</ul>
+</div>
+
+<h2>5. Buoc 2.4 - Build, flash, test</h2>
+<div class="step">
+<span class="n">1</span><strong>Mo PowerShell trong thu muc iot (de build dung project)</strong>
+<pre>Set-Location "C:\DATN\SmartCarAccess\iot"</pre>
+</div>
+<div class="step">
+<span class="n">2</span><strong>Build (kiem tra loi truoc khi nap)</strong>
+<pre>&amp; "C:\Users\Legion\.platformio\penv\Scripts\platformio.exe" run</pre>
+<p>Neu <code>[SUCCESS]</code> la OK. Neu loi, thuong la do chua thay scaler hoac thieu file model.</p>
+</div>
+<div class="step">
+<span class="n">3</span><strong>Flash len ESP32 (dam bao dang cam USB, khong mo monitor khac)</strong>
+<pre>&amp; "C:\Users\Legion\.platformio\penv\Scripts\platformio.exe" run --target upload</pre>
+</div>
+<div class="step">
+<span class="n">4</span><strong>Theo doi serial (dong nay in [INTENT])</strong>
+<pre>&amp; "C:\Users\Legion\.platformio\penv\Scripts\platformio.exe" device monitor</pre>
+<p>De thoat monitor: <code>Ctrl+C</code>.</p>
+</div>
+
+<h2>5b. Test nhu the nao (tung buoc)</h2>
+<div class="box ok">
+<strong>Kiem tra boot:</strong> mo monitor ngay sau flash, tim dong:
+<pre>[AI] begin ok</pre>
+<p>Neu thay <code>[AI] begin skipped</code> (chua co model) hoac <code>begin failed</code> (loi model/RAM) thi kiem tra lai muc 3b.</p>
+</div>
+
+<div class="box warn">
+<strong>Luu y warm-up:</strong> model can 25 frame (~2.5 giay) moi in dong <code>[INTENT]</code> dau tien. Truoc do khong co [INTENT] la binh thuong.
+</div>
+
+<div class="step">
+<span class="n">1</span><strong>Test approach</strong>
+<p>Dung &gt;4m, di toi cua roi dung lai. Doc <code>[INTENT]</code>: <code>p_approach</code> phai cao nhat (gan 1.0) khi dung gan cua.</p>
+</div>
+<div class="step">
+<span class="n">2</span><strong>Test seated</strong>
+<p>Dung yen tai ghe (-0.35, 0) vai giay. <code>p_seated</code> phai dan tang len cao nhat.</p>
+</div>
+<div class="step">
+<span class="n">3</span><strong>Test leave</strong>
+<p>Tu cua di ra xa. <code>p_leave</code> phai cao nhat khi dang roi xa.</p>
+</div>
+<div class="step">
+<span class="n">4</span><strong>Test passing</strong>
+<p>Di ngang qua cua khong dung. <code>p_passing</code> phai cao (day la lop quan trong nhat de chan unlock sai).</p>
+</div>
+
+<div class="box ok">
+<strong>Mau dong [INTENT] mong doi:</strong>
+<pre>[INTENT] p_approach=0.02 p_seated=0.01 p_leave=0.95 p_passing=0.02</pre>
+<p>Giai nghia: dang di ra xa xe (leave). Neu gia tri dong khong dung hanh vi, kiem tra lai scaler + data train.</p>
+</div>
+
+<h2>6. Intent co nen dung de ra quyet dinh control khong? (tra loi)</h2>
+<div class="box info">
+<p><strong>Cau tra loi: CO, nen dung - nhung AI chi GATE (cho phep/chan) quyet dinh, khong tu dong quyet dinh.</strong></p>
+<ul>
+  <li>Logic hien tai (AccessController) da dung toan hoc: vi tri + van toc + vung (zone) de mo/khoa cua. No <strong>an toan va de giai thich</strong>, nhung co the bi danh lua boi truong hop di ngang qua cham (pass-by) ma giam toc nhe.</li>
+  <li>AI doan <strong>y dinh</strong> (approach / seated / leave / passing) giup phan biet <strong>"thuc su muon vao"</strong> voi <strong>"di ngang qua"</strong> ma logic toan hoc kho phan biet.</li>
+  <li>Nguyen tac (theo <code>docs/AI_INTENT_RECOGNITION.md</code>): AI <strong>khong truc tiep</strong> bam relay. AI chi nang/hang rao tin cay cho cac chuyen doi cua AccessController. Neu AI loi (thieu model, het RAM) thi he thong van chay duoc bang logic toan hoc (fail-safe).</li>
+</ul>
+</div>
+
+<table>
+  <tr><th>Intent</th><th>Quyet dinh ma master nen dua ra</th></tr>
+  <tr><td><code>approach</code> (p &gt;= 0.80)</td><td>Cho phep mo cua (khi da o vung DRIVER_DOOR + dung lai)</td></tr>
+  <tr><td><code>seated</code> (p &gt;= 0.80)</td><td>Khoa cua + cho phep no may (khi o ghe lai)</td></tr>
+  <tr><td><code>leave</code> (p &gt;= 0.80)</td><td>Khoa cua khi ra khoi xe</td></tr>
+  <tr><td><code>passing</code> (p &gt;= 0.70)</td><td><strong>Chan cung khoa</strong> - khong mo du gi ca (chong unlock sai)</td></tr>
+</table>
+<div class="box ok">
+<strong>Da wire xong (da build OK):</strong> <code>AccessController::handlePosition(x, y, vx, vy, intent)</code> nhan them mang 4 xac suat (hoac <code>nullptr</code> khi model chua san sang). Gate: unlock can <code>p_approach &gt;= 0.80</code>; ngoi can <code>p_seated &gt;= 0.80</code>; roi di can <code>p_leave &gt;= 0.80</code>; <code>p_passing &gt;= 0.70</code> chan cung khoa. Neu <code>intent == nullptr</code> (warm-up / thieu model) thi bo qua gate - fail-safe.
+</div>
+
+<h2>7. Prompt tieng Anh cho Codex (update UI hien thi INTENT) - DA XONG</h2>
+<p>Codex da hoan thanh viec sua <code>localization_demo.py</code> hien thi intent + quyet dinh. Da kiem tra lai: regex dung, queue dung, hien thi dung o ca matplotlib (top-center) va Tk HMI. <strong>Khong can lam gi them o buoc nay.</strong></p>
+<div class="box ok">
+<strong>Da kiem tra xong:</strong> parse <code>[INTENT]</code> o ca live serial va replay log; hien thi ten lop thang + do tin cay + quyet dinh tieng Viet; khong thay doi logic ranging/bridge. File chay duoc (syntax OK).
+</div>
+<pre>
+Update localization_demo.py (in iot/tools/) to display the AI intent from the
+ESP32 in the live map UI.
+
+Background:
+- The firmware already logs a line: [INTENT] p_approach=.. p_seated=.. p_leave=.. p_passing=..
+- The demo already parses [EKF], [STATE], [IGNITION], [RANGE3] in DemoBridge._ingest()
+  and in the --log replay path, and renders a status banner + event feed.
+
+Requirements:
+1. Add an INTENT_RE regex to parse [INTENT] and extract the 4 probabilities.
+2. In DemoBridge._ingest(), when an [INTENT] line matches, put an ("intent",
+   p_approach, p_seated, p_leave, p_passing) tuple onto the viz queue. Do the same
+   in the --log replay thread.
+3. In the matplotlib update() callback (and the Tk HMI path if trivial), keep the
+   latest intent and render:
+   - The winning class name (approach / seated / leave / passing) with its confidence.
+   - A short "decision" text next to it: approach->"cho phep mo cua", seated->"khoa + no may",
+     leave->"khoa", passing->"CHAN MO KHOA".
+   Use the existing Vietnamese labels style (STATE_LABEL / STATE_EVENT) already in the file.
+4. Show it as a small text near the status banner (top area of the map), color-coded:
+   passing = red, approach = green, seated = blue, leave = grey.
+5. Keep the change minimal and consistent with the existing code style. Do not change
+   the ranging/bridge logic.
+</pre>
+
+</div>
+</body>
+</html>

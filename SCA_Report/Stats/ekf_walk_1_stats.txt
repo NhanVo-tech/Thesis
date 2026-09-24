@@ -1,0 +1,18 @@
+﻿Parsed 150 raw [POS2D] samples, 331 filtered [EKF] samples.
+=== EKF smoothing metrics - axis X ===
+  samples            raw=150  filtered=331
+  mean               raw=-0.454 m   filtered=-0.499 m
+  std (stationary)   raw=123.3 cm   filtered=122.0 cm
+  max |dev|          raw=196.4 cm   filtered=200.9 cm
+  noise reduction    1.01x
+
+  Expected for a stationary tag: raw jitter ~10-30 cm, filtered near-flat (std < ~5 cm).
+Parsed 150 raw [POS2D] samples, 331 filtered [EKF] samples.
+=== EKF smoothing metrics - axis Y ===
+  samples            raw=150  filtered=331
+  mean               raw=-0.544 m   filtered=-0.515 m
+  std (stationary)   raw=193.3 cm   filtered=194.0 cm
+  max |dev|          raw=315.4 cm   filtered=312.5 cm
+  noise reduction    1.00x
+
+  Expected for a stationary tag: raw jitter ~10-30 cm, filtered near-flat (std < ~5 cm).

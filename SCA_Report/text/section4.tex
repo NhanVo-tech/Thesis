@@ -336,35 +336,39 @@ Trong mỗi vòng đo, điện thoại (Controller) trao đổi xung với cả 
 \begin{lstlisting}[language=C++, caption={Khung dữ liệu RANGE và hàm phân tích trên ESP32}]
 // Frame received from PC bridge over USB-CDC:
 //   RANGE:d0=1.82,d1=0.97,d2=3.14,valid=1
-bool UwbBridge::parseRange(const char* line, RangingFrame& frame) {
-    double d0, d1, d2; int valid;
-    if (sscanf(line, "RANGE:d0=%lf,d1=%lf,d2=%lf,valid=%d",
+bool UwbBridge::parseRange(const char* line, RangingFrame* out) {
+    const char* p = line + 6;              // skip "RANGE:"
+    double d0 = 0.0, d1 = 0.0, d2 = 0.0; int valid = 0;
+    if (sscanf(p, "d0=%lf,d1=%lf,d2=%lf,valid=%d",
                &d0, &d1, &d2, &valid) != 4) return false;
-    frame.d[0] = d0; frame.d[1] = d1; frame.d[2] = d2;
-    frame.valid_mask = valid ? 0x07 : 0x00;   // 0b111 when all three are valid
-    frame.t_ms = millis();
+    out->t_ms = millis();
+    out->d[0] = d0; out->d[1] = d1; out->d[2] = d2;
+    // Per-anchor mask: a positive distance marks a fresh, in-bounds anchor.
+    out->valid_mask = 0;
+    if (d0 > 0.0) out->valid_mask |= 1u << 0;
+    if (d1 > 0.0) out->valid_mask |= 1u << 1;
+    if (d2 > 0.0) out->valid_mask |= 1u << 2;
     return true;
 }
 \end{lstlisting}
 \end{minipage}
 
-Cờ \texttt{valid} chỉ được bật khi \textbf{cả ba} khoảng cách đều tươi và nằm trong phạm vi hợp lệ. Khi đủ điều kiện, ESP32 tiến hành định vị hai bước: \texttt{Trilateration::solve} trả về tọa độ $(x, y)$ kèm chất lượng lời giải RMS, sau đó \texttt{Ekf::update} hợp nhất phép đo vào quỹ đạo:
+Mặt nạ \texttt{valid\_mask} được xây dựng \textbf{theo từng mỏ neo}: một khoảng cách dương đồng nghĩa với một mỏ neo tươi và nằm trong phạm vi hợp lệ. Nhờ đó, khi một mỏ neo bị mất gói tin hoặc rơi ra ngoài vùng đo, hệ thống vẫn tiếp tục định vị bằng \textbf{đường suy biến hai mỏ neo} (2-anchor fallback) thay vì hủy bỏ toàn bộ khung dữ liệu. Với mỗi khung hợp lệ, ESP32 tiến hành định vị hai bước: \texttt{Trilateration::solve} trả về tọa độ $(x, y)$ kèm chất lượng lời giải RMS, sau đó \texttt{Ekf::update} hợp nhất phép đo vào quỹ đạo:
 
 \noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[language=C++, caption={Định vị Trilateration và cập nhật EKF}]
 // 1. Trilateration: 3 khoang cach -> toa do (x, y) + chat luong RMS
-Trilateration::Result fix = Trilateration::solve(frame.d, frame.valid_mask);
+Trilateration::Result r = Trilateration::solve(
+    UwbGeo::kAnchorX, UwbGeo::kAnchorY, f.d, f.valid_mask);
+if (!r.valid) continue;
 
 // 2. EKF: cap nhat vi tri, uoc luong van toc (x, y, vx, vy)
-if (fix.valid) {
-    double sigma = clamp(fix.rms, 0.05, 1.0);   // nhieu do ~ chat luong loi giai
-    ekf.update(fix.x, fix.y, frame.t_ms, sigma);
-}
-ekf.predictTo(millis());   // du bao bu khi mat khung du lieu
+//    (nhieu do do ~ chat luong loi giai RMS)
+Ekf::update(r.x, r.y, f.t_ms, r.rms);
 \end{lstlisting}
 \end{minipage}
 
-Bộ lọc Kalman hai chiều chạy ở nhịp cố định 10 Hz, độc lập với nhịp nhận khung dữ liệu, và tự động dự báo bù khi một vài khung bị mất (tối đa 2 giây).
+Bộ lọc Kalman hai chiều nhận mỗi phép đo Trilateration làm một lần cập nhật: trước mỗi phép đo, nó dự báo trạng thái tới đúng thời điểm của khung dữ liệu ($\Delta t$ lấy từ dấu thời gian thực), rồi hiệu chỉnh bằng phép đo vị trí có nhiễu $\sigma_{meas} = \operatorname{clamp}(\text{RMS},\,0.05,\,1.0)$. Khi sóng đo bị gián đoạn, vị trí được giữ nguyên tại giá trị đã lọc cuối cùng (không chạy đà); nếu gián đoạn quá 2 giây, quỹ đạo được khởi tạo lại.
 
 \subsection{Quyết định truy cập theo vùng hình học (Phase D)}
 

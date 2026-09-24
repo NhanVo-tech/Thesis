@@ -4,7 +4,7 @@
 
 Reads a log containing lines of the form::
 
-    [RANGE3] t=<ms> d0=.. d1=.. d2=.. valid=..
+    [RANGE3] t=<ms> d0=.. d1=.. d2=.. n=.. mask=..
     [POS2D]  t=<ms> x=.. y=.. rms=..
     [EKF]    t=<ms> x=.. y=.. vx=.. vy=.. v=..
 
@@ -30,6 +30,7 @@ Examples::
 """
 
 import argparse
+import os
 import re
 import sys
 
@@ -193,6 +194,7 @@ def plot_sweep(raw, axis, kaccels, out=None):
 def _finish(fig, out, default_name):
     if out:
         path = out if out.endswith(".png") else f"{out}_{default_name}.png"
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         fig.savefig(path, dpi=150)
         print(f"Saved plot: {path}")
         plt.close(fig)

@@ -1067,7 +1067,7 @@ Việc ràng buộc $\sigma_{meas}$ trong khoảng $[0.05,\,1.0]$ m đảm bảo
     \mathbf{P}_{k|k-1} &= \mathbf{F}\, \mathbf{P}_{k-1|k-1}\, \mathbf{F}^T + \mathbf{Q}
 \end{align}
 
-Giai đoạn dự báo được thực thi ở một nhịp cố định \textbf{10 Hz} ($\Delta t = 100$ ms), độc lập với nhịp nhận dữ liệu thô từ cầu nối (bridge). Điều này mang lại hai lợi ích: (i) đồng hồ ra quyết định mở khóa được giữ ổn định; (ii) khi một vài khung dữ liệu bị mất (dropped frames), bộ lọc vẫn \textbf{dự báo bù} (coasting) để lấp đầy khoảng trống quỹ đạo, miễn là khoảng trống không vượt quá ngưỡng cho phép (trong đề tài là 2 giây; nếu quá ngưỡng, quỹ đạo được khởi tạo lại từ đầu).
+Bước dự báo được thực thi \textbf{ngay trước mỗi phép đo mới}: khi một khung dữ liệu đến tại thời điểm $t_k$, bộ lọc tính $\Delta t = t_k - t_{k-1}$ từ dấu thời gian thực của khung và dự báo trạng thái từ thời điểm đo trước đó đến đúng thời điểm hiện tại. Thiết kế này chủ ý \textbf{không thực hiện dự báo chạy đà (coasting) giữa hai phép đo}: khi sóng đo bị gián đoạn (dropout), vị trí ước lượng được \textbf{giữ nguyên} tại giá trị đã lọc cuối cùng thay vì vẽ ra một đường thẳng giả tạo --- nhờ đó quỹ đạo hiển thị dừng lại đúng chỗ thay vì ``bay'' khỏi vị trí thực rồi giật ngược trở lại khi có sóng. Nếu khoảng trống giữa hai phép đo vượt quá ngưỡng 2 giây, quỹ đạo được \textbf{khởi tạo lại} từ khung dữ liệu mới.
 
 \paragraph*{B. Giai đoạn cập nhật (Measurement Update / Correct)}
 
@@ -1097,7 +1097,7 @@ Khi nhận được phép đo mới $\mathbf{z}_k$, bộ lọc tính toán:
 
 \paragraph*{C. Cổng lọc đổi mới (Innovation Gating)}
 
-Để chống lại các xung nhiễu NLOS/multipath khiến tọa độ đo bị ``nhảy vọt'' xa khỏi quỹ đạo dự báo, bộ lọc áp dụng cơ chế \textbf{lọc ngưỡng đổi mới} (innovation gating): nếu chuẩn của vector đổi mới vượt quá bội số $k$ của độ lệch chuẩn dự báo ($\lVert \tilde{\mathbf{y}}_k \rVert > k\, \sqrt{\operatorname{tr}(\mathbf{S}_k)}$), phép đo được hạ cấp hoặc bỏ qua trong chu kỳ đó. Cơ chế này giúp quỹ đạo bám mượt ngay cả khi người dùng đi qua vùng che khuất, đồng thời vẫn giữ được phản hồi nhanh khi chuyển động là hợp lý.
+Để chống lại các xung nhiễu NLOS/multipath khiến tọa độ đo bị ``nhảy vọt'' xa khỏi quỹ đạo dự báo, bộ lọc áp dụng cơ chế \textbf{cổng tái chiếm} (re-acquisition gate): nếu khoảng cách Euclid giữa phép đo mới và vị trí dự báo vượt quá ngưỡng cố định $2.5$ m, phép đo được coi là một sự kiện ``dịch chuyển tức thời'' (teleport) --- do mất sóng rồi tái xuất hiện ở vị trí khác, hoặc do nhiễu đột biến --- và bộ lọc \textbf{chốt ngay về phép đo mới} (khởi tạo lại trạng thái) thay vì kéo quỹ đạo theo một đường thẳng giả tạo kéo dài. Ngược lại, nếu phép đo nằm trong ngưỡng, bộ lọc thực hiện cập nhật bình thường. Cơ chế này giúp quỹ đạo bám mượt khi chuyển động hợp lý, đồng thời tránh được hiện tượng quỹ đạo bị ``quét'' theo một cú nhảy vọt giả.
 
 \subsubsection{Cấu hình tham số thực nghiệm}
 
