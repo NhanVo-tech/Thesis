@@ -3,433 +3,1220 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Car Access — System Architecture</title>
+<title>Smart Car Access — How your phone becomes a car key</title>
 <style>
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    background: #0d1117;
-    color: #e6edf3;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    line-height: 1.65;
-  }
-  a { color: #58a6ff; text-decoration: none; }
-  a:hover { text-decoration: underline; }
+:root{
+  --bg:#0b0f17; --panel:#111723; --panel2:#161d2b; --line:#263041;
+  --text:#e6edf3; --muted:#8b98a9; --accent:#58a6ff;
+  --nfc:#a371f7; --ble:#58a6ff; --uwb:#2dd4bf; --ai:#f0883e; --cloud:#f778ba;
+  --ecu:#3fb950; --warn:#d29922; --bad:#f85149;
+  --nav:250px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:.86em;background:#1a2231;border:1px solid var(--line);border-radius:5px;padding:1px 6px;word-break:break-word}
+b,strong{color:#fff}
 
-  #toc {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 260px;
-    height: 100vh;
-    overflow-y: auto;
-    padding: 24px 16px;
-    background: #010409;
-    border-right: 1px solid #30363d;
-  }
-  #toc h3 {
-    margin: 0 0 12px;
-    color: #58a6ff;
-    font-size: 1.05em;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  #toc a {
-    display: block;
-    padding: 6px 10px;
-    margin: 2px 0;
-    border-radius: 6px;
-    color: #c9d1d9;
-    font-size: 0.93em;
-  }
-  #toc a:hover { background: #161b22; color: #58a6ff; text-decoration: none; }
+/* progress + nav */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--nfc),var(--ble),var(--uwb),var(--ai),var(--cloud));z-index:50}
+#nav{position:fixed;top:0;left:0;bottom:0;width:var(--nav);background:#080b12;border-right:1px solid var(--line);padding:22px 14px;overflow-y:auto;z-index:40}
+#nav .brand{display:block;font-weight:700;color:#fff;font-size:1.02em;margin:0 8px 18px}
+#nav .brand span{display:block;font-weight:400;color:var(--muted);font-size:.8em}
+#nav a.item{display:flex;gap:10px;align-items:center;padding:7px 10px;border-radius:8px;color:#b8c4d2;font-size:.9em;transition:background .2s,color .2s}
+#nav a.item i{font-style:normal;font-size:.75em;color:var(--muted);width:20px;font-variant-numeric:tabular-nums}
+#nav a.item:hover{background:#121a28;color:#fff}
+#nav a.item.active{background:#15203a;color:#fff}
+#nav a.item.active i{color:var(--accent)}
+#menuBtn{display:none}
 
-  main {
-    margin-left: 260px;
-    padding: 32px 48px 64px;
-    max-width: 1200px;
-  }
-  h1 {
-    margin-top: 0;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #30363d;
-    color: #e6edf3;
-  }
+main{margin-left:var(--nav)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 40px}
 
-  details {
-    margin: 20px 0;
-    background: #0d1117;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 4px 24px 16px;
-  }
-  summary {
-    cursor: pointer;
-    list-style: none;
-    outline: none;
-  }
-  summary::-webkit-details-marker { display: none; }
-  summary::before {
-    content: "\25B8";
-    display: inline-block;
-    width: 1.2em;
-    color: #58a6ff;
-    transition: transform 0.15s;
-  }
-  details[open] > summary::before { transform: rotate(90deg); }
-  summary h2 {
-    display: inline;
-    font-size: 1.4em;
-    color: #58a6ff;
-  }
-  summary h2 a { color: inherit; }
-  section > p, details > p { text-align: justify; }
+/* hero */
+.hero{position:relative;min-height:92vh;display:flex;align-items:center;overflow:hidden;border-bottom:1px solid var(--line);background:radial-gradient(ellipse at 75% 40%,#11243f 0%,var(--bg) 60%)}
+.hero-rings{position:absolute;right:-120px;top:50%;width:720px;height:720px;transform:translateY(-50%);opacity:.55}
+.hero-rings circle{fill:none;stroke:var(--uwb);stroke-width:1.2;transform-origin:360px 360px;animation:ring 4.5s linear infinite;opacity:0}
+.hero-rings circle:nth-child(2){animation-delay:1.1s}
+.hero-rings circle:nth-child(3){animation-delay:2.2s}
+.hero-rings circle:nth-child(4){animation-delay:3.3s}
+@keyframes ring{0%{transform:scale(.1);opacity:.9}100%{transform:scale(1);opacity:0}}
+.hero-inner{position:relative;max-width:1100px;margin:0 auto;padding:80px 40px}
+.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:.78em;color:var(--uwb);font-weight:600}
+.hero h1{font-size:clamp(2.2em,5vw,3.8em);line-height:1.08;margin:14px 0 18px;max-width:820px}
+.hero h1 span{background:linear-gradient(90deg,var(--ble),var(--uwb));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lead{font-size:1.18em;color:#c3cedb;max-width:700px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:38px 0 34px;max-width:900px}
+.stat{background:rgba(17,23,35,.8);border:1px solid var(--line);border-radius:12px;padding:14px 12px}
+.stat b{display:block;font-size:1.5em;line-height:1.1}
+.stat span{font-size:.78em;color:var(--muted)}
+.cta{display:inline-block;padding:12px 22px;border-radius:999px;background:var(--accent);color:#04111f;font-weight:700}
+.cta:hover{filter:brightness(1.1)}
 
-  code {
-    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 4px;
-    padding: 1px 5px;
-    font-size: 0.88em;
-    word-break: break-word;
-  }
-  code.filepath {
-    color: #79c0ff;
-    font-size: 0.85em;
-  }
+/* chapters */
+.chapter{padding:90px 0 40px;border-bottom:1px solid #161d2a;--c:var(--accent)}
+.ch-head{display:flex;gap:22px;align-items:flex-end;margin-bottom:18px}
+.ch-num{font-size:4.2em;font-weight:800;line-height:.9;color:transparent;-webkit-text-stroke:1.5px var(--c);opacity:.9}
+.kicker{text-transform:uppercase;letter-spacing:.14em;font-size:.76em;font-weight:700;color:var(--c)}
+.chapter h2{font-size:clamp(1.6em,3vw,2.3em);margin:4px 0 0;line-height:1.15}
+.chapter h3{font-size:1.22em;margin:40px 0 10px;color:#fff}
+.chapter h3 small{color:var(--muted);font-weight:400;font-size:.72em;margin-left:8px}
+p.lead{font-size:1.1em;color:#c7d1dd;max-width:860px}
+p{color:#c7d1dd}
 
-  .mermaid {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    padding: 16px;
-    margin: 16px 0;
-    overflow-x: auto;
-    text-align: center;
-  }
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+.card h4{margin:0 0 6px;font-size:1.02em;color:#fff}
+.card p{margin:.3em 0;font-size:.95em}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+.tag{display:inline-block;font-size:.72em;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid currentColor;margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{font-size:.84em;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:#d3dce6}
+.chip b{color:var(--c)}
+.figure{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin:22px 0;overflow-x:auto}
+.figure svg{display:block;width:100%;height:auto}
+.figcap{font-size:.84em;color:var(--muted);margin-top:8px;text-align:center}
 
-  .callout-research {
-    border-left: 3px solid #d29922;
-    background: #272115;
-    padding: 12px;
-    margin: 16px 0;
-    border-radius: 0 6px 6px 0;
-  }
+.uth{margin:22px 0;border:1px dashed #33405a;border-radius:12px;background:#0e1420}
+.uth summary{cursor:pointer;padding:12px 18px;font-weight:600;color:var(--c);list-style:none}
+.uth summary::-webkit-details-marker{display:none}
+.uth summary::before{content:"+";display:inline-block;width:1.2em;font-weight:800}
+.uth[open] summary::before{content:"\2013"}
+.uth .body{padding:0 20px 16px}
+.uth ul{margin:.4em 0;padding-left:1.2em;color:#c7d1dd}
+.uth li{margin:.3em 0}
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0;
-    font-size: 0.92em;
-  }
-  th, td {
-    border: 1px solid #30363d;
-    padding: 8px 12px;
-    text-align: left;
-    vertical-align: top;
-  }
-  thead th {
-    background: #161b22;
-    color: #58a6ff;
-  }
-  tbody tr:nth-child(odd) { background: #0d1117; }
-  tbody tr:nth-child(even) { background: #161b22; }
-  tbody tr:hover { background: #1f2937; }
+.callout-research{border-left:3px solid #d29922;background:#272115;padding:12px;margin:16px 0;border-radius:0 8px 8px 0;color:#e8d9b0}
 
-  @media (max-width: 768px) {
-    #toc {
-      position: static;
-      width: 100%;
-      height: auto;
-      border-right: none;
-      border-bottom: 1px solid #30363d;
-      padding: 16px;
-    }
-    #toc a {
-      display: inline-block;
-      padding: 4px 8px;
-    }
-    main {
-      margin-left: 0;
-      padding: 20px 16px 48px;
-      max-width: 100%;
-    }
-    details { padding: 4px 12px 12px; }
-    section > p, details > p { text-align: left; }
-    table { display: block; overflow-x: auto; }
-  }
+/* phases / steps */
+.phases{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:18px 0;counter-reset:ph}
+.phase{position:relative;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:14px}
+.phase b{display:block;font-size:.95em}
+.phase span{font-size:.84em;color:var(--muted)}
+.phase::before{counter-increment:ph;content:counter(ph);position:absolute;top:10px;right:12px;font-weight:800;color:var(--c);opacity:.5}
+
+.journey{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;position:relative;margin-top:26px}
+.journey::before{content:"";position:absolute;top:30px;left:6%;right:6%;height:2px;background:linear-gradient(90deg,var(--nfc),var(--ble),var(--uwb),var(--ai))}
+.jstep{position:relative;text-align:center;padding:0 6px}
+.jdot{width:60px;height:60px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3em;background:var(--bg);border:2px solid var(--jc);color:var(--jc);box-shadow:0 0 24px color-mix(in srgb,var(--jc) 35%,transparent)}
+.jstep h4{margin:0 0 4px;font-size:1.08em}
+.jstep .when{font-size:.74em;text-transform:uppercase;letter-spacing:.1em;color:var(--jc);font-weight:700}
+.jstep p{font-size:.92em;margin:.5em 0}
+
+/* sequence player */
+.seq{margin:22px 0}
+.player{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.player button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 14px;font:inherit;font-size:.88em;cursor:pointer}
+.player button:hover{border-color:var(--c);color:#fff}
+.player button.primary{background:var(--c);color:#071018;border-color:var(--c);font-weight:700}
+.player .count{margin-left:auto;font-size:.84em;color:var(--muted);font-variant-numeric:tabular-nums}
+.seq-wrap{background:var(--panel);border:1px solid var(--line);border-radius:14px 14px 0 0;overflow-x:auto;padding:8px}
+.seq-svg{display:block;width:100%;height:auto}
+.caption{background:#0f1624;border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;padding:14px 18px;min-height:64px;font-size:.96em;color:#d7e0ea}
+.cap-step{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:50%;background:var(--c);color:#071018;font-weight:800;font-size:.8em;margin-right:10px}
+.seq-svg .life{stroke:#34405a;stroke-dasharray:4 5;stroke-width:1.2}
+.seq-svg .actor-t{fill:#fff;font-weight:700;font-size:13px}
+.seq-svg .actor-s{fill:#9fb0c4;font-size:10.5px}
+.seq-svg .msg-t{fill:#e6edf3;font-size:12.5px;paint-order:stroke;stroke:#111723;stroke-width:5px;stroke-linejoin:round}
+.seq-svg .note{fill:#1c2436;stroke:#3b4a66}
+.seq-svg .note-t{fill:#cfd8e3;font-size:12px;font-weight:600}
+.seq-svg .grp{fill:rgba(255,255,255,.015);stroke:#3a4760;stroke-dasharray:6 4}
+.seq-svg .grp-tag{fill:#27324a}
+.seq-svg .grp-tag-t{fill:#9fb0c4;font-size:10px;font-weight:800;letter-spacing:.08em}
+.seq-svg .grp-label{fill:#9fb0c4;font-size:11.5px;font-style:italic}
+.seq-svg .grp-div{stroke:#3a4760;stroke-dasharray:6 4}
+.seq-svg .hit{fill:transparent;cursor:pointer}
+.seq-svg .step{transition:opacity .3s}
+.seq-svg .step.future{opacity:.1}
+.seq-svg .step.on .hit{fill:rgba(88,166,255,.07)}
+.seq-svg .step.on .msg-t{font-weight:700;fill:#fff}
+
+/* maps + sim */
+.demo{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start;margin:22px 0}
+.map{background:#0a111c;border:1px solid var(--line);border-radius:16px;padding:8px}
+.map svg{display:block;width:100%;height:auto;cursor:crosshair}
+.dash{display:grid;gap:12px}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ro{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ro small{display:block;font-size:.72em;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.ro b{font-size:1.15em;font-variant-numeric:tabular-nums}
+.statepills{display:flex;gap:8px}
+.pill{flex:1;text-align:center;padding:9px 6px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:.8em;font-weight:700;color:var(--muted);transition:all .3s}
+.pill.on[data-s="LOCKED"]{background:#3a1518;border-color:var(--bad);color:#ffb3ad}
+.pill.on[data-s="DOOR_UNLOCKED"]{background:#3a2c0e;border-color:var(--warn);color:#ffe29a}
+.pill.on[data-s="OCCUPIED"]{background:#10301a;border-color:var(--ecu);color:#a7f3b5}
+.leds{display:flex;gap:10px}
+.led{flex:1;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.86em}
+.led i{width:14px;height:14px;border-radius:50%;background:#2a3140;box-shadow:inset 0 0 3px #000;transition:all .15s}
+.led.on i{background:#ffd23f;box-shadow:0 0 14px #ffd23f}
+.led.ign.on i{background:#3fb950;box-shadow:0 0 14px #3fb950}
+.meter{height:8px;background:#1b2332;border-radius:99px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--ecu);transition:width .1s linear}
+.hits{display:flex;gap:6px}
+.hits i{width:18px;height:18px;border-radius:50%;border:2px solid #3a4760}
+.hits i.on{background:var(--warn);border-color:var(--warn)}
+.log{background:#0a0f18;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:.78em;height:150px;overflow:hidden;color:#9fb0c4}
+.log div:first-child{color:#fff}
+.ctrl{display:flex;gap:8px}
+.ctrl button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 14px;font:inherit;font-size:.86em;cursor:pointer}
+.ctrl button:hover{border-color:var(--c)}
+
+/* state machine */
+#sm .node rect{fill:#141b29;stroke:#3a4760;stroke-width:1.5;transition:all .3s}
+#sm .node text{fill:#cfd8e3;font-weight:700;font-size:14px}
+#sm .node.active[data-s="LOCKED"] rect{fill:#3a1518;stroke:var(--bad)}
+#sm .node.active[data-s="DOOR_UNLOCKED"] rect{fill:#3a2c0e;stroke:var(--warn)}
+#sm .node.active[data-s="OCCUPIED"] rect{fill:#10301a;stroke:var(--ecu)}
+#sm .edge{fill:none;stroke:#6b7a93;stroke-width:1.8}
+#sm .elab{fill:#b8c4d2;font-size:11.5px}
+
+/* AI */
+.heat{display:grid;grid-template-columns:40px repeat(25,1fr);gap:3px;align-items:center}
+.heat .lbl{font-size:.8em;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+.heat .cell{height:26px;border-radius:3px;background:#222}
+.classes{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.cls{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.cls b{font-size:1.02em}
+.cls .num{float:right;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+.cls p{font-size:.88em;margin:.4em 0 0}
+.stack{display:flex;align-items:stretch;gap:6px;overflow-x:auto;padding:6px 0}
+.layer{flex:0 0 auto;min-width:92px;background:var(--panel);border:1px solid var(--line);border-bottom:3px solid var(--ai);border-radius:10px;padding:10px;text-align:center;font-size:.8em}
+.layer b{display:block;font-size:1.05em;color:#fff}
+.layer span{color:var(--muted)}
+.arrow{align-self:center;color:#4b5a74;font-weight:800}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:90px 1fr 48px;gap:10px;align-items:center;font-size:.88em}
+.bar .track{position:relative;height:16px;background:#1b2332;border-radius:99px;overflow:visible}
+.bar .fill{height:100%;border-radius:99px;background:var(--ai);transition:width .5s}
+.bar .th{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;opacity:.7}
+.bar .th.block{background:var(--bad);opacity:1}
+.scen{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.scen button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:5px 14px;font:inherit;font-size:.85em;cursor:pointer}
+.scen button.on{background:var(--ai);color:#1a0d02;border-color:var(--ai);font-weight:700}
+.verdict{margin-top:12px;padding:10px 14px;border-radius:10px;background:#1a1410;border:1px solid #4a3218;font-size:.92em}
+
+/* flows */
+.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:16px 0}
+.flow .box{flex:1 1 140px;background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:12px 14px;font-size:.88em}
+.flow .box b{display:block;color:#fff;font-size:1.02em;margin-bottom:2px}
+.flow .box span{color:var(--muted)}
+.flow .sep{align-self:center;color:#4b5a74;font-weight:800;font-size:1.2em}
+
+.layers{display:grid;gap:10px}
+.lay{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--lc);border-radius:12px;padding:12px 16px}
+.lay h4{margin:0;font-size:.98em}
+.lay h4 small{display:block;color:var(--muted);font-weight:400;font-size:.8em}
+.lay .chips{margin:0}
+
+.scale{display:flex;height:34px;border-radius:10px;overflow:hidden;font-size:.8em;font-weight:700}
+.scale div{display:flex;align-items:center;justify-content:center;color:#071018}
+.scale-lbl{display:flex;justify-content:space-between;font-size:.76em;color:var(--muted);margin-top:4px}
+.weights{display:flex;height:30px;border-radius:10px;overflow:hidden;font-size:.82em;font-weight:700}
+.weights div{display:flex;align-items:center;justify-content:center;color:#071018}
+
+.bytes{display:grid;grid-template-columns:repeat(32,1fr);gap:2px}
+.bytes i{height:24px;border-radius:2px}
+.blegend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8em;color:#c7d1dd;margin-top:8px}
+.blegend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:var(--bc)}
+
+.coll{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.coll code{background:none;border:none;padding:0;color:var(--cloud);font-size:.92em}
+.coll p{font-size:.86em;margin:.4em 0 0}
+
+.tasks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:end}
+.task{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;border-top:4px solid var(--ecu)}
+.task b{font-size:1.1em}
+.task .prio{height:var(--h);background:linear-gradient(180deg,rgba(63,185,80,.35),rgba(63,185,80,.05));border-radius:8px;margin:10px 0;display:flex;align-items:flex-end;justify-content:center;font-size:.78em;color:#a7f3b5;padding-bottom:4px}
+.task ul{margin:0;padding-left:1.1em;font-size:.84em;color:#c7d1dd}
+
+/* reference */
+.ref-tools{display:flex;gap:10px;margin:14px 0}
+.ref-tools input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;color:var(--text);font:inherit}
+table{width:100%;border-collapse:collapse;font-size:.9em}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+thead th{background:var(--panel2);color:var(--accent);position:sticky;top:0}
+tbody tr:nth-child(odd){background:#0e131d}
+tbody tr:nth-child(even){background:#131a27}
+td.src{color:#6f7f95;font-size:.85em}
+td .grp{font-size:.72em;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+
+footer{padding:50px 0 70px;color:var(--muted);font-size:.88em;text-align:center}
+
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+.reveal.in{opacity:1;transform:none}
+
+@media (max-width:1000px){
+  .g4,.g5,.phases,.classes,.tasks{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:1fr 1fr}
+  .demo{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:768px){
+  #nav{transform:translateX(-100%);transition:transform .25s;box-shadow:0 0 40px #000}
+  #nav.open{transform:none}
+  #menuBtn{display:block;position:fixed;top:12px;right:12px;z-index:60;background:var(--panel2);color:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit}
+  main{margin-left:0}
+  .wrap,.hero-inner{padding-left:18px;padding-right:18px}
+  .g2,.g3,.g4,.g5,.phases,.classes,.journey,.tasks{grid-template-columns:1fr}
+  .journey::before{display:none}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .lay{grid-template-columns:1fr}
+  .readout{grid-template-columns:repeat(2,1fr)}
+  .ch-num{font-size:3em}
+  .hero-rings{opacity:.25}
+}
 </style>
 </head>
 <body>
+<div id="progress"></div>
+<button id="menuBtn" type="button">Menu</button>
 
-<nav id="toc">
-  <h3>Contents</h3>
-  <a href="#executive-summary">1. Executive Summary</a>
-  <a href="#nfc-provisioning">2. NFC Provisioning</a>
-  <a href="#ble-auth">3. BLE Authentication</a>
-  <a href="#uwb-pipeline">4. UWB Localization</a>
-  <a href="#access-control">5. Access Control</a>
-  <a href="#tinyml">6. Intent Recognition</a>
-  <a href="#mobile-app">7. Mobile App</a>
-  <a href="#cloud-anomaly">8. Cloud &amp; Anomaly</a>
-  <a href="#freertos">9. FreeRTOS Runtime</a>
-  <a href="#constants">10. Key Constants</a>
-  <a href="#e2e-sequence">11. End-to-End Sequence</a>
+<nav id="nav">
+  <a class="brand" href="#top">Smart Car Access<span>System overview</span></a>
+  <a class="item" href="#big-picture"><i>01</i>The big picture</a>
+  <a class="item" href="#journey"><i>02</i>A visit in 4 steps</a>
+  <a class="item" href="#nfc"><i>03</i>Pairing (NFC)</a>
+  <a class="item" href="#ble"><i>04</i>Handshake (BLE)</a>
+  <a class="item" href="#uwb"><i>05</i>Locating (UWB)</a>
+  <a class="item" href="#ai"><i>06</i>Reading intent (AI)</a>
+  <a class="item" href="#access"><i>07</i>Deciding &amp; unlocking</a>
+  <a class="item" href="#app"><i>08</i>The phone app</a>
+  <a class="item" href="#cloud"><i>09</i>Cloud &amp; anomalies</a>
+  <a class="item" href="#ecu"><i>10</i>Inside the car computer</a>
+  <a class="item" href="#e2e"><i>11</i>The whole story</a>
+  <a class="item" href="#reference"><i>12</i>Numbers reference</a>
 </nav>
 
 <main>
-<h1>Smart Car Access — System Architecture</h1>
+<header class="hero" id="top">
+  <svg class="hero-rings" viewBox="0 0 720 720" aria-hidden="true">
+    <circle cx="360" cy="360" r="350"/><circle cx="360" cy="360" r="350"/><circle cx="360" cy="360" r="350"/><circle cx="360" cy="360" r="350"/>
+  </svg>
+  <div class="hero-inner">
+    <div class="eyebrow">Smart Car Access · System Overview</div>
+    <h1>Your phone is the key.<br><span>The car knows when you mean it.</span></h1>
+    <p class="lead">Walk up to the driver's door and it unlocks. Sit down and the engine is allowed to start. Walk away and the car locks itself. There are no buttons to press and no fob in your pocket, just an Android phone, three radio anchors and a small neural network running inside the car.</p>
+    <div class="stats">
+      <div class="stat"><b style="color:var(--nfc)">1 tap</b><span>pairs a phone, once (NFC)</span></div>
+      <div class="stat"><b style="color:var(--ble)">2 modes</b><span>standard or fast handshake (BLE)</span></div>
+      <div class="stat"><b style="color:var(--uwb)">3 anchors</b><span>measure distance (UWB)</span></div>
+      <div class="stat"><b style="color:var(--uwb)">10 Hz</b><span>position updates</span></div>
+      <div class="stat"><b style="color:var(--ai)">25 frames</b><span>of motion read by the AI</span></div>
+      <div class="stat"><b style="color:var(--ecu)">8 slots</b><span>owner + 7 friend keys</span></div>
+    </div>
+    <a class="cta" href="#big-picture">Start the tour &darr;</a>
+  </div>
+</header>
 
-<!-- 1 -->
-<details open>
-<summary><h2><a id="executive-summary"></a>1. Executive Summary</h2></summary>
-<p>The phone domain combines Flutter orchestration for master-card intake, native Android HCE provisioning, BLE Phase-B authentication, background scanning and authentication, and Android multicast UWB ranging (<code class="filepath">main.dart</code>, <code class="filepath">master_card_provisioning.dart</code>, <code class="filepath">ProvisioningHostApduService.kt</code>, <code class="filepath">pke_auth_orchestrator.dart</code>, <code class="filepath">pke_background_service.dart</code>, and <code class="filepath">UwbMulticastBridge.kt</code>). The ranging domain uses phone/controller address <code>0x06C1</code> with three anchor sessions, while a PC bridge reads the anchor UARTs and relays <code>RANGE:d0=...,d1=...,d2=...,valid=...</code> frames to the ESP32-S3 over USB-CDC (<code class="filepath">run_fira_bridge.py</code>). The ESP32 ECU runs Arduino and FreeRTOS firmware for NFC, BLE and FSM processing, UWB parsing, trilateration, 2D constant-velocity EKF tracking, TinyML intent inference, geofencing, and relay and ignition control (<code class="filepath">platformio.ini</code>, <code class="filepath">main.cpp</code>, <code class="filepath">uwb_bridge.cpp</code>, and <code class="filepath">access_controller.cpp</code>). Firebase Authentication identifies users, and Firestore stores cars, digital keys, provisioning metadata, access and anomaly history, and anomaly decisions, while immobilizer tokens and private keys remain outside the cloud data model (<code class="filepath">auth.dart</code>, <code class="filepath">car_service.dart</code>, <code class="filepath">anomaly_detection_service.dart</code>, and <code class="filepath">DATA_CONTRACTS.md</code>).</p>
-</details>
+<!-- 01 BIG PICTURE -->
+<section class="chapter" id="big-picture" style="--c:var(--accent)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">01</div><div><div class="kicker">Overview</div><h2>The big picture</h2></div></div>
+  <p class="lead reveal">Four players work together. The <b>phone</b> is the key. The <b>car computer</b>, an ESP32-S3 microcontroller, is the lock that thinks. <b>Three UWB anchors</b> on the car act as its eyes, measuring exactly how far away the phone is. The <b>cloud</b> keeps the account, the car list and a history that is watched for suspicious use. Click any box to jump to its chapter.</p>
 
-<!-- 2 -->
-<details open>
-<summary><h2><a id="nfc-provisioning"></a>2. NFC Provisioning (Phase A)</h2></summary>
-<p>Phase A selects HCE AID <code>A000000809434343444B467631</code> with <code>00 A4 04 00</code>, then executes SPAKE2+ REQUEST <code>INS=0x30</code>, SPAKE2+ VERIFY <code>INS=0x32</code>, base GET DATA <code>INS=0xCA,Lc=0</code>, WRITE DATA <code>INS=0xD4</code>, signature GET DATA <code>INS=0xCA,Lc=24</code>, OP CONTROL <code>INS=0x3C,P1=0x11</code>, and PROVISION RESULT <code>INS=0xDA,data=0x01</code> (<code class="filepath">nfc_session.cpp</code> and <code class="filepath">ProvisioningHostApduService.kt</code>). The SPAKE2+ challenge is <code>vehicle_id[8] || random_nonce[16]</code>: REQUEST transports it in TLV <code>0x50</code>, and VERIFY returns TLV <code>0x58</code> with a 32-byte HMAC-SHA256 that the ECU checks against the master secret (<code class="filepath">nfc_session.cpp</code>). Base GET DATA parses <code>[keyIdLen][keyId][phone_pub_65][certLen_be16][cert]</code> with optional fast-artifact TLVs <code>0x90</code> for the version and <code>0x91</code> for the 32-byte key, whereas WRITE DATA sends TLV <code>0x80,len=8,vehicle_id</code> and TLV <code>0x81,len=65,vehicle_pub</code>, and the signature response contains <code>[sigLen_be16][ECDSA-P256 DER signature]</code> (<code class="filepath">nfc_session.cpp</code>). The CCC mailbox uses NVS namespace <code>ccc_dk</code>, identity and bookkeeping keys <code>v_id</code>, <code>v_pub</code>, <code>v_priv</code>, <code>sig_bmp</code>, and <code>slot_bmp</code>, and eight slots whose <code>ep_0</code>..<code>ep_7</code> values hold 65-byte endpoint public keys and whose <code>tok_0</code>..<code>tok_7</code> values hold 32-byte immobilizer tokens; slot 0 is the owner and slots 1–7 are friends (<code class="filepath">ccc_mailbox.cpp</code> and <code class="filepath">ccc_mailbox.h</code>). The same namespace stores provisioning keys <code>cert_chain</code>, <code>fast_art_ver</code>, <code>fast_art_key</code>, <code>force_prov</code>, and <code>oneshot_force</code>; successful owner provisioning writes the phone key to slot 0, activates it, generates <code>tok_0</code>, clears signaling bit <code>0x0001</code>, and rejects replacement unless force mode is active (<code class="filepath">provisioning_phase.cpp</code>). Android protects the phone identity under alias <code>smart_car_phone_identity_p256</code> in <code>AndroidKeyStore</code> as an EC <code>secp256r1</code> key with SHA-256 sign/verify purposes and no user-authentication requirement, allowing the HCE service to sign while operating in the background (<code class="filepath">KeystoreBridge.kt</code>).</p>
-<div class="mermaid">
-sequenceDiagram
-  participant ECU as ESP32/PN532
-  participant HCE as Android HCE
-  participant KS as Android Keystore
-  participant NVS as CCC NVS
-  ECU-&gt;&gt;HCE: SELECT AID A000000809434343444B467631
-  HCE--&gt;&gt;ECU: version TLVs + 9000
-  ECU-&gt;&gt;HCE: SPAKE2+ REQUEST 0x30, TLV 0x50=vehicle_id||nonce
-  HCE--&gt;&gt;ECU: 9000
-  ECU-&gt;&gt;HCE: SPAKE2+ VERIFY 0x32
-  HCE--&gt;&gt;ECU: TLV 0x58=HMAC-SHA256 + 9000
-  ECU-&gt;&gt;HCE: GET DATA 0xCA, Lc=0
-  HCE-&gt;&gt;KS: ensure/get P-256 public key
-  HCE--&gt;&gt;ECU: phone_pub + cert + optional fast artifact
-  ECU-&gt;&gt;HCE: WRITE DATA 0xD4, vehicle_id + vehicle_pub
-  HCE--&gt;&gt;ECU: 9000
-  ECU-&gt;&gt;HCE: GET DATA 0xCA, challenge Lc=24
-  HCE-&gt;&gt;KS: ECDSA-SHA256 sign challenge
-  HCE--&gt;&gt;ECU: DER signature + 9000
-  ECU-&gt;&gt;HCE: OP CONTROL 0x3C, P1=0x11
-  HCE--&gt;&gt;ECU: 9000
-  ECU-&gt;&gt;NVS: persist slot 0 endpoint key, tok_0, cert/artifact
-  ECU-&gt;&gt;HCE: PROVISION RESULT 0xDA, data=0x01
-  HCE--&gt;&gt;ECU: 9000
+  <div class="figure reveal">
+    <svg id="bigpic" viewBox="0 0 1000 520" role="img" aria-label="System architecture diagram"></svg>
+    <div class="figcap">Each coloured line is a different radio or data link. The moving dashes show which way the data flows.</div>
+  </div>
+
+  <div class="grid g4 reveal">
+    <div class="card"><span class="tag" style="color:var(--ble)">Phone</span><h4>Android + Flutter app</h4><p>Pretends to be a contactless card for pairing, runs the Bluetooth handshake, ranges with UWB and talks to Firebase.</p></div>
+    <div class="card"><span class="tag" style="color:var(--ecu)">Car computer</span><h4>ESP32-S3 "ECU"</h4><p>Runs the NFC reader, Bluetooth, position tracking, the AI model and the final decision to drive the door relay and ignition.</p></div>
+    <div class="card"><span class="tag" style="color:var(--uwb)">Anchors</span><h4>3 × UWB modules</h4><p>Placed at the rear centre and both B-pillars. Each one measures its distance to the phone ten times a second.</p></div>
+    <div class="card"><span class="tag" style="color:var(--cloud)">Cloud</span><h4>Firebase</h4><p>Handles login, cars and digital keys, and the access history. Secret keys and immobilizer tokens <b>never</b> leave the devices.</p></div>
+  </div>
 </div>
-</details>
+</section>
 
-<!-- 3 -->
-<details open>
-<summary><h2><a id="ble-auth"></a>3. BLE Authentication (Phase B)</h2></summary>
-<p>Phase B uses GATT service <code>0000aaaa-1234-5678-9abc-def012345678</code>, RX write characteristic <code>0000aac1-1234-5678-9abc-def012345678</code>, and TX read/notify characteristic <code>0000aac2-1234-5678-9abc-def012345678</code> as an APDU-like tunnel for AUTH0 <code>0x80</code>, AUTH1 <code>0x81</code>, EXCHANGE <code>0x82</code>, CONTROL_FLOW <code>0x83</code>, RANGING_START <code>0x84</code>, and RANGING_STOP <code>0x85</code> (<code class="filepath">ble_auth.cpp</code>). In the standard path, AUTH0 uses <code>P1=0x11</code>; the ECU generates a P-256 ephemeral pair, returns the 65-byte public key, sends <code>[ecu_ephemeral_pub_65][vehicle_sig_len_le16][vehicle_ECDSA_DER]</code>, and verifies the phone response <code>[phone_ephemeral_pub_65][phone_sig_len_le16][phone_ECDSA_DER]</code> with the provisioned endpoint key (<code class="filepath">ble_auth.cpp</code>). A 32-byte P-256 ECDH secret feeds HKDF-SHA256 with an empty salt: ENC info is <code>16-byte("SmartCarv1|ENC" + zero padding) || ecu_ephemeral_pub_65 || phone_ephemeral_pub_65</code>, MAC info replaces the label with <code>SmartCarv1|MAC</code>, and both outputs are 32 bytes (<code class="filepath">ble_auth.cpp</code>). The ECU then publishes <code>vehicle_id[8] || nonce[16]</code>, and the phone returns its signature through EXCHANGE so that the ECU can verify the 24-byte challenge before declaring the session ready (<code class="filepath">ble_auth.cpp</code>). The fast transaction instead uses AUTH0 <code>P1=0x01</code> with the requested artifact version; if rollout policy permits it and NVS contains a matching 32-byte artifact, the ECU skips AUTH1/ECDH and derives 32-byte ENC and MAC keys from empty-salt HKDF info <code>16-byte("SmartCarFast|ENC" or "SmartCarFast|MAC", zero-padded) || vehicle_id[8] || artifact_version[1]</code>, after which it returns the 24-byte challenge directly (<code class="filepath">ble_auth.cpp</code> and <code class="filepath">platformio.ini</code>). CONTROL_FLOW requires ready session keys and raises the FSM unlock-request event, while RANGING_START and RANGING_STOP likewise require a ready session and invoke <code>UwbBridge::sendStart()</code> and <code>UwbBridge::sendStop()</code> (<code class="filepath">ble_auth.cpp</code>).</p>
-<div class="mermaid">
-sequenceDiagram
-  participant Phone
-  participant ECU
-  participant NVS
-  Phone-&gt;&gt;ECU: Connect GATT
-  alt Standard path P1=0x11
-    Phone-&gt;&gt;ECU: AUTH0 0x80
-    ECU--&gt;&gt;Phone: ECU ephemeral P-256 public key
-    ECU--&gt;&gt;Phone: AUTH1 0x81, ECU ephemeral + vehicle signature
-    Phone-&gt;&gt;ECU: AUTH1 0x81, phone ephemeral + phone signature
-    ECU-&gt;&gt;NVS: load provisioned phone public key
-    ECU-&gt;&gt;ECU: verify signature, ECDH, HKDF ENC/MAC
-  else Fast path P1=0x01
-    Phone-&gt;&gt;ECU: AUTH0 0x80, artifact version
-    ECU-&gt;&gt;NVS: load matching 32-byte fast artifact
-    ECU-&gt;&gt;ECU: HKDF fast ENC/MAC#59; skip AUTH1/ECDH
-  end
-  ECU--&gt;&gt;Phone: 24-byte vehicle_id||nonce challenge
-  Phone-&gt;&gt;ECU: EXCHANGE 0x82, signed challenge
-  ECU-&gt;&gt;ECU: verify with provisioned phone key
-  ECU--&gt;&gt;Phone: EXCHANGE 9000#59; session ready
-  Phone-&gt;&gt;ECU: CONTROL_FLOW 0x83
-  ECU--&gt;&gt;Phone: CONTROL_FLOW 9000
-  Phone-&gt;&gt;ECU: RANGING_START 0x84
-  ECU--&gt;&gt;Phone: 9000
+<!-- 02 JOURNEY -->
+<section class="chapter" id="journey" style="--c:var(--uwb)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">02</div><div><div class="kicker">The storyline</div><h2>A visit to the car, in four steps</h2></div></div>
+  <p class="lead reveal">Everything in this document fits into one of these four steps. Pairing happens once per phone. The other three happen every time you walk up to the car.</p>
+  <div class="journey reveal">
+    <div class="jstep" style="--jc:var(--nfc)"><div class="jdot">1</div><div class="when">Once</div><h4>Pair</h4><p>Hold the phone against the car's NFC reader. The car and phone swap identities and the phone gets the owner's key slot.</p></div>
+    <div class="jstep" style="--jc:var(--ble)"><div class="jdot">2</div><div class="when">Every visit</div><h4>Prove</h4><p>When you come close, the phone and car run a Bluetooth handshake. They prove who they are to each other and agree on fresh session keys.</p></div>
+    <div class="jstep" style="--jc:var(--uwb)"><div class="jdot">3</div><div class="when">10 times / second</div><h4>Locate</h4><p>UWB measures the distance to three anchors. The car turns those distances into your exact position and speed.</p></div>
+    <div class="jstep" style="--jc:var(--ai)"><div class="jdot">4</div><div class="when">Continuously</div><h4>Decide</h4><p>Zones, speed, direction and an AI that reads your walking pattern decide whether to unlock, allow the engine to start, or lock.</p></div>
+  </div>
 </div>
-</details>
+</section>
 
-<!-- 4 -->
-<details open>
-<summary><h2><a id="uwb-pipeline"></a>4. UWB Localization Pipeline</h2></summary>
-<p>The localization topology uses phone/controller address <code>0x06C1</code> with three anchors and per-anchor PC UART clients, commonly ordered as COM11/COM19/COM12 for d0 rear-centre, d1 right, and d2 left B-pillar, and forwards <code>RANGE:d0=&lt;m&gt;,d1=&lt;m&gt;,d2=&lt;m&gt;,valid=&lt;0|1&gt;</code> over ESP32 USB-CDC (<code class="filepath">run_fira_bridge.py</code> and <code class="filepath">uwb_geometry.h</code>). The PC bridge starts or stops all anchor sessions on <code>CMD:START_RANGING</code> or <code>CMD:STOP_RANGING</code> and returns corresponding <code>ACK:</code> lines, while the ESP32 derives <code>valid_mask</code> from each positive distance rather than the aggregate <code>valid</code> field so that two-anchor solutions remain possible (<code class="filepath">run_fira_bridge.py</code> and <code class="filepath">uwb_bridge.cpp</code>). Trilateration applies a two-circle closed-form solution when exactly two anchors are usable and a maximum-10-iteration Gauss-Newton least-squares refinement when all three are usable, producing <code>(x,y,rms,valid)</code> (<code class="filepath">trilateration.cpp</code> and <code class="filepath">trilateration.h</code>). Anchors (<code class="filepath">uwb_geometry.h</code>): A0=(0.00,-2.00)m rear-centre, A1=(0.95,0.00)m right, A2=(-0.95,0.00)m left B-pillar. EKF: 2D constant-velocity [x,y,vx,vy]; sigma_meas=clamp(RMS,0.05,1.0)m; sigma_a=1.2 m/s^2; predict per measurement; NO coasting; re-init if gap&gt;2s or innovation&gt;2.5m. The EKF additionally uses a default measurement standard deviation of 0.15 m, initial velocity variance 4.0 <code>(m/s)^2</code>, and a 2.0 m/s speed clamp; <code>kDrivePeriodMs=100</code> drives inference and access from the last corrected estimate, whereas <code>kMaxCoastMs=500</code> suppresses stale access updates without introducing prediction between measurements (<code class="filepath">ekf_stub.cpp</code> and <code class="filepath">uwb_bridge.cpp</code>).</p>
-<div class="callout-research">
-  &#9888;&#65039; Research transport: The PC bridge (run_fira_bridge.py) is a
-  development-grade serial relay, not a production topology. In a production
-  system this would be replaced by direct SPI/UART between the UWB module and ESP32.
+<!-- 03 NFC -->
+<section class="chapter" id="nfc" style="--c:var(--nfc)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">03</div><div><div class="kicker">Step 1 · NFC · once per phone</div><h2>Pairing: teaching the car to trust your phone</h2></div></div>
+  <p class="lead reveal">Before a phone can open the car, the car has to learn who it is. The owner first scans the <b>NFC master card</b> that belongs to the car, which prepares the app. Then the phone is held against the car's NFC reader (a PN532). The phone now behaves exactly like a contactless smart card, a trick called <b>Host Card Emulation (HCE)</b>, and the car talks to it with the same short commands a card reader uses (APDUs).</p>
+
+  <div class="phases reveal">
+    <div class="phase"><b>Hello</b><span>The car asks "is the Smart-Car key app here?" by selecting its application ID.</span></div>
+    <div class="phase"><b>Prove the secret</b><span>A SPAKE2+ exchange: the phone answers a fresh 24-byte challenge with an HMAC that only the right secret can produce.</span></div>
+    <div class="phase"><b>Swap identities</b><span>The phone hands over its public key and certificate. The car replies with its own ID and public key.</span></div>
+    <div class="phase"><b>Prove the key</b><span>The phone signs a challenge with its private key, which never leaves Android's hardware keystore.</span></div>
+    <div class="phase"><b>Commit</b><span>The car saves the phone in owner slot 0, creates an immobilizer token and reports success.</span></div>
+  </div>
+
+  <h3 class="reveal">Watch the conversation <small>press Play or click any row</small></h3>
+  <div class="seq reveal" id="seq-nfc"></div>
+
+  <div class="grid g2 reveal" style="margin-top:22px">
+    <div class="card">
+      <h4>What the car remembers</h4>
+      <p>Everything is stored in the ESP32's flash memory under the name <code>ccc_dk</code>: the car's own ID and key pair, plus <b>eight key slots</b>. Each slot holds a phone's 65-byte public key and a 32-byte immobilizer token.</p>
+      <svg id="slots" viewBox="0 0 440 130" style="width:100%;margin-top:10px"></svg>
+      <p style="font-size:.85em;color:var(--muted)">If an owner is already paired, a new pairing is refused unless the car is put into a special "force" mode.</p>
+    </div>
+    <div class="card">
+      <h4>What the phone keeps</h4>
+      <p>The phone's identity is an elliptic-curve key pair (<code>secp256r1</code>, also called P-256) created inside the <b>Android Keystore</b> under the alias <code>smart_car_phone_identity_p256</code>. The private half can sign but can never be exported.</p>
+      <p>It is created <b>without</b> a fingerprint or PIN requirement, so the card-emulation service can sign even when the screen is off or the app is in the background.</p>
+      <p>The phone also remembers which car it was bound to and an optional <b>fast artifact</b>, a 32-byte shared secret that makes later handshakes quicker (see Step 2).</p>
+    </div>
+  </div>
+
+  <details class="uth reveal"><summary>Under the hood: the exact commands</summary><div class="body">
+    <table>
+      <thead><tr><th>#</th><th>Command</th><th>Bytes</th><th>What travels</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>SELECT</td><td><code>00 A4 04 00</code></td><td>AID <code>A000000809434343444B467631</code>; phone answers with version info</td></tr>
+        <tr><td>2</td><td>SPAKE2+ REQUEST</td><td><code>INS=0x30</code></td><td>TLV <code>0x50</code> = <code>vehicle_id[8] || random_nonce[16]</code></td></tr>
+        <tr><td>3</td><td>SPAKE2+ VERIFY</td><td><code>INS=0x32</code></td><td>Phone returns TLV <code>0x58</code> = 32-byte HMAC-SHA256, checked against the master secret</td></tr>
+        <tr><td>4</td><td>GET DATA</td><td><code>INS=0xCA, Lc=0</code></td><td><code>[keyIdLen][keyId][phone_pub_65][certLen_be16][cert]</code> + optional TLV <code>0x90</code> (artifact version), <code>0x91</code> (32-byte artifact)</td></tr>
+        <tr><td>5</td><td>WRITE DATA</td><td><code>INS=0xD4</code></td><td>TLV <code>0x80</code> (8-byte vehicle ID), TLV <code>0x81</code> (65-byte vehicle public key)</td></tr>
+        <tr><td>6</td><td>GET DATA (sign)</td><td><code>INS=0xCA, Lc=24</code></td><td>Phone returns <code>[sigLen_be16][ECDSA-P256 DER signature]</code></td></tr>
+        <tr><td>7</td><td>OP CONTROL</td><td><code>INS=0x3C, P1=0x11</code></td><td>Car finalises</td></tr>
+        <tr><td>8</td><td>PROVISION RESULT</td><td><code>INS=0xDA</code></td><td><code>data=0x01</code> = success</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>Car storage keys: <code>v_id</code>, <code>v_pub</code>, <code>v_priv</code>, <code>sig_bmp</code>, <code>slot_bmp</code>; slots <code>ep_0..ep_7</code> (phone keys) and <code>tok_0..tok_7</code> (tokens); pairing extras <code>cert_chain</code>, <code>fast_art_ver</code>, <code>fast_art_key</code>, <code>force_prov</code>, <code>oneshot_force</code>.</li>
+      <li>On success the car activates slot 0, generates <code>tok_0</code> and clears signalling bit <code>0x0001</code>.</li>
+      <li>The phone-side challenge expires after <code>45000 ms</code>. The PN532 is wired over UART (RX <code>44</code>, TX <code>43</code>, <code>115200</code> baud).</li>
+    </ul>
+  </div></details>
 </div>
-<div class="mermaid">
-flowchart TD
-  P[Phone UWB 0x06C1] --&gt; A0[A0 rear-centre]
-  P --&gt; A1[A1 right]
-  P --&gt; A2[A2 left B-pillar]
-  A0 --&gt; PC[PC UART bridge]
-  A1 --&gt; PC
-  A2 --&gt; PC
-  PC --&gt;|RANGE:d0,d1,d2,valid over USB-CDC| Q[ESP32 frame queue]
-  Q --&gt; T{usable anchors}
-  T --&gt;|2| C[2-circle closed form]
-  T --&gt;|3| G[Gauss-Newton]
-  C --&gt; R[x,y,rms]
-  G --&gt; R
-  R --&gt; E[CV EKF predict+correct on measurement]
-  E --&gt; I[25x4 intent window]
-  E --&gt; Z[Geofence and access gates]
-  I --&gt; Z
+</section>
+
+<!-- 04 BLE -->
+<section class="chapter" id="ble" style="--c:var(--ble)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">04</div><div><div class="kicker">Step 2 · Bluetooth LE · every visit</div><h2>The handshake: proving who's who</h2></div></div>
+  <p class="lead reveal">Once paired, the phone never needs to be tapped again. When you come close, it connects over <b>Bluetooth Low Energy</b>. Instead of inventing a new protocol, the car opens a small "tunnel": the phone writes card-style commands into one channel and the car answers on another. Through that tunnel both sides prove their identity and agree on two brand-new <b>session keys</b> that are valid for this visit only.</p>
+
+  <div class="figure reveal">
+    <svg id="tunnel" viewBox="0 0 1000 250" role="img" aria-label="BLE tunnel"></svg>
+  </div>
+
+  <div class="grid g2 reveal">
+    <div class="card" style="border-top:3px solid var(--ble)">
+      <span class="tag" style="color:var(--ble)">Standard path</span>
+      <h4>Full key exchange (AUTH0 with P1 = 0x11)</h4>
+      <p>Both sides create a throw-away key pair, sign it with their long-term identity, and swap. Each side checks the other's signature, then combines the throw-away keys (ECDH) into a shared secret that nobody listening can compute.</p>
+      <p>That secret is stretched with HKDF-SHA256 into a 32-byte <b>ENC</b> key and a 32-byte <b>MAC</b> key.</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--uwb)">
+      <span class="tag" style="color:var(--uwb)">Fast path</span>
+      <h4>Pre-shared shortcut (AUTH0 with P1 = 0x01)</h4>
+      <p>If the phone handed over a fast artifact during pairing and the rollout settings allow it, the phone just names the artifact version. The car derives the same two session keys straight from that 32-byte secret.</p>
+      <p>The whole signature-and-ECDH round (AUTH1) is <b>skipped</b>, which saves time at the door.</p>
+    </div>
+  </div>
+  <p class="reveal">Both paths end the same way. The car sends a fresh 24-byte challenge (its ID plus 16 random bytes). The phone signs it, and the car checks the signature against the public key saved at pairing. Only then is the session "ready". After that, the phone can request an unlock (CONTROL_FLOW) and start or stop UWB ranging.</p>
+
+  <h3 class="reveal">Watch the handshake</h3>
+  <div class="seq reveal" id="seq-ble"></div>
+
+  <details class="uth reveal"><summary>Under the hood: payloads and key derivation</summary><div class="body">
+    <ul>
+      <li>GATT service <code>0000aaaa-1234-5678-9abc-def012345678</code>; RX (phone writes) <code>0000aac1-…</code>; TX (car reads/notifies) <code>0000aac2-…</code>.</li>
+      <li>Request frame: <code>[CLA, INS, P1, P2, Lc, data…]</code>. Each response comes back on TX tagged with the original instruction and a status.</li>
+      <li>Car AUTH1: <code>[ecu_ephemeral_pub_65][vehicle_sig_len_le16][vehicle_ECDSA_DER]</code>. Phone AUTH1: <code>[phone_ephemeral_pub_65][phone_sig_len_le16][phone_ECDSA_DER]</code>.</li>
+      <li>Standard HKDF: 32-byte ECDH secret, empty salt, info = <code>16-byte("SmartCarv1|ENC", zero-padded) || ecu_ephemeral_pub_65 || phone_ephemeral_pub_65</code>; MAC uses <code>SmartCarv1|MAC</code>.</li>
+      <li>Fast HKDF: 32-byte artifact, empty salt, info = <code>16-byte("SmartCarFast|ENC" or "SmartCarFast|MAC") || vehicle_id[8] || artifact_version[1]</code>.</li>
+      <li>CONTROL_FLOW, RANGING_START and RANGING_STOP are rejected unless the session keys are ready.</li>
+    </ul>
+  </div></details>
 </div>
-</details>
+</section>
 
-<!-- 5 -->
-<details open>
-<summary><h2><a id="access-control"></a>5. Access Control &amp; Geofencing</h2></summary>
-<p>Geofence zones: OUTSIDE / WELCOME r=2.5m / DRIVER_DOOR centre(-0.95,0) r=1.0m / DRIVER_SEAT centre(-0.35,0) r=0.45m. Classification checks DRIVER_SEAT before DRIVER_DOOR, WELCOME, and OUTSIDE, and the stateful result changes only after three consecutive samples of a candidate zone (<code class="filepath">geofence.cpp</code>, <code class="filepath">geofence.h</code>, and <code class="filepath">access_controller.cpp</code>). AccessController: 3 states LOCKED-&gt;DOOR_UNLOCKED-&gt;OCCUPIED-&gt;LOCKED; gates: deceleration (speed&lt;0.4m/s), 3-hit unlock debounce, 3s seat-settle, radial-velocity approach, 4-class AI intent. From LOCKED, unlocking additionally requires a DRIVER_DOOR or DRIVER_SEAT zone, radial velocity not moving away above <code>0.10 m/s</code>, passing probability below <code>0.70</code>, approach probability at least <code>0.80</code>, and all conditions sustained for three hits; from DOOR_UNLOCKED, DRIVER_SEAT, speed below <code>0.4 m/s</code>, seated probability at least <code>0.80</code>, and a continuous 3000 ms settle cause the door to lock and ignition to become authorized (<code class="filepath">access_controller.cpp</code>). DOOR_UNLOCKED returns directly to LOCKED when the stable zone becomes OUTSIDE while moving away above <code>0.10 m/s</code>, without leave debounce or a leave-intent threshold, whereas OCCUPIED requires OUTSIDE, the same moving-away condition, leave probability at least <code>0.80</code>, and three consecutive hits before revoking ignition and locking; if inference is unavailable or its 25-frame window is warming up, approach, seated, and leave default to <code>1.0</code> and passing defaults to <code>0.0</code> so that AI gates are skipped (<code class="filepath">access_controller.cpp</code> and <code class="filepath">uwb_bridge.cpp</code>). RELAY_PIN=5, IGNITION_PIN=7; an unlock holds the relay HIGH for 500 ms before returning it LOW, while authorized ignition is represented by a HIGH output (<code class="filepath">access_controller.cpp</code> and <code class="filepath">access_controller.h</code>).</p>
-<div class="mermaid">
-stateDiagram-v2
-  [*] --&gt; LOCKED
-  LOCKED --&gt; DOOR_UNLOCKED: near door + speed&lt;0.4 + approaching/not-away + approach&gt;=0.80 + passing&lt;0.70 + 3 hits / relay pulse
-  DOOR_UNLOCKED --&gt; OCCUPIED: driver seat + speed&lt;0.4 + seated&gt;=0.80 + 3 s / lock + ignition HIGH
-  DOOR_UNLOCKED --&gt; LOCKED: OUTSIDE + moving away / lock
-  OCCUPIED --&gt; LOCKED: OUTSIDE + moving away + leave&gt;=0.80 + 3 hits / ignition LOW + lock
+<!-- 05 UWB -->
+<section class="chapter" id="uwb" style="--c:var(--uwb)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">05</div><div><div class="kicker">Step 3 · Ultra-Wideband · 10 times a second</div><h2>Locating the phone</h2></div></div>
+  <p class="lead reveal">Bluetooth can tell that the phone is <i>somewhere near</i>, but not whether it's at the driver's door or on the other side of the car. <b>Ultra-Wideband (UWB)</b> times how long very short radio pulses take to travel back and forth, which gives a real distance in metres. Three anchors each measure their own distance, and the car turns the three distances into a position.</p>
+
+  <div class="figure reveal">
+    <svg id="topo" viewBox="0 0 1000 230" role="img" aria-label="UWB topology"></svg>
+  </div>
+  <div class="callout-research reveal">
+    &#9888;&#65039; Research transport: The PC bridge (run_fira_bridge.py) is a
+    development-grade serial relay, not a production topology. In a production
+    system this would be replaced by direct SPI/UART between the UWB module and ESP32.
+  </div>
+
+  <h3 class="reveal">Try it: trilateration <small>click anywhere on the map to move the phone</small></h3>
+  <div class="demo reveal">
+    <div class="map"><svg id="map-tri"></svg></div>
+    <div class="dash">
+      <div class="readout">
+        <div class="ro"><small>d0 · rear</small><b id="t-d0">–</b></div>
+        <div class="ro"><small>d1 · right</small><b id="t-d1">–</b></div>
+        <div class="ro"><small>d2 · left</small><b id="t-d2">–</b></div>
+      </div>
+      <div class="readout">
+        <div class="ro"><small>Solved x</small><b id="t-x">–</b></div>
+        <div class="ro"><small>Solved y</small><b id="t-y">–</b></div>
+        <div class="ro"><small>Fit error (RMS)</small><b id="t-r">–</b></div>
+      </div>
+      <div class="card">
+        <h4>How three circles give one point</h4>
+        <p>Each distance means "the phone is somewhere on this circle". Two circles cross at two points, and the third circle picks the right one. Real measurements are a little noisy, so the car starts from a guess and refines it up to <b>10 times</b> (Gauss-Newton least squares) until the circles agree as well as possible.</p>
+        <p>If one anchor drops out, the car still solves with the <b>two remaining circles</b> using a direct formula. Each distance is checked on its own, so one bad anchor doesn't throw away the whole frame.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="reveal">From raw distances to a decision</h3>
+  <div class="flow reveal">
+    <div class="box"><b>Ranges</b><span>d0, d1, d2 arrive as one text line over USB</span></div><div class="sep">&rarr;</div>
+    <div class="box"><b>Position</b><span>trilateration gives x, y and a fit error</span></div><div class="sep">&rarr;</div>
+    <div class="box"><b>Smoothing</b><span>a Kalman filter adds velocity and removes jitter</span></div><div class="sep">&rarr;</div>
+    <div class="box" style="border-top-color:var(--ai)"><b>Intent</b><span>the last 25 states go into the AI</span></div><div class="sep">&rarr;</div>
+    <div class="box" style="border-top-color:var(--ecu)"><b>Zones &amp; gates</b><span>the access controller decides</span></div>
+  </div>
+
+  <div class="grid g2 reveal">
+    <div class="card">
+      <h4>The Kalman filter, in plain words</h4>
+      <p>Each new fix jumps around a bit. The filter keeps a belief of <b>where you are and how fast you're moving</b> (x, y, vx, vy). When a new fix arrives, it first predicts where you should be now, then blends in the measurement. A good fit (low error) gets more trust and a poor fit gets less.</p>
+      <p>It never invents positions between measurements. If fixes stop for more than 2 seconds, or one lands more than 2.5 m from the prediction, it simply starts over.</p>
+    </div>
+    <div class="card">
+      <h4>Timing</h4>
+      <p>The anchors range at <b>10 Hz</b>. Every <b>100 ms</b> the latest smoothed position is handed to the AI and the access controller. If the newest fix is older than <b>500 ms</b>, access decisions pause instead of acting on stale data.</p>
+      <p>Anchor positions (metres, car centre = 0,0, front = +y): A0 <code>(0, −2)</code> rear-centre, A1 <code>(0.95, 0)</code> right B-pillar, A2 <code>(−0.95, 0)</code> left B-pillar.</p>
+    </div>
+  </div>
+
+  <details class="uth reveal"><summary>Under the hood: serial format and filter settings</summary><div class="body">
+    <ul>
+      <li>Bridge to car: <code>RANGE:d0=&lt;m&gt;,d1=&lt;m&gt;,d2=&lt;m&gt;,valid=&lt;0|1&gt;</code> and <code>ACK:…</code>. Car to bridge: <code>CMD:START_RANGING</code>, <code>CMD:STOP_RANGING</code>.</li>
+      <li>The car ignores the overall <code>valid</code> flag. Every positive distance sets its own bit in <code>valid_mask</code>.</li>
+      <li>Bridge session: controller <code>0x06C1</code>, session <code>42</code>, channel <code>9</code>, preamble <code>9</code>; accepted distances <code>0.1–30.0 m</code>, freshness <code>500 ms</code>. Example ports COM11 / COM19 / COM12 map to d0 / d1 / d2.</li>
+      <li>EKF: constant-velocity model; measurement noise = fit RMS clamped to <code>0.05–1.0 m</code> (default <code>0.15 m</code>); acceleration noise <code>1.2 m/s²</code>; initial velocity variance <code>4.0 (m/s)²</code>; speed clamp <code>2.0 m/s</code>.</li>
+      <li>Incoming frames wait in a queue of depth <code>8</code>.</li>
+    </ul>
+  </div></details>
 </div>
-</details>
+</section>
 
-<!-- 6 -->
-<details open>
-<summary><h2><a id="tinyml"></a>6. Intent Recognition (TinyML)</h2></summary>
-<p>The data pipeline begins when <code><span class="filepath">localization_demo.py</span> --capture</code> records ESP32 output, after which <code class="filepath">collect_traj.py</code> extracts labelled <code>[EKF]</code> rows in the form <code>run_id,timestamp_ms,x,y,vx,vy,label</code>; <code class="filepath">train_traj_model.py</code> trains and converts the model, <code class="filepath">uwb_traj_model.h</code> embeds its bytes, and <code class="filepath">traj_inference.cpp</code> executes it with TensorFlow Lite Micro. Train/test separation occurs by run, StandardScaler is fitted only to training features, and sliding windows do not cross run boundaries (<code class="filepath">collect_traj.py</code> and <code class="filepath">train_traj_model.py</code>). The model is Conv1D(16,kernel=3,ReLU) -&gt; MaxPool(2) -&gt; Conv1D(32,kernel=3,ReLU) -&gt; MaxPool(2) -&gt; Flatten -&gt; Dense(16,ReLU) -&gt; Dropout(0.2) -&gt; Dense(4,softmax) (<code class="filepath">train_traj_model.py</code>). Intent: TFLM Conv1D, 25x4 window [x,y,vx,vy], 4 classes approach(0)/seated(1)/leave(2)/passing(3); act if p&gt;=0.80; hard-block unlock if p_passing&gt;=0.70; already wired in <code class="filepath">uwb_bridge.cpp</code>. Feature normalization uses mean <code>[-1.176990,-0.693135,-0.019802,0.006809]</code> and scale <code>[1.118417,1.425282,0.187332,0.270498]</code> in <code>[x,y,vx,vy]</code> order (<code class="filepath">traj_inference.h</code>). TFLM allocates a 44 KiB tensor arena, requires float32 input and output tensors, and withholds predictions until all 25 frames are available, preventing partially populated sequences from controlling the state machine (<code class="filepath">traj_inference.cpp</code>).</p>
-<div class="mermaid">
-flowchart LR
-  L[localization_demo.py --capture] --&gt; C[collect_traj.py]
-  C --&gt; D[labelled x,y,vx,vy CSV runs]
-  D --&gt; T[train_traj_model.py Conv1D]
-  T --&gt; H[uwb_traj_model.h]
-  H --&gt; M[traj_inference.cpp TFLM]
-  E[EKF x,y,vx,vy] --&gt; M
-  M --&gt; P[approach/seated/leave/passing probabilities]
-  P --&gt; A[AccessController AI gates]
+<!-- 06 AI -->
+<section class="chapter" id="ai" style="--c:var(--ai)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">06</div><div><div class="kicker">Step 4a · TinyML · on the microcontroller</div><h2>Reading intent from the way you walk</h2></div></div>
+  <p class="lead reveal">Standing next to the door isn't proof that you want to get in. You might just be walking past. So the car looks at your <b>last 25 movement samples</b> (about 2.5 seconds) and a small neural network, running directly on the ESP32 with TensorFlow Lite Micro, guesses what you're doing.</p>
+
+  <h3 class="reveal">The model's input: a sliding window <small>illustrative live data</small></h3>
+  <div class="figure reveal">
+    <div class="heat" id="heat"></div>
+    <div class="figcap">4 rows (x, y, vx, vy) × 25 columns (the newest sample is on the right). Each value is normalised before it enters the model.</div>
+  </div>
+
+  <h3 class="reveal">Four possible answers</h3>
+  <div class="classes reveal">
+    <div class="cls" style="border-top:3px solid var(--ecu)"><span class="num">0</span><b>approach</b><p>Walking towards the car. Must reach <b>≥ 0.80</b> before an unlock.</p></div>
+    <div class="cls" style="border-top:3px solid var(--ble)"><span class="num">1</span><b>seated</b><p>Settled in the driver's seat. Must reach <b>≥ 0.80</b> before ignition is allowed.</p></div>
+    <div class="cls" style="border-top:3px solid var(--nfc)"><span class="num">2</span><b>leave</b><p>Walking away. Must reach <b>≥ 0.80</b> before locking an occupied car.</p></div>
+    <div class="cls" style="border-top:3px solid var(--bad)"><span class="num">3</span><b>passing</b><p>Just walking by. At <b>≥ 0.70</b> an unlock is <b>hard-blocked</b>.</p></div>
+  </div>
+
+  <div class="grid g2 reveal" style="margin-top:22px">
+    <div class="card">
+      <h4>Try the decision rule <small style="color:var(--muted);font-weight:400">illustrative numbers</small></h4>
+      <div class="scen" id="scen"></div>
+      <div class="bars" id="bars"></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <div class="card">
+      <h4>Warming up</h4>
+      <p>The model only answers once all 25 samples are filled. Until then, and whenever the model isn't available, the AI gates are simply <b>skipped</b>: approach, seated and leave count as 1.0 and passing counts as 0.0. The geometry and speed rules still apply.</p>
+      <h4 style="margin-top:14px">Small enough for a microcontroller</h4>
+      <p>The whole model runs inside a <b>44 KiB</b> working memory area, with 32-bit float input and output.</p>
+    </div>
+  </div>
+
+  <h3 class="reveal">Inside the network</h3>
+  <div class="stack reveal">
+    <div class="layer"><b>Input</b><span>25 × 4</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>Conv1D</b><span>16 filters, k=3, ReLU</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>MaxPool</b><span>× 2</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>Conv1D</b><span>32 filters, k=3, ReLU</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>MaxPool</b><span>× 2</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>Flatten</b><span>&nbsp;</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>Dense</b><span>16, ReLU</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer"><b>Dropout</b><span>0.2</span></div><div class="arrow">&rsaquo;</div>
+    <div class="layer" style="border-bottom-color:var(--ecu)"><b>Softmax</b><span>4 classes</span></div>
+  </div>
+  <p class="reveal">The convolution layers slide across time looking for short motion patterns, such as "slowing down while getting closer". The dense layers combine those patterns into the four probabilities.</p>
+
+  <h3 class="reveal">How it was trained</h3>
+  <div class="flow reveal">
+    <div class="box"><b>Record</b><span>walk around the car while the car logs its filtered positions</span></div><div class="sep">&rarr;</div>
+    <div class="box"><b>Label</b><span>each run becomes rows of run, time, x, y, vx, vy, label</span></div><div class="sep">&rarr;</div>
+    <div class="box"><b>Train</b><span>split by whole runs, so the test data is never seen in training</span></div><div class="sep">&rarr;</div>
+    <div class="box"><b>Convert</b><span>export to TensorFlow Lite and embed it as a C array</span></div><div class="sep">&rarr;</div>
+    <div class="box" style="border-top-color:var(--ecu)"><b>Run</b><span>TFLM inference on the ESP32 every 100 ms</span></div>
+  </div>
+
+  <details class="uth reveal"><summary>Under the hood: normalisation</summary><div class="body">
+    <ul>
+      <li>The scaler is fitted on the training set only. Sliding windows never cross from one run into another.</li>
+      <li>Mean <code>[x,y,vx,vy] = [-1.176990, -0.693135, -0.019802, 0.006809]</code></li>
+      <li>Scale <code>[1.118417, 1.425282, 0.187332, 0.270498]</code></li>
+      <li><code>TIME_STEPS / NUM_FEATURES / NUM_CLASSES = 25 / 4 / 4</code></li>
+    </ul>
+  </div></details>
 </div>
-</details>
+</section>
 
-<!-- 7 -->
-<details open>
-<summary><h2><a id="mobile-app"></a>7. Mobile App Architecture</h2></summary>
-<p>The Flutter service layer separates cloud and user functions across <code class="filepath">auth.dart</code>, <code class="filepath">car_service.dart</code>, <code class="filepath">database.dart</code>, <code class="filepath">initial_data_helper.dart</code>, and <code class="filepath">language_service.dart</code>: these modules wrap Firebase Authentication, car and digital-key CRUD plus owner-provisioning and simulated control updates, writes to <code>User/{userId}</code>, sample car/key seeding with UI feedback, and persisted localization preferences, respectively. Its security and access services include <code class="filepath">master_card_provisioning.dart</code> for NDEF JSON intake and native HCE session/binding control; the disabled compatibility stub <code class="filepath">nfc_provisioning_service.dart</code>; <code class="filepath">pke_auth_orchestrator.dart</code> for FlutterBluePlus scanning, connection, standard or fast Phase B, session keys, GPS, and ranging commands; <code class="filepath">ble_phase_test.dart</code> for Phase-A status and delegated Phase-B tests; <code class="filepath">ble_runtime_permissions.dart</code> for Android permission handling; and <code class="filepath">gps_service.dart</code> for GPS acquisition, reverse geocoding, 32-byte serialization, XOR encryption, and HMAC-SHA256 (<code class="filepath">master_card_provisioning.dart</code>, <code class="filepath">nfc_provisioning_service.dart</code>, <code class="filepath">pke_auth_orchestrator.dart</code>, <code class="filepath">ble_phase_test.dart</code>, <code class="filepath">ble_runtime_permissions.dart</code>, and <code class="filepath">gps_service.dart</code>). Runtime support is divided among <code class="filepath">pke_background_service.dart</code>, which performs foreground-mode Android scanning, authentication, telemetry/backoff, and dual-isolate handoff; <code class="filepath">background_service_control.dart</code>, which persists and toggles service state; <code class="filepath">doze_exemption_service.dart</code>, which manages battery-optimization exemption; <code class="filepath">pke_rollout_flags.dart</code>, which persists background, fast-transaction, bonding, and RSSI policy; <code class="filepath">pke_telemetry.dart</code>, which defines structured PKE events; and <code class="filepath">uwb_multi_service.dart</code>, which wraps the native multicast UWB MethodChannel and EventChannel (<code class="filepath">pke_background_service.dart</code>, <code class="filepath">background_service_control.dart</code>, <code class="filepath">doze_exemption_service.dart</code>, <code class="filepath">pke_rollout_flags.dart</code>, <code class="filepath">pke_telemetry.dart</code>, and <code class="filepath">uwb_multi_service.dart</code>). The anomaly and notification layer comprises <code class="filepath">ai_service.dart</code>, <code class="filepath">anomaly_scorer.dart</code>, <code class="filepath">anomaly_detection_service.dart</code>, <code class="filepath">anomaly_decision_engine.dart</code>, <code class="filepath">time_anomaly_detector.dart</code>, <code class="filepath">location_anomaly_detector.dart</code>, <code class="filepath">notification_service.dart</code>, and <code class="filepath">push_notification_service.dart</code>, covering risk features, Gemini-backed scoring and fallback, deterministic and AI analyses, decision mapping, temporal/frequency and geographic detectors, in-app dialogs, and system notifications. Native Kotlin modules assign HCE APDU handling to <code>ProvisioningHostApduService</code>, UID/vehicle/artifact persistence to <code>DataStoreUtil</code>, the Phase-A P-256 identity to <code>KeystoreBridge</code>, Flutter-accessible Phase-B cryptography to <code>HandshakeChannel</code> and <code>PhaseBCrypto</code>, and API-36 <code>android.ranging</code> multicast DS-TWR with aggregate status/range events to <code>UwbMulticastBridge</code> (<code class="filepath">ProvisioningHostApduService.kt</code>, <code class="filepath">DataStoreUtil.kt</code>, <code class="filepath">KeystoreBridge.kt</code>, <code class="filepath">HandshakeChannel.kt</code>, <code class="filepath">PhaseBCrypto.kt</code>, and <code class="filepath">UwbMulticastBridge.kt</code>). During the dual-isolate handoff, the background isolate authenticates and retains BLE while invoking <code>runUwbHandoff</code>; the foreground isolate reconnects by known MAC, sends RANGING_START, starts native multicast UWB, returns <code>uwbHandoffResult</code>, and allows the background connection to be released, with <code>stopUwbHandoff</code> and <code>uwbHandoffStopped</code> reversing the process; supporting dependencies are <code>nfc_manager</code> 4.1.1 with local override, <code>flutter_blue_plus</code> 1.18.5, <code>pointycastle</code> 3.9.0, <code>asn1lib</code> 1.5.0, <code>crypto</code> 3.0.3, <code>cryptography</code> 2.7.0, <code>flutter_secure_storage</code> 9.2.2, <code>shared_preferences</code> 2.3.2, <code>permission_handler</code> 11.3.1, <code>wakelock_plus</code> 1.2.5, <code>geolocator</code> 13.0.2, <code>flutter_background_service</code> 5.1.0, <code>flutter_background_service_android</code> 6.3.0, and local <code>phaseb_handshake_bridge</code> (<code class="filepath">pke_background_service.dart</code> and <code class="filepath">pubspec.yaml</code>).</p>
-</details>
+<!-- 07 ACCESS -->
+<section class="chapter" id="access" style="--c:var(--ecu)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">07</div><div><div class="kicker">Step 4b · Geofencing + state machine</div><h2>Deciding when to unlock, start and lock</h2></div></div>
+  <p class="lead reveal">The car draws invisible zones around itself. A zone only counts once the position has been in it for <b>three samples in a row</b>, which stops a single noisy fix from flipping the zone. Zones are checked from the smallest to the largest: seat first, then door, then welcome, otherwise outside.</p>
 
-<!-- 8 -->
-<details open>
-<summary><h2><a id="cloud-anomaly"></a>8. Cloud &amp; Anomaly Detection</h2></summary>
-<p>Firestore <code>cars/{carId}</code> stores owner-controlled car state and an <code>ownerProvisioning</code> object containing <code>vehicle_id</code>, <code>owner_uid</code>, <code>device_pub_key</code>, <code>vehicle_pub_key</code>, status, slot-0 owner metadata, and optional write-data and scanned-vehicle fields, while <code>Vehicles/{vehicleIdHex}</code> receives a best-effort mirror (<code class="filepath">car_service.dart</code>). The <code>digital_keys/{keyId}</code> collection stores owner ID, car ID, name, type, status, permissions, validity, and timestamps; user records use the code-authoritative path <code>User/{userId}</code>, rather than the documented <code>users/{uid}</code> path (<code class="filepath">car_service.dart</code> and <code class="filepath">database.dart</code>). The <code>access_logs/{id}</code> history supports time, frequency, and location analysis, <code>anomaly_analysis/{id}</code> stores deterministic analysis details, and <code>anomaly_decisions/{id}</code> stores AI-enriched decisions (<code class="filepath">time_anomaly_detector.dart</code>, <code class="filepath">location_anomaly_detector.dart</code>, and <code class="filepath">anomaly_detection_service.dart</code>). In the deterministic path, <code>AnomalyDetectionService</code> invokes <code>TimeAnomalyDetector</code> and <code>LocationAnomalyDetector</code>, the time detector evaluates one-hour frequency, and their confidence values are summed and logged; in the AI path, time, location, and frequency features flow through <code>AnomalyScorer</code> to <code>AIService</code> with respective weights of 30%, 30%, and 40% and a rule-based fallback (<code class="filepath">anomaly_detection_service.dart</code>, <code class="filepath">time_anomaly_detector.dart</code>, <code class="filepath">location_anomaly_detector.dart</code>, <code class="filepath">anomaly_scorer.dart</code>, and <code class="filepath">ai_service.dart</code>). <code>AIService</code> calls <code>gemini-2.5-flash-lite:generateContent</code>, parses JSON from the first candidate, and falls back when HTTP or parsing fails, while the otherwise uninvoked <code>AnomalyDecisionEngine.processDecision</code> maps confidence <code>&lt;=0.60</code> to LOW/ALLOW, <code>&lt;=0.85</code> to MEDIUM/CONFIRM, and <code>&gt;0.85</code> to HIGH/BLOCK (<code class="filepath">ai_service.dart</code> and <code class="filepath">anomaly_decision_engine.dart</code>). GPS synchronization uses a code-authoritative 32-byte little-endian plaintext of latitude float64, longitude float64, altitude float32, accuracy float32, and timestamp int64 milliseconds; the phone XORs it with the 32-byte session ENC key and appends HMAC-SHA256 over the ciphertext with the 32-byte session MAC key, yielding a 64-byte packet and overriding the stale documented lon/lat/alt le32, accuracy u16, and timestamp u32 layout (<code class="filepath">gps_service.dart</code> and <code class="filepath">ble_auth.cpp</code>).</p>
-</details>
+  <div class="grid g4 reveal">
+    <div class="card"><span class="tag" style="color:#8b98a9">Outside</span><p>Beyond every other zone.</p></div>
+    <div class="card"><span class="tag" style="color:var(--ble)">Welcome</span><p>Within <b>2.5 m</b>. You're nearby, but that's not enough to unlock.</p></div>
+    <div class="card"><span class="tag" style="color:var(--warn)">Driver door</span><p>Within <b>1.0 m</b> of the left B-pillar <code>(−0.95, 0)</code>.</p></div>
+    <div class="card"><span class="tag" style="color:var(--ecu)">Driver seat</span><p>Within <b>0.45 m</b> of <code>(−0.35, 0)</code>, inside the car.</p></div>
+  </div>
 
-<!-- 9 -->
-<details open>
-<summary><h2><a id="freertos"></a>9. FreeRTOS Runtime &amp; Data Contracts</h2></summary>
-<p>The FreeRTOS runtime creates <code>FSM</code> on core 1 with priority 6 and an 8192-byte stack to call <code>FSM::tick()</code> every 1 ms, <code>NFC</code> on core 1 with priority 4 and an 8192-byte stack to call <code>NfcSession::tick()</code> every 2 ms, and <code>UWB</code> on core 1 with priority 5 and a 20480-byte stack to read USB-CDC RANGE/ACK lines, execute <code>UwbBridge::tick()</code> and <code>AccessController::tick()</code>, and delay 5 ms (<code class="filepath">main.cpp</code>). The Arduino <code>loop()</code> independently services <code>BLEMod::tick()</code> every 50 ms, keeping BLE maintenance separate from the three explicit tasks (<code class="filepath">main.cpp</code>). Each <code>RangingFrame</code> contains <code>uint32_t t_ms</code>, <code>double d[3]</code>, and <code>uint8_t valid_mask</code>, whose bit i records whether d[i] is fresh and in bounds after parsing; the serial boundary accepts <code>RANGE:d0=...,d1=...,d2=...,valid=...</code> and <code>ACK:...</code> from the PC and emits <code>CMD:START_RANGING</code> or <code>CMD:STOP_RANGING</code> from the ECU (<code class="filepath">ranging_frame.h</code>, <code class="filepath">uwb_bridge.cpp</code>, and <code class="filepath">run_fira_bridge.py</code>). The EKF maintains private state <code>g_x[4]=[px,py,vx,vy]</code>, covariance <code>g_P[4][4]</code>, and timestamps <code>g_lastMs</code> and <code>g_lastMeasMs</code>, while <code>Geofence::Zone</code> assigns the implicit values <code>OUTSIDE=0</code>, <code>WELCOME=1</code>, <code>DRIVER_DOOR=2</code>, and <code>DRIVER_SEAT=3</code> (<code class="filepath">ekf_stub.cpp</code> and <code class="filepath">geofence.h</code>). The BLE boundary uses request frames <code>[CLA,INS,P1,P2,Lc,data...]</code> and emits responses through the TX notify characteristic with the originating instruction, response status, and any data, providing a single transport contract for authentication and ranging commands (<code class="filepath">ble_auth.cpp</code>).</p>
-</details>
+  <h3 class="reveal">Three states, four ways to move between them</h3>
+  <div class="grid reveal" style="grid-template-columns:1.1fr 1fr;align-items:start">
+    <div class="figure" style="margin:0"><svg id="sm" viewBox="0 0 580 380" role="img" aria-label="Access state machine"></svg></div>
+    <div class="grid" style="gap:10px">
+      <div class="card" style="border-left:4px solid var(--warn)"><h4>Unlock (LOCKED → DOOR_UNLOCKED)</h4><p>At the door or seat · speed under <b>0.4 m/s</b> · not moving away faster than <b>0.10 m/s</b> · approach ≥ 0.80 · passing &lt; 0.70 · all true for <b>3 hits</b>. The door relay then fires for <b>500 ms</b>.</p></div>
+      <div class="card" style="border-left:4px solid var(--ecu)"><h4>Sit down (DOOR_UNLOCKED → OCCUPIED)</h4><p>In the driver's seat · speed under 0.4 m/s · seated ≥ 0.80 · held for a continuous <b>3 seconds</b>. The door locks and ignition is authorised.</p></div>
+      <div class="card" style="border-left:4px solid var(--bad)"><h4>Change of mind (DOOR_UNLOCKED → LOCKED)</h4><p>Back outside and moving away faster than 0.10 m/s. The car locks immediately, with no extra checks.</p></div>
+      <div class="card" style="border-left:4px solid var(--nfc)"><h4>Get out and leave (OCCUPIED → LOCKED)</h4><p>Outside · moving away · leave ≥ 0.80 · 3 hits. Ignition is revoked and the car locks.</p></div>
+    </div>
+  </div>
 
-<!-- 10 -->
-<details open>
-<summary><h2><a id="constants"></a>10. Key Constants Table</h2></summary>
-<p>The following constants define the geometry, estimator, access policy, protocol, and runtime parameters used by the implementation. Values are reproduced directly from the structured code extraction without substituting documentation-era settings. The source column identifies the implementation file in which each constant is defined.</p>
-<table>
-  <thead>
-    <tr><th>Constant</th><th>Value</th><th>Source file</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>kAnchorX/Y</code> (A0/A1/A2)</td><td><code>(0,-2)/(0.95,0)/(-0.95,0)</code> m</td><td><code class="filepath">uwb_geometry.h</code></td></tr>
-    <tr><td><code>kDoorX/kDoorY/kDoorRadiusM</code></td><td><code>-0.95 / 0.0 / 1.0</code></td><td><code class="filepath">geofence.h</code></td></tr>
-    <tr><td><code>kSeatX/kSeatY/kSeatRadiusM</code></td><td><code>-0.35 / 0.0 / 0.45</code></td><td><code class="filepath">geofence.h</code></td></tr>
-    <tr><td><code>kWelcomeRadiusM</code></td><td><code>2.5</code></td><td><code class="filepath">geofence.h</code></td></tr>
-    <tr><td><code>RELAY_PIN / IGNITION_PIN</code></td><td><code>5 / 7</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>STILL_SPEED_MPS</code></td><td><code>0.4</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>REQUIRED_CONSECUTIVE_HITS</code></td><td><code>3</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>SEAT_SETTLE_MS</code></td><td><code>3000</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>LEAVE_CONSECUTIVE_HITS</code></td><td><code>3</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>APPROACH_SPEED_MIN_MPS</code></td><td><code>0.10</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>RELAY_PULSE_MS</code></td><td><code>500</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>INTENT_APPROACH/SEATED/LEAVE_THRESHOLD</code></td><td><code>0.80</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>INTENT_PASSING_BLOCK</code></td><td><code>0.70</code></td><td><code class="filepath">access_controller.h</code></td></tr>
-    <tr><td><code>kAccelStd</code> (EKF)</td><td><code>1.2 m/s^2</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
-    <tr><td>EKF meas-noise clamp</td><td><code>0.05–1.0 m</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
-    <tr><td><code>kDefaultMeasStd / kInitVelVar / kNominalDtS</code></td><td><code>0.15 m / 4.0 (m/s)^2 / 0.10 s</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
-    <tr><td><code>kMaxGapS / kMaxInnovationM / kMaxSpeedMps</code></td><td><code>2.0 s / 2.5 m / 2.0 m/s</code></td><td><code class="filepath">ekf_stub.cpp</code></td></tr>
-    <tr><td><code>kDrivePeriodMs / kMaxCoastMs</code></td><td><code>100 / 500 ms</code></td><td><code class="filepath">uwb_bridge.cpp</code></td></tr>
-    <tr><td>UWB frame queue depth</td><td><code>8</code></td><td><code class="filepath">uwb_bridge.cpp</code></td></tr>
-    <tr><td><code>TIME_STEPS / NUM_FEATURES / NUM_CLASSES</code></td><td><code>25 / 4 / 4</code></td><td><code class="filepath">traj_inference.h</code></td></tr>
-    <tr><td>TFLM tensor arena</td><td><code>44 * 1024 bytes</code></td><td><code class="filepath">traj_inference.cpp</code></td></tr>
-    <tr><td>Scaler mean</td><td><code>[-1.176990,-0.693135,-0.019802,0.006809]</code></td><td><code class="filepath">traj_inference.h</code></td></tr>
-    <tr><td>Scaler scale</td><td><code>[1.118417,1.425282,0.187332,0.270498]</code></td><td><code class="filepath">traj_inference.h</code></td></tr>
-    <tr><td>AUTH service / RX / TX UUID</td><td><code>0000aaaa...5678 / 0000aac1...5678 / 0000aac2...5678</code></td><td><code class="filepath">ble_auth.cpp</code></td></tr>
-    <tr><td>AUTH0 standard / fast P1</td><td><code>0x11 / 0x01</code></td><td><code class="filepath">ble_auth.cpp</code></td></tr>
-    <tr><td>AUTH0/AUTH1/EXCHANGE/CONTROL/RANGING_START/RANGING_STOP</td><td><code>0x80/0x81/0x82/0x83/0x84/0x85</code></td><td><code class="filepath">ble_auth.cpp</code></td></tr>
-    <tr><td>HCE AID</td><td><code>A000000809434343444B467631</code></td><td><code class="filepath">ProvisioningHostApduService.kt</code></td></tr>
-    <tr><td><code>SPAKE2_CHALLENGE_TTL_MS</code></td><td><code>45000 ms</code></td><td><code class="filepath">ProvisioningHostApduService.kt</code></td></tr>
-    <tr><td>CCC maximum slots</td><td><code>8</code></td><td><code class="filepath">ccc_mailbox.cpp</code></td></tr>
-    <tr><td>Phase-A challenge</td><td><code>8-byte vehicle ID + 16-byte nonce = 24 bytes</code></td><td><code class="filepath">nfc_session.cpp</code></td></tr>
-    <tr><td>PC bridge destination/session/channel/preamble</td><td><code>0x06C1 / 42 / 9 / 9</code></td><td><code class="filepath">run_fira_bridge.py</code></td></tr>
-    <tr><td>PC bridge rate/freshness/distance bounds</td><td><code>10 Hz / 500 ms / 0.1–30.0 m</code></td><td><code class="filepath">run_fira_bridge.py</code></td></tr>
-    <tr><td>FSM event queue</td><td><code>16</code></td><td><code class="filepath">fsm.cpp</code></td></tr>
-    <tr><td>NFC UART RX/TX/baud</td><td><code>44 / 43 / 115200</code></td><td><code class="filepath">main.cpp</code></td></tr>
-  </tbody>
-</table>
-</details>
-
-<!-- 11 -->
-<details open>
-<summary><h2><a id="e2e-sequence"></a>11. End-to-End Unlock Sequence</h2></summary>
-<p>The end-to-end path begins with one-time NFC provisioning, which binds the phone P-256 identity, vehicle identity, owner slot, immobilizer token, and optional fast artifact before BLE authentication is permitted. A standard ECDH/HKDF or artifact-based fast Phase-B exchange establishes authenticated session keys, after which RANGING_START activates the three-anchor pipeline and the ESP32 processes range frames through trilateration, the no-coasting EKF, geofencing, and TFLM intent inference. When the driver-door geometry, speed, radial approach, intent thresholds, and three-hit debounce all pass, the ECU drives RELAY_PIN 5 HIGH for 500 ms and enters DOOR_UNLOCKED.</p>
-<div class="mermaid">
-sequenceDiagram
-  participant Phone
-  participant HCE as Phone HCE/Keystore
-  participant ECU as ESP32 ECU
-  participant NVS as CCC NVS
-  participant Anchors
-  participant PC as PC Bridge
-  Note over Phone,NVS: One-time Phase A
-  ECU-&gt;&gt;HCE: SELECT + SPAKE2+ + GET DATA
-  HCE--&gt;&gt;ECU: phone P-256 public key + signed challenge
-  ECU-&gt;&gt;HCE: WRITE DATA vehicle identity + OP CONTROL
-  ECU-&gt;&gt;NVS: store owner slot 0, tok_0, optional fast artifact
-  ECU-&gt;&gt;HCE: PROVISION RESULT success
-  Note over Phone,ECU: Phase B session
-  Phone-&gt;&gt;ECU: BLE AUTH0
-  alt Standard
-    ECU--&gt;&gt;Phone: ECU ephemeral + vehicle signature
-    Phone-&gt;&gt;ECU: phone ephemeral + phone signature
-    ECU-&gt;&gt;ECU: verify + ECDH + HKDF
-  else Fast
-    ECU-&gt;&gt;NVS: load artifact
-    ECU-&gt;&gt;ECU: artifact HKDF
-  end
-  ECU--&gt;&gt;Phone: vehicle_id||nonce
-  Phone-&gt;&gt;ECU: EXCHANGE signed challenge
-  ECU--&gt;&gt;Phone: authenticated session ready
-  Phone-&gt;&gt;ECU: RANGING_START 0x84
-  ECU-&gt;&gt;PC: CMD:START_RANGING
-  PC-&gt;&gt;Anchors: start three sessions to phone 0x06C1
-  loop Fresh ranging rounds
-    Anchors--&gt;&gt;PC: d0,d1,d2
-    PC--&gt;&gt;ECU: RANGE:d0,d1,d2,valid
-    ECU-&gt;&gt;ECU: trilateration -&gt; EKF -&gt; geofence
-    ECU-&gt;&gt;ECU: append x,y,vx,vy -&gt; TFLM intent
-    ECU-&gt;&gt;ECU: door zone + speed&lt;0.4 + approach/not-away + AI thresholds + 3 hits
-  end
-  ECU-&gt;&gt;ECU: RELAY_PIN 5 HIGH for 500 ms
-  ECU--&gt;&gt;Phone: door state DOOR_UNLOCKED
+  <h3 class="reveal">Live demo: a driver walks up and gets in <small>simplified simulation</small></h3>
+  <div class="demo reveal">
+    <div class="map"><svg id="map-sim"></svg></div>
+    <div class="dash">
+      <div class="statepills" id="pills">
+        <div class="pill" data-s="LOCKED">LOCKED</div>
+        <div class="pill" data-s="DOOR_UNLOCKED">DOOR_UNLOCKED</div>
+        <div class="pill" data-s="OCCUPIED">OCCUPIED</div>
+      </div>
+      <div class="readout">
+        <div class="ro"><small>Zone</small><b id="s-zone">–</b></div>
+        <div class="ro"><small>Speed</small><b id="s-speed">–</b></div>
+        <div class="ro"><small>AI window</small><b id="s-win">–</b></div>
+      </div>
+      <div class="ro"><small>Unlock gate hits (need 3)</small><div class="hits" id="s-hits" style="margin-top:6px"><i></i><i></i><i></i></div></div>
+      <div class="ro"><small>Seat settle (3 s)</small><div class="meter" style="margin-top:8px"><i id="s-settle"></i></div></div>
+      <div class="leds">
+        <div class="led" id="led-relay"><i></i>Door relay · pin 5</div>
+        <div class="led ign" id="led-ign"><i></i>Ignition · pin 7</div>
+      </div>
+      <div class="log" id="s-log"></div>
+      <div class="ctrl"><button id="s-play" type="button">Pause</button><button id="s-restart" type="button">Restart</button><button id="s-rate" type="button">Speed 1×</button></div>
+    </div>
+  </div>
+  <p class="figcap reveal">The demo assumes the Bluetooth session is already authenticated and ranging has started. It shows the geometry, speed, debounce and settle rules; the AI gates are treated as passed, which is how the real system behaves while the model window is warming up. Faint dots are raw fixes and the bright trail is the last 25 smoothed positions.</p>
 </div>
-</details>
+</section>
 
+<!-- 08 APP -->
+<section class="chapter" id="app" style="--c:var(--ble)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">08</div><div><div class="kicker">Flutter + native Android</div><h2>The phone app</h2></div></div>
+  <p class="lead reveal">The app is written in Flutter (Dart), with native Kotlin where Android-only hardware features are needed: card emulation, the hardware keystore, the handshake cryptography and the new multi-anchor UWB API. You can think of it in five layers.</p>
+
+  <div class="layers reveal">
+    <div class="lay" style="--lc:var(--cloud)"><h4>Account &amp; car<small>what the user sees</small></h4><div class="chips"><span class="chip">Firebase sign-in / register</span><span class="chip">Cars &amp; digital keys</span><span class="chip">Owner pairing record</span><span class="chip">Simulated car controls</span><span class="chip">Language setting</span></div></div>
+    <div class="lay" style="--lc:var(--nfc)"><h4>Security &amp; access<small>pairing and handshake</small></h4><div class="chips"><span class="chip">Master-card NFC reading</span><span class="chip">Card-emulation session control</span><span class="chip">BLE scan &amp; connect</span><span class="chip">Standard / fast handshake</span><span class="chip">Encrypted GPS sending</span><span class="chip">Bluetooth permissions</span></div></div>
+    <div class="lay" style="--lc:var(--uwb)"><h4>Background runtime<small>works with the app closed</small></h4><div class="chips"><span class="chip">Foreground service scanning</span><span class="chip">Auto-authentication with back-off</span><span class="chip">Battery-optimisation exemption</span><span class="chip">Telemetry events</span><span class="chip">Rollout flags</span></div></div>
+    <div class="lay" style="--lc:var(--ai)"><h4>Anomaly &amp; alerts<small>spotting misuse</small></h4><div class="chips"><span class="chip">Time &amp; frequency checks</span><span class="chip">Location checks</span><span class="chip">Gemini-based scoring</span><span class="chip">Allow / confirm / block</span><span class="chip">In-app &amp; system notifications</span></div></div>
+    <div class="lay" style="--lc:var(--ecu)"><h4>Native Android (Kotlin)<small>hardware access</small></h4><div class="chips"><span class="chip">HCE card service</span><span class="chip">Android Keystore P-256 identity</span><span class="chip">Handshake crypto (ECDH, signatures, HKDF)</span><span class="chip">Multicast UWB (DS-TWR, API 36)</span><span class="chip">Binding &amp; artifact storage</span></div></div>
+  </div>
+
+  <h3 class="reveal">Hands-free in the background: the two-worker handoff</h3>
+  <p class="reveal">Android runs the background service in a separate Dart worker (an "isolate"), while the native UWB API is only reachable from the main app worker. So the job is split: the background worker finds the car and authenticates, then hands the UWB part to the foreground worker.</p>
+  <div class="seq reveal" id="seq-handoff"></div>
+
+  <div class="grid g2 reveal" style="margin-top:18px">
+    <div class="card"><h4>Rollout flags</h4><p>Four switches, saved on the phone, let features be enabled gradually:</p><div class="chips"><span class="chip">Background mode</span><span class="chip">Fast transaction</span><span class="chip">Bonding enforcement</span><span class="chip">RSSI policy</span></div></div>
+    <div class="card"><h4>Key libraries</h4><div class="chips"><span class="chip">nfc_manager 4.1.1</span><span class="chip">flutter_blue_plus 1.18.5</span><span class="chip">pointycastle 3.9.0</span><span class="chip">cryptography 2.7.0</span><span class="chip">crypto 3.0.3</span><span class="chip">asn1lib 1.5.0</span><span class="chip">flutter_secure_storage 9.2.2</span><span class="chip">geolocator 13.0.2</span><span class="chip">flutter_background_service 5.1.0</span><span class="chip">permission_handler 11.3.1</span><span class="chip">wakelock_plus 1.2.5</span><span class="chip">shared_preferences 2.3.2</span></div></div>
+  </div>
+</div>
+</section>
+
+<!-- 09 CLOUD -->
+<section class="chapter" id="cloud" style="--c:var(--cloud)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">09</div><div><div class="kicker">Firebase · Gemini</div><h2>The cloud, and catching unusual use</h2></div></div>
+  <p class="lead reveal">Firebase Authentication identifies the user, and Firestore stores the cars, keys and history. The phone also watches that history for patterns that look wrong, such as an access at 3 a.m., a burst of openings, or a location far from anywhere the car usually goes.</p>
+
+  <h3 class="reveal">What lives in Firestore</h3>
+  <div class="grid g4 reveal">
+    <div class="coll"><code>cars/{carId}</code><p>Car state plus an <b>owner pairing record</b>: vehicle ID, owner, phone and vehicle public keys, status, slot 0 info.</p></div>
+    <div class="coll"><code>Vehicles/{vehicleIdHex}</code><p>A best-effort mirror of the owner record, keyed by vehicle ID.</p></div>
+    <div class="coll"><code>digital_keys/{keyId}</code><p>Owner, car, name, type, status, permissions, validity window and timestamps.</p></div>
+    <div class="coll"><code>User/{userId}</code><p>The user's profile information.</p></div>
+    <div class="coll"><code>access_logs/{id}</code><p>Who opened which car, when and where. This feeds the anomaly checks.</p></div>
+    <div class="coll"><code>anomaly_analysis/{id}</code><p>Results of the rule-based checks.</p></div>
+    <div class="coll"><code>anomaly_decisions/{id}</code><p>AI-enriched decisions.</p></div>
+    <div class="coll" style="border-color:#5a2a2a;background:#1a0f12"><code style="color:var(--bad)">never stored</code><p>Private keys and immobilizer tokens stay on the phone and in the car.</p></div>
+  </div>
+
+  <h3 class="reveal">How an access gets scored</h3>
+  <div class="flow reveal">
+    <div class="box"><b>Time</b><span>unusual hours, rare weekend use</span></div>
+    <div class="box"><b>Frequency</b><span>more than 5 accesses within one hour</span></div>
+    <div class="box"><b>Location</b><span>distance from familiar places, spread, travel speed</span></div>
+    <div class="sep">&rarr;</div>
+    <div class="box" style="border-top-color:var(--ai)"><b>Gemini 2.5 Flash Lite</b><span>returns a JSON verdict; falls back to local rules if offline</span></div>
+    <div class="sep">&rarr;</div>
+    <div class="box" style="border-top-color:var(--ecu)"><b>Decision</b><span>allow, ask to confirm, or block</span></div>
+  </div>
+  <div class="grid g2 reveal">
+    <div class="card"><h4>Risk weights</h4>
+      <div class="weights"><div style="width:30%;background:#79c0ff">Time 30%</div><div style="width:30%;background:#2dd4bf">Location 30%</div><div style="width:40%;background:#f778ba">Frequency 40%</div></div>
+      <p style="font-size:.86em;margin-top:10px">A rule-only path also exists: the time and location detectors each give a confidence, and the two are added together and logged.</p>
+    </div>
+    <div class="card"><h4>Confidence → action</h4>
+      <div class="scale"><div style="width:60%;background:#3fb950">LOW · ALLOW</div><div style="width:25%;background:#d29922">MEDIUM · CONFIRM</div><div style="width:15%;background:#f85149">HIGH · BLOCK</div></div>
+      <div class="scale-lbl"><span>0</span><span style="margin-left:52%">0.60</span><span>0.85</span><span>1.0</span></div>
+    </div>
+  </div>
+
+  <h3 class="reveal">Sending GPS securely over Bluetooth</h3>
+  <p class="reveal">The phone shares its location with the car through the authenticated session. The 32 bytes of location data are scrambled with the session <b>ENC</b> key, then a 32-byte fingerprint made with the <b>MAC</b> key is attached, so the car can tell if anything was changed on the way.</p>
+  <div class="figure reveal">
+    <div style="font-size:.82em;color:var(--muted);margin-bottom:6px">Plaintext · 32 bytes, little-endian</div>
+    <div class="bytes" id="gps-plain"></div>
+    <div class="blegend">
+      <span style="--bc:#79c0ff">latitude · float64</span><span style="--bc:#2dd4bf">longitude · float64</span><span style="--bc:#a371f7">altitude · float32</span><span style="--bc:#d29922">accuracy · float32</span><span style="--bc:#f778ba">timestamp ms · int64</span>
+    </div>
+    <div style="text-align:center;margin:14px 0;color:var(--muted);font-size:.9em">&darr; XOR with 32-byte session ENC key, then append HMAC-SHA256(ciphertext, MAC key) &darr;</div>
+    <div style="font-size:.82em;color:var(--muted);margin-bottom:6px">Packet · 64 bytes</div>
+    <div class="bytes" id="gps-packet" style="grid-template-columns:repeat(64,1fr)"></div>
+    <div class="blegend"><span style="--bc:#4b5a74">ciphertext · 32</span><span style="--bc:#3fb950">HMAC-SHA256 · 32</span></div>
+  </div>
+</div>
+</section>
+
+<!-- 10 ECU -->
+<section class="chapter" id="ecu" style="--c:var(--ecu)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">10</div><div><div class="kicker">ESP32-S3 · FreeRTOS</div><h2>Inside the car computer</h2></div></div>
+  <p class="lead reveal">The car computer runs several jobs at the same time using FreeRTOS, a small real-time operating system. Each job is a task with its own priority. When two tasks want the processor, the one with the higher priority wins.</p>
+
+  <div class="tasks reveal">
+    <div class="task"><b>FSM</b><div class="prio" style="--h:120px">priority 6</div><ul><li>core 1 · 8 KB stack</li><li>runs every 1 ms</li><li>handles events (queue of 16)</li></ul></div>
+    <div class="task"><b>UWB</b><div class="prio" style="--h:100px">priority 5</div><ul><li>core 1 · 20 KB stack</li><li>reads RANGE / ACK lines</li><li>tracking + access control, every 5 ms</li></ul></div>
+    <div class="task"><b>NFC</b><div class="prio" style="--h:80px">priority 4</div><ul><li>core 1 · 8 KB stack</li><li>runs every 2 ms</li><li>drives the pairing session</li></ul></div>
+    <div class="task" style="border-top-color:var(--ble)"><b>Main loop</b><div class="prio" style="--h:40px;background:linear-gradient(180deg,rgba(88,166,255,.3),rgba(88,166,255,.05));color:#b6d8ff">Arduino loop</div><ul><li>Bluetooth upkeep</li><li>every 50 ms</li></ul></div>
+  </div>
+
+  <h3 class="reveal">The data that moves between parts</h3>
+  <div class="grid g3 reveal">
+    <div class="card"><h4>One ranging frame</h4><p><code>t_ms</code> (uint32), <code>d[3]</code> (double), <code>valid_mask</code> (uint8). Bit <i>i</i> set means distance <i>i</i> is fresh and within bounds.</p></div>
+    <div class="card"><h4>Tracker state</h4><p>Position and velocity <code>[px, py, vx, vy]</code>, a 4×4 uncertainty matrix, and the times of the last update and the last measurement.</p></div>
+    <div class="card"><h4>Zones as numbers</h4><p><code>OUTSIDE=0</code>, <code>WELCOME=1</code>, <code>DRIVER_DOOR=2</code>, <code>DRIVER_SEAT=3</code>.</p></div>
+  </div>
+</div>
+</section>
+
+<!-- 11 E2E -->
+<section class="chapter" id="e2e" style="--c:var(--uwb)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">11</div><div><div class="kicker">Putting it all together</div><h2>The whole story, from first tap to open door</h2></div></div>
+  <p class="lead reveal">This is everything above in one conversation. Step through it: one-time pairing, the Bluetooth handshake (standard or fast), then the ranging loop that runs until every gate passes and the door relay clicks.</p>
+  <div class="seq reveal" id="seq-e2e"></div>
+</div>
+</section>
+
+<!-- 12 REFERENCE -->
+<section class="chapter" id="reference" style="--c:var(--accent)">
+<div class="wrap">
+  <div class="ch-head reveal"><div class="ch-num">12</div><div><div class="kicker">Appendix</div><h2>Numbers reference</h2></div></div>
+  <p class="lead reveal">Every tuning value used in the implementation, in one place.</p>
+  <div class="ref-tools reveal"><input id="refFilter" type="search" placeholder="Filter, e.g. EKF, relay, UUID…"></div>
+  <div class="reveal" style="overflow-x:auto">
+    <table><thead><tr><th>Parameter</th><th>Value</th><th>Defined in</th></tr></thead><tbody id="refBody"></tbody></table>
+  </div>
+</div>
+</section>
+
+<footer>Smart Car Access · System Overview</footer>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
-  mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+(function(){
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);if(attrs)for(const k in attrs){if(attrs[k]!=null)e.setAttribute(k,attrs[k]);}if(parent)parent.appendChild(e);return e;}
+function txt(parent,x,y,s,attrs){const t=el('text',Object.assign({x:x,y:y},attrs||{}),parent);t.textContent=s;return t;}
+const C={nfc:'#a371f7',ble:'#58a6ff',uwb:'#2dd4bf',ai:'#f0883e',cloud:'#f778ba',ecu:'#3fb950',warn:'#d29922',bad:'#f85149',muted:'#8b98a9'};
+
+/* ---------- nav, progress, reveal ---------- */
+const navLinks=[...document.querySelectorAll('#nav a.item')];
+const sections=navLinks.map(a=>document.querySelector(a.getAttribute('href')));
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){navLinks.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+e.target.id));}})},{rootMargin:'-45% 0px -50% 0px'});
+sections.forEach(s=>s&&io.observe(s));
+const rv=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');rv.unobserve(e.target);}})},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(n=>rv.observe(n));
+const prog=document.getElementById('progress');
+addEventListener('scroll',()=>{const h=document.documentElement;prog.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';},{passive:true});
+const nav=document.getElementById('nav');
+document.getElementById('menuBtn').addEventListener('click',()=>nav.classList.toggle('open'));
+navLinks.forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')));
+
+/* ---------- big picture ---------- */
+(function(){
+  const s=document.getElementById('bigpic');
+  el('style',null,s).textContent='.flowl{fill:none;stroke-width:2.2;stroke-dasharray:7 7;animation:dash 1.2s linear infinite}@keyframes dash{to{stroke-dashoffset:-28}}.bx{fill:#141b29;stroke-width:1.6}.bt{fill:#fff;font-weight:700;font-size:16px}.bs{fill:#9fb0c4;font-size:12px}.ll{font-size:12.5px;font-weight:700}';
+  function box(href,x,y,w,h,col,title,lines){const a=el('a',{href:href},s);el('rect',{x:x,y:y,width:w,height:h,rx:14,class:'bx',stroke:col},a);txt(a,x+16,y+28,title,{class:'bt'});lines.forEach((l,i)=>txt(a,x+16,y+50+i*17,l,{class:'bs'}));el('rect',{x:x,y:y,width:6,height:h,rx:3,fill:col},a);return a;}
+  function link(d,col,label,lx,ly,anchor){el('path',{d:d,class:'flowl',stroke:col},s);if(label)txt(s,lx,ly,label,{class:'ll',fill:col,'text-anchor':anchor||'middle'});}
+  link('M170 125 L170 200',C.cloud,'Firebase',180,168,'start');
+  link('M285 245 C400 245 440 215 555 215',C.nfc,'NFC · pair once',420,212);
+  link('M285 300 C400 300 440 280 555 280',C.ble,'BLE · handshake & commands',420,318);
+  link('M230 375 C240 430 300 440 330 448',C.uwb,null);
+  link('M250 375 C300 410 400 420 440 440',C.uwb,null);
+  link('M270 370 C340 395 500 400 550 440',C.uwb,'UWB ranging',300,425,'end');
+  link('M640 470 L700 470',C.uwb,null);
+  link('M350 500 V512 H780 V500',C.uwb,null);
+  link('M465 500 V512',C.uwb,null);
+  link('M780 440 C780 380 700 360 690 325',C.ecu,'RANGE: d0,d1,d2',790,390,'start');
+  link('M805 245 L860 245',C.warn,null);
+  box('#cloud',60,30,230,95,C.cloud,'Firebase Cloud',['Authentication','Firestore: cars, keys, history']);
+  box('#app',60,200,225,175,C.ble,'Android phone',['Flutter app','NFC card emulation (HCE)','Hardware keystore identity','Bluetooth LE client','Multi-anchor UWB ranging']);
+  box('#ecu',555,170,250,155,C.ecu,'Car computer · ESP32-S3',['NFC reader (PN532)','Bluetooth LE server','Tracking + Kalman filter','TinyML intent model','Access decisions']);
+  box('#access',860,170,125,155,C.warn,'Outputs',['Door relay','pin 5','Ignition','pin 7']);
+  ['A0 rear','A1 right','A2 left'].forEach((n,i)=>box('#uwb',300+i*115,440,100,60,C.uwb,n.split(' ')[0],[n.split(' ')[1]]));
+  box('#uwb',700,440,160,60,C.muted,'PC bridge',['serial relay (research)']);
+})();
+
+/* ---------- sequence renderer + player ---------- */
+function renderSeq(hostId,cfg){
+  const host=document.getElementById(hostId);
+  const A=cfg.actors,n=A.length,gap=cfg.gap||200,pad=100,W=pad*2+gap*(n-1);
+  const idx={};A.forEach((a,i)=>idx[a.id]=i);
+  const X=i=>pad+i*gap;
+  const svg=el('svg',{class:'seq-svg'});svg.style.minWidth=Math.round(W*0.72)+'px';
+  const gG=el('g',null,svg),gL=el('g',null,svg),gS=el('g',null,svg),gH=el('g',null,svg);
+  let y=74;const stack=[],items=[];
+  cfg.steps.forEach(s=>{
+    if(s.t==='alt'||s.t==='loop'){stack.push({y0:y,label:s.label,kind:s.t,divs:[]});y+=32;return;}
+    if(s.t==='else'){stack[stack.length-1].divs.push({y:y,label:s.label});y+=32;return;}
+    if(s.t==='end'){const g=stack.pop();const inset=12+stack.length*8,x1=inset,x2=W-inset;
+      el('rect',{x:x1,y:g.y0+2,width:x2-x1,height:y-g.y0,rx:10,class:'grp'},gG);
+      el('rect',{x:x1,y:g.y0+2,width:64,height:20,rx:6,class:'grp-tag'},gG);
+      txt(gG,x1+32,g.y0+16,g.kind==='alt'?'EITHER':'REPEAT',{class:'grp-tag-t','text-anchor':'middle'});
+      txt(gG,x1+74,g.y0+16,g.label,{class:'grp-label'});
+      g.divs.forEach(d=>{el('line',{x1:x1,x2:x2,y1:d.y+2,y2:d.y+2,class:'grp-div'},gG);el('rect',{x:x1,y:d.y+2,width:64,height:20,rx:6,class:'grp-tag'},gG);txt(gG,x1+32,d.y+16,'OR',{class:'grp-tag-t','text-anchor':'middle'});txt(gG,x1+74,d.y+16,d.label,{class:'grp-label'});});
+      y+=12;return;}
+    const g=el('g',{class:'step'},gS);
+    el('rect',{x:0,y:y,width:W,height:34,class:'hit'},g);
+    if(s.t==='note'){const i1=idx[s.over[0]],i2=idx[s.over[1]];const a=X(Math.min(i1,i2))-80,b=X(Math.max(i1,i2))+80;
+      el('rect',{x:a,y:y+5,width:b-a,height:26,rx:7,class:'note'},g);txt(g,(a+b)/2,y+22,s.text,{class:'note-t','text-anchor':'middle'});y+=38;}
+    else if(s.f===s.to){const x=X(idx[s.f]);const col=s.c||A[idx[s.f]].color;
+      el('path',{d:'M'+x+' '+(y+9)+' h34 v15 h-26',fill:'none',stroke:col,'stroke-width':1.8},g);
+      el('path',{d:'M'+x+' '+(y+24)+' l9 -5 v10 z',fill:col},g);
+      txt(g,x+42,y+22,s.text,{class:'msg-t'});y+=36;}
+    else{const x1=X(idx[s.f]),x2=X(idx[s.to]),dir=x2>x1?1:-1,col=s.c||A[idx[s.f]].color,ly=y+23;
+      el('line',{x1:x1,y1:ly,x2:x2-dir*9,y2:ly,stroke:col,'stroke-width':1.8,'stroke-dasharray':s.r?'5 4':null},g);
+      el('path',{d:'M'+x2+' '+ly+' l'+(-dir*10)+' -5 v10 z',fill:col},g);
+      txt(g,(x1+x2)/2,ly-7,s.text,{class:'msg-t','text-anchor':'middle'});y+=36;}
+    items.push({g:g,s:s});
+  });
+  A.forEach((a,i)=>{const x=X(i);el('line',{x1:x,x2:x,y1:56,y2:y+4,class:'life'},gL);
+    el('rect',{x:x-80,y:10,width:160,height:46,rx:10,fill:a.color+'22',stroke:a.color,'stroke-width':1.4},gH);
+    txt(gH,x,a.sub?30:38,a.label,{class:'actor-t','text-anchor':'middle'});if(a.sub)txt(gH,x,46,a.sub,{class:'actor-s','text-anchor':'middle'});});
+  svg.setAttribute('viewBox','0 0 '+W+' '+(y+12));
+
+  const bar=document.createElement('div');bar.className='player';
+  const mk=(label,cls)=>{const b=document.createElement('button');b.type='button';b.textContent=label;if(cls)b.className=cls;bar.appendChild(b);return b;};
+  const bPrev=mk('\u2039 Prev'),bPlay=mk('Play','primary'),bNext=mk('Next \u203a'),bAll=mk('Show all');
+  const count=document.createElement('span');count.className='count';bar.appendChild(count);
+  const wrap=document.createElement('div');wrap.className='seq-wrap';wrap.appendChild(svg);
+  const cap=document.createElement('div');cap.className='caption';
+  host.append(bar,wrap,cap);
+  const N=items.length;let cur=-1,timer=null;
+  function show(k){cur=k;items.forEach((it,i)=>{it.g.classList.toggle('future',k>=0&&i>k);it.g.classList.toggle('on',i===k);});
+    count.textContent=k<0?N+' steps':'Step '+(k+1)+' / '+N;cap.textContent='';
+    if(k<0){cap.textContent=cfg.intro;return;}
+    const b=document.createElement('span');b.className='cap-step';b.textContent=k+1;cap.appendChild(b);
+    cap.appendChild(document.createTextNode(items[k].s.say||items[k].s.text));}
+  function stop(){clearInterval(timer);timer=null;bPlay.textContent='Play';}
+  bNext.onclick=()=>{stop();show(Math.min(N-1,cur+1));};
+  bPrev.onclick=()=>{stop();show(Math.max(0,cur-1));};
+  bAll.onclick=()=>{stop();show(-1);};
+  bPlay.onclick=()=>{if(timer){stop();return;}if(cur>=N-1||cur<0)show(0);bPlay.textContent='Pause';timer=setInterval(()=>{if(cur>=N-1){stop();return;}show(cur+1);},2600);};
+  items.forEach((it,i)=>it.g.addEventListener('click',()=>{stop();show(i);}));
+  show(-1);
+}
+
+const phoneA={id:'P',label:'Phone',sub:'Flutter app',color:C.ble};
+renderSeq('seq-nfc',{gap:250,intro:'The car\u2019s NFC reader drives the conversation; the phone answers like a smart card. Press Play to follow each message.',
+  actors:[{id:'E',label:'Car reader',sub:'ESP32 + PN532',color:C.ecu},{id:'H',label:'Phone',sub:'card emulation (HCE)',color:C.nfc},{id:'K',label:'Android Keystore',sub:'hardware keys',color:C.warn},{id:'N',label:'Car memory',sub:'key slots (NVS)',color:C.muted}],
+  steps:[
+    {f:'E',to:'H',text:'SELECT AID A00000080943\u2026',say:'The car selects the Smart-Car key application by its unique ID, A000000809434343444B467631. If the app is present, Android routes all further commands to it.'},
+    {f:'H',to:'E',text:'version info + 9000 (OK)',r:1,say:'The phone replies with supported versions and status 9000, which means \u201cOK\u201d.'},
+    {f:'E',to:'H',text:'SPAKE2+ REQUEST \u00b7 vehicle_id \u2016 nonce',say:'The car sends a fresh challenge made of its 8-byte vehicle ID and 16 random bytes. The random part means an old recording can\u2019t be replayed.'},
+    {f:'H',to:'E',text:'9000',r:1,say:'Challenge received.'},
+    {f:'E',to:'H',text:'SPAKE2+ VERIFY',say:'The car asks the phone to prove it knows the shared master secret.'},
+    {f:'H',to:'E',text:'HMAC-SHA256 proof (32 B)',r:1,say:'The phone answers with a 32-byte HMAC of the challenge. Only someone holding the correct secret can produce it, and the car checks it.'},
+    {f:'E',to:'H',text:'GET DATA \u00b7 who are you?',say:'The car asks for the phone\u2019s identity.'},
+    {f:'H',to:'K',text:'get / create P-256 key',say:'The phone makes sure its hardware-protected P-256 key pair exists.'},
+    {f:'H',to:'E',text:'public key + certificate (+ fast artifact)',r:1,say:'It sends its 65-byte public key and a certificate, plus an optional 32-byte fast artifact used later for quick handshakes.'},
+    {f:'E',to:'H',text:'WRITE DATA \u00b7 vehicle ID + public key',say:'Now the car introduces itself: its 8-byte vehicle ID and its 65-byte public key.'},
+    {f:'H',to:'E',text:'9000',r:1,say:'The phone stores the car binding.'},
+    {f:'E',to:'H',text:'GET DATA \u00b7 sign this 24-byte challenge',say:'To make sure the phone really owns the key it just sent, the car asks it to sign a 24-byte challenge.'},
+    {f:'H',to:'K',text:'ECDSA-SHA256 sign',say:'The signature is made inside the Keystore; the private key never leaves it.'},
+    {f:'H',to:'E',text:'DER signature + 9000',r:1,say:'The signature goes back to the car, which verifies it with the phone\u2019s public key.'},
+    {f:'E',to:'H',text:'OP CONTROL',say:'The car signals that it\u2019s about to commit the pairing.'},
+    {f:'H',to:'E',text:'9000',r:1,say:'Acknowledged.'},
+    {f:'E',to:'N',text:'save slot 0 key, tok_0, artifact',say:'The car saves the phone\u2019s public key in owner slot 0, generates an immobilizer token (tok_0) and stores the certificate and fast artifact.'},
+    {f:'E',to:'H',text:'PROVISION RESULT \u00b7 success',say:'The car tells the phone that pairing succeeded.'},
+    {f:'H',to:'E',text:'9000',r:1,say:'Done. From now on, the phone can use Bluetooth instead of NFC.'}
+  ]});
+
+renderSeq('seq-ble',{gap:300,intro:'The phone writes commands into the tunnel; the car answers on the notify channel. The dashed box shows the two alternative paths.',
+  actors:[phoneA,{id:'E',label:'Car computer',sub:'ESP32 BLE server',color:C.ecu},{id:'N',label:'Car memory',sub:'paired keys',color:C.muted}],
+  steps:[
+    {f:'P',to:'E',text:'Connect GATT',say:'The phone connects to the car\u2019s Bluetooth service.'},
+    {t:'alt',label:'Standard path (P1 = 0x11)'},
+    {f:'P',to:'E',text:'AUTH0 (0x80)',say:'The phone opens a standard handshake.'},
+    {f:'E',to:'P',text:'car throw-away public key',r:1,say:'The car creates a one-time P-256 key pair and sends the public half.'},
+    {f:'E',to:'P',text:'AUTH1 \u00b7 throw-away key + car signature',r:1,say:'It also signs that key with the vehicle\u2019s long-term key, so the phone knows it\u2019s talking to the real car.'},
+    {f:'P',to:'E',text:'AUTH1 \u00b7 throw-away key + phone signature',say:'The phone does the same: one-time key, signed with its Keystore identity.'},
+    {f:'E',to:'N',text:'load paired phone public key',say:'The car loads the phone key saved at pairing.'},
+    {f:'E',to:'E',text:'verify \u2192 ECDH \u2192 HKDF ENC/MAC',say:'It checks the signature, combines both one-time keys into a shared secret (ECDH), and derives the 32-byte ENC and MAC session keys (HKDF-SHA256).'},
+    {t:'else',label:'Fast path (P1 = 0x01)'},
+    {f:'P',to:'E',text:'AUTH0 (0x80) + artifact version',say:'The phone asks for the fast path and names its artifact version.'},
+    {f:'E',to:'N',text:'load matching 32-byte artifact',say:'If the rollout settings allow it and the version matches, the car loads the artifact saved at pairing.'},
+    {f:'E',to:'E',text:'HKDF fast ENC/MAC \u00b7 skip AUTH1',say:'Session keys come straight from the artifact, and the whole signature and ECDH round is skipped.'},
+    {t:'end'},
+    {f:'E',to:'P',text:'challenge: vehicle_id \u2016 nonce (24 B)',r:1,say:'Either way, the car now sends a fresh 24-byte challenge.'},
+    {f:'P',to:'E',text:'EXCHANGE (0x82) \u00b7 signed challenge',say:'The phone signs it with its identity key.'},
+    {f:'E',to:'E',text:'verify with paired phone key',say:'The car checks the signature against the key saved at pairing.'},
+    {f:'E',to:'P',text:'9000 \u00b7 session ready',r:1,say:'The session is ready, and protected commands are now accepted.'},
+    {f:'P',to:'E',text:'CONTROL_FLOW (0x83)',say:'The phone raises an unlock request, which becomes an event in the car\u2019s state machine.'},
+    {f:'E',to:'P',text:'9000',r:1,say:'Accepted.'},
+    {f:'P',to:'E',text:'RANGING_START (0x84)',say:'The phone asks the car to start UWB ranging.'},
+    {f:'E',to:'P',text:'9000',r:1,say:'Ranging starts. See the next chapter.'}
+  ]});
+
+renderSeq('seq-handoff',{gap:250,intro:'Two Dart workers share the job: one keeps Bluetooth alive in the background, the other owns the UWB hardware.',
+  actors:[{id:'B',label:'Background worker',sub:'foreground service',color:C.uwb},{id:'F',label:'App worker',sub:'main isolate',color:C.ble},{id:'E',label:'Car computer',sub:'ESP32',color:C.ecu},{id:'U',label:'Android UWB',sub:'multicast DS-TWR',color:C.warn}],
+  steps:[
+    {f:'B',to:'E',text:'scan \u2192 connect \u2192 authenticate',say:'The background worker finds the car, connects and completes the handshake. It holds the Bluetooth connection.'},
+    {f:'B',to:'F',text:'runUwbHandoff',say:'It asks the app worker to take over the UWB part.'},
+    {f:'F',to:'E',text:'reconnect by known address',say:'The app worker connects to the car using the Bluetooth address it already knows.'},
+    {f:'F',to:'E',text:'RANGING_START',say:'It asks the car to start ranging.'},
+    {f:'F',to:'U',text:'start multicast ranging',say:'It starts Android\u2019s native multi-anchor UWB session.'},
+    {f:'F',to:'B',text:'uwbHandoffResult',r:1,say:'It reports back that the handoff worked.'},
+    {f:'B',to:'B',text:'release own BLE connection',say:'The background worker releases its connection, because the app worker now owns the link.'},
+    {t:'note',over:['B','F'],text:'Stopping runs the same exchange in reverse'},
+    {f:'B',to:'F',text:'stopUwbHandoff',say:'To stop, the background worker asks the app worker to end the UWB session.'},
+    {f:'F',to:'B',text:'uwbHandoffStopped',r:1,say:'The app worker confirms that everything has stopped.'}
+  ]});
+
+renderSeq('seq-e2e',{gap:175,intro:'Six participants, three phases: pairing (once), handshake (each visit), and the ranging loop that ends with the door unlocking.',
+  actors:[phoneA,{id:'H',label:'Phone HCE',sub:'+ Keystore',color:C.nfc},{id:'E',label:'Car computer',sub:'ESP32',color:C.ecu},{id:'N',label:'Car memory',sub:'NVS',color:C.muted},{id:'A',label:'Anchors',sub:'3 \u00d7 UWB',color:C.uwb},{id:'B',label:'PC bridge',sub:'serial relay',color:C.warn}],
+  steps:[
+    {t:'note',over:['P','N'],text:'Phase A \u00b7 one-time pairing over NFC'},
+    {f:'E',to:'H',text:'SELECT + SPAKE2+ + GET DATA',say:'The phone is tapped on the car\u2019s reader. The car finds the key app, checks the shared secret and asks for the phone\u2019s identity.'},
+    {f:'H',to:'E',text:'public key + signed challenge',r:1,say:'The phone hands over its P-256 public key and proves it owns the private key by signing a challenge.'},
+    {f:'E',to:'H',text:'WRITE DATA + OP CONTROL',say:'The car gives the phone its own identity and finalises.'},
+    {f:'E',to:'N',text:'slot 0, tok_0, fast artifact',say:'The phone becomes the owner in slot 0 and an immobilizer token is created.'},
+    {f:'E',to:'H',text:'PROVISION RESULT success',say:'Pairing is complete.'},
+    {t:'note',over:['P','E'],text:'Phase B \u00b7 every visit over Bluetooth'},
+    {f:'P',to:'E',text:'AUTH0',say:'Later, as the owner approaches, the phone opens a Bluetooth handshake.'},
+    {t:'alt',label:'Standard'},
+    {f:'E',to:'P',text:'car key + signature',r:1,say:'The car sends a signed one-time key.'},
+    {f:'P',to:'E',text:'phone key + signature',say:'The phone replies with its own signed one-time key.'},
+    {f:'E',to:'E',text:'verify + ECDH + HKDF',say:'Both sides now share fresh session keys.'},
+    {t:'else',label:'Fast'},
+    {f:'E',to:'N',text:'load artifact',say:'Or, on the fast path, the car loads the pre-shared artifact\u2026'},
+    {f:'E',to:'E',text:'artifact HKDF',say:'\u2026and derives the session keys from it directly.'},
+    {t:'end'},
+    {f:'E',to:'P',text:'vehicle_id \u2016 nonce',r:1,say:'The car sends a fresh challenge.'},
+    {f:'P',to:'E',text:'EXCHANGE signed challenge',say:'The phone signs it.'},
+    {f:'E',to:'P',text:'session ready',r:1,say:'The car verifies it, and the session is authenticated.'},
+    {f:'P',to:'E',text:'RANGING_START 0x84',say:'The phone asks for precise positioning.'},
+    {f:'E',to:'B',text:'CMD:START_RANGING',say:'The car tells the bridge to start ranging.'},
+    {f:'B',to:'A',text:'start 3 sessions \u2192 phone 0x06C1',say:'The bridge starts one ranging session per anchor, all aimed at the phone\u2019s UWB address 0x06C1.'},
+    {t:'loop',label:'10 times per second, until the gates pass'},
+    {f:'A',to:'B',text:'d0, d1, d2',r:1,say:'Each anchor reports its distance to the phone.'},
+    {f:'B',to:'E',text:'RANGE:d0,d1,d2,valid',r:1,say:'The bridge sends all three distances to the car as one text line.'},
+    {f:'E',to:'E',text:'trilateration \u2192 EKF \u2192 zone',say:'The car computes the position, smooths it and works out the zone.'},
+    {f:'E',to:'E',text:'x,y,vx,vy \u2192 AI intent',say:'The newest state goes into the 25-frame window and the AI updates its intent probabilities.'},
+    {f:'E',to:'E',text:'door zone \u00b7 slow \u00b7 approaching \u00b7 AI ok \u00d7 3',say:'The unlock gates are checked: door zone, speed under 0.4 m/s, not moving away, approach \u2265 0.80, passing < 0.70, three hits in a row.'},
+    {t:'end'},
+    {f:'E',to:'E',text:'RELAY pin 5 HIGH for 500 ms',say:'Click. The door relay is pulsed for half a second.'},
+    {f:'E',to:'P',text:'state: DOOR_UNLOCKED',r:1,say:'The car is now in DOOR_UNLOCKED. Sitting down for 3 seconds would move it to OCCUPIED and authorise ignition.'}
+  ]});
+
+/* ---------- key slots ---------- */
+(function(){const s=document.getElementById('slots');
+  for(let i=0;i<8;i++){const x=6+i*54,own=i===0;
+    el('rect',{x:x,y:8,width:48,height:70,rx:8,fill:own?'#2a1f45':'#141b29',stroke:own?C.nfc:'#33405a','stroke-width':1.5},s);
+    txt(s,x+24,30,'slot '+i,{fill:'#fff','font-size':11,'font-weight':700,'text-anchor':'middle'});
+    el('rect',{x:x+8,y:40,width:32,height:10,rx:3,fill:own?C.nfc:'#2a3346'},s);
+    el('rect',{x:x+8,y:56,width:32,height:10,rx:3,fill:own?C.warn:'#2a3346'},s);
+    txt(s,x+24,96,own?'owner':'friend',{fill:own?C.nfc:C.muted,'font-size':10.5,'text-anchor':'middle'});}
+  el('rect',{x:10,y:112,width:10,height:8,rx:2,fill:C.nfc},s);txt(s,26,120,'phone public key (65 B)',{fill:'#c7d1dd','font-size':11});
+  el('rect',{x:200,y:112,width:10,height:8,rx:2,fill:C.warn},s);txt(s,216,120,'immobilizer token (32 B)',{fill:'#c7d1dd','font-size':11});
+})();
+
+/* ---------- BLE tunnel ---------- */
+(function(){const s=document.getElementById('tunnel');
+  el('style',null,s).textContent='.pk{animation:mv 3s linear infinite}.pk2{animation:mv2 3s linear infinite}@keyframes mv{from{transform:translateX(0)}to{transform:translateX(470px)}}@keyframes mv2{from{transform:translateX(0)}to{transform:translateX(-470px)}}';
+  el('rect',{x:20,y:60,width:170,height:130,rx:16,fill:'#141b29',stroke:C.ble,'stroke-width':1.6},s);
+  txt(s,105,118,'Phone',{fill:'#fff','font-weight':700,'font-size':18,'text-anchor':'middle'});txt(s,105,140,'GATT client',{fill:'#9fb0c4','font-size':12,'text-anchor':'middle'});
+  el('rect',{x:810,y:60,width:170,height:130,rx:16,fill:'#141b29',stroke:C.ecu,'stroke-width':1.6},s);
+  txt(s,895,118,'Car computer',{fill:'#fff','font-weight':700,'font-size':18,'text-anchor':'middle'});txt(s,895,140,'GATT server',{fill:'#9fb0c4','font-size':12,'text-anchor':'middle'});
+  el('rect',{x:220,y:40,width:560,height:170,rx:22,fill:'rgba(88,166,255,.05)',stroke:'#2b4a72','stroke-dasharray':'6 5'},s);
+  txt(s,500,32,'Auth service 0000aaaa-\u2026 : an APDU-style tunnel',{fill:C.ble,'font-size':12.5,'font-weight':700,'text-anchor':'middle'});
+  el('line',{x1:240,y1:95,x2:760,y2:95,stroke:C.ble,'stroke-width':2},s);el('path',{d:'M770 95 l-12 -6 v12z',fill:C.ble},s);
+  txt(s,500,82,'RX characteristic (aac1) \u00b7 phone writes commands',{fill:'#c7d1dd','font-size':12,'text-anchor':'middle'});
+  el('line',{x1:760,y1:160,x2:240,y2:160,stroke:C.ecu,'stroke-width':2},s);el('path',{d:'M230 160 l12 -6 v12z',fill:C.ecu},s);
+  txt(s,500,184,'TX characteristic (aac2) \u00b7 car notifies responses',{fill:'#c7d1dd','font-size':12,'text-anchor':'middle'});
+  const cmds=[['AUTH0','0x80'],['AUTH1','0x81'],['EXCHANGE','0x82'],['CONTROL','0x83'],['R_START','0x84'],['R_STOP','0x85']];
+  cmds.forEach((c,i)=>{const x=252+i*86;el('rect',{x:x,y:114,width:80,height:28,rx:8,fill:'#1a2436',stroke:'#35507a'},s);txt(s,x+40,127,c[0],{fill:'#fff','font-size':10.5,'font-weight':700,'text-anchor':'middle'});txt(s,x+40,138,c[1],{fill:'#9fb0c4','font-size':9.5,'text-anchor':'middle'});});
+  const p=el('g',{class:'pk'},s);el('rect',{x:245,y:89,width:26,height:12,rx:3,fill:C.ble},p);
+  const q=el('g',{class:'pk2'},s);el('rect',{x:729,y:154,width:26,height:12,rx:3,fill:C.ecu},q);
+})();
+
+/* ---------- UWB topology ---------- */
+(function(){const s=document.getElementById('topo');
+  el('style',null,s).textContent='.fl{fill:none;stroke-width:2;stroke-dasharray:6 6;animation:dash 1.2s linear infinite}@keyframes dash{to{stroke-dashoffset:-24}}';
+  function b(x,y,w,h,col,t,sub){el('rect',{x:x,y:y,width:w,height:h,rx:12,fill:'#141b29',stroke:col,'stroke-width':1.5},s);txt(s,x+w/2,y+h/2-2,t,{fill:'#fff','font-weight':700,'font-size':14,'text-anchor':'middle'});if(sub)txt(s,x+w/2,y+h/2+15,sub,{fill:'#9fb0c4','font-size':11,'text-anchor':'middle'});}
+  const ay=[25,93,161];
+  ay.forEach(y=>el('path',{d:'M170 115 C230 115 240 '+(y+22)+' 300 '+(y+22),class:'fl',stroke:C.uwb},s));
+  ay.forEach(y=>el('path',{d:'M430 '+(y+22)+' C490 '+(y+22)+' 500 115 560 115',class:'fl',stroke:C.warn},s));
+  el('path',{d:'M720 108 L800 108',class:'fl',stroke:C.ecu},s);
+  el('path',{d:'M800 128 L720 128',class:'fl',stroke:'#6b7a93'},s);
+  b(20,80,150,70,C.ble,'Phone','UWB address 0x06C1');
+  [['A0','rear-centre'],['A1','right B-pillar'],['A2','left B-pillar']].forEach((a,i)=>b(300,ay[i],130,44,C.uwb,a[0]+' \u00b7 '+a[1]));
+  b(560,80,160,70,C.warn,'PC bridge','one UART per anchor');
+  b(800,80,180,70,C.ecu,'ESP32-S3','USB-CDC serial');
+  txt(s,160,66,'UWB ranging (DS-TWR)',{fill:C.uwb,'font-size':12,'font-weight':700,'text-anchor':'middle'});
+  txt(s,495,60,'UART',{fill:C.warn,'font-size':12,'font-weight':700,'text-anchor':'middle'});
+  txt(s,760,98,'RANGE:\u2026',{fill:C.ecu,'font-size':11,'font-weight':700,'text-anchor':'middle'});
+  txt(s,760,148,'CMD:START',{fill:'#8b98a9','font-size':11,'text-anchor':'middle'});
+  txt(s,890,178,'10 Hz \u00b7 d0, d1, d2',{fill:'#9fb0c4','font-size':11.5,'text-anchor':'middle'});
+})();
+
+/* ---------- maps ---------- */
+const ANCH=[[0,-2],[0.95,0],[-0.95,0]];
+const ANAME=['A0','A1','A2'];
+function trilat(d){let x=0,y=-0.67;
+  for(let k=0;k<10;k++){let a=0,b=0,c=0,gx=0,gy=0;
+    for(let i=0;i<3;i++){const dx=x-ANCH[i][0],dy=y-ANCH[i][1],r=Math.hypot(dx,dy)||1e-6,jx=dx/r,jy=dy/r,res=r-d[i];a+=jx*jx;b+=jx*jy;c+=jy*jy;gx+=jx*res;gy+=jy*res;}
+    const det=a*c-b*b;if(Math.abs(det)<1e-9)break;const sx=(c*gx-b*gy)/det,sy=(a*gy-b*gx)/det;x-=sx;y-=sy;if(Math.hypot(sx,sy)<1e-4)break;}
+  let e=0;for(let i=0;i<3;i++){const r=Math.hypot(x-ANCH[i][0],y-ANCH[i][1])-d[i];e+=r*r;}
+  return [x,y,Math.sqrt(e/3)];}
+function classify(x,y){if(Math.hypot(x+0.35,y)<=0.45)return 'DRIVER_SEAT';if(Math.hypot(x+0.95,y)<=1.0)return 'DRIVER_DOOR';if(Math.hypot(x,y)<=2.5)return 'WELCOME';return 'OUTSIDE';}
+function makeMap(svg,opts){
+  const s=52,cx=240,cy=200,P=(x,y)=>[cx+x*s,cy-y*s];
+  svg.setAttribute('viewBox','0 0 480 420');
+  const g0=el('g',null,svg);
+  for(let i=-4;i<=4;i++){const a=P(i,-4),b=P(i,4);el('line',{x1:a[0],y1:0,x2:b[0],y2:420,stroke:'#141c2a'},g0);const c=P(-5,i);el('line',{x1:0,y1:c[1],x2:480,y2:c[1],stroke:'#141c2a'},g0);}
+  txt(g0,470,16,'1 m grid',{fill:'#3b4a66','font-size':10,'text-anchor':'end'});
+  txt(g0,P(0,3.5)[0],P(0,3.5)[1],'FRONT \u2191',{fill:'#3b4a66','font-size':10,'text-anchor':'middle','font-weight':700});
+  if(opts.zones){
+    const w=P(0,0);el('circle',{cx:w[0],cy:w[1],r:2.5*s,fill:'rgba(88,166,255,.05)',stroke:C.ble,'stroke-dasharray':'6 5','stroke-opacity':.6},g0);
+    txt(g0,w[0]+2.5*s*0.7+6,w[1]-2.5*s*0.7,'WELCOME 2.5 m',{fill:C.ble,'font-size':10.5,'font-weight':700});
+    const d=P(-0.95,0);el('circle',{cx:d[0],cy:d[1],r:1.0*s,fill:'rgba(210,153,34,.09)',stroke:C.warn,'stroke-opacity':.8},g0);
+    txt(g0,d[0]-1.0*s-2,d[1]-s*0.8,'DRIVER DOOR',{fill:C.warn,'font-size':10.5,'font-weight':700,'text-anchor':'end'});
+  }
+  const car=el('g',null,svg);
+  const tl=P(-0.95,2.35);
+  [[-1.02,1.45],[0.9,1.45],[-1.02,-1.55],[0.9,-1.55]].forEach(w=>{const p=P(w[0],w[1]);el('rect',{x:p[0],y:p[1],width:0.12*s,height:0.6*s,rx:3,fill:'#05070b'},car);});
+  el('rect',{x:tl[0],y:tl[1],width:1.9*s,height:4.6*s,rx:0.45*s,fill:'#1a2332',stroke:'#3b4a66','stroke-width':1.5},car);
+  const ws=[P(-0.75,1.35),P(0.75,1.35),P(0.62,0.85),P(-0.62,0.85)];el('polygon',{points:ws.map(p=>p.join(',')).join(' '),fill:'#22324a'},car);
+  const rw=[P(-0.7,-1.55),P(0.7,-1.55),P(0.6,-1.2),P(-0.6,-1.2)];el('polygon',{points:rw.map(p=>p.join(',')).join(' '),fill:'#22324a'},car);
+  [[-0.35,0],[0.35,0]].forEach(c=>{const p=P(c[0]-0.22,c[1]+0.25);el('rect',{x:p[0],y:p[1],width:0.44*s,height:0.5*s,rx:5,fill:'#2a3448'},car);});
+  const rb=P(-0.62,-0.55);el('rect',{x:rb[0],y:rb[1],width:1.24*s,height:0.45*s,rx:5,fill:'#2a3448'},car);
+  const sw=P(-0.35,0.55);el('circle',{cx:sw[0],cy:sw[1],r:0.14*s,fill:'none',stroke:'#4b5a74','stroke-width':3},car);
+  if(opts.zones){const q=P(-0.35,0);el('circle',{cx:q[0],cy:q[1],r:0.45*s,fill:'rgba(63,185,80,.14)',stroke:C.ecu},car);txt(car,q[0],q[1]+0.45*s+12,'SEAT',{fill:C.ecu,'font-size':10,'font-weight':700,'text-anchor':'middle'});}
+  const gC=el('g',null,svg),gT=el('g',null,svg),gR=el('g',null,svg);
+  const circles=ANCH.map(()=>el('circle',{r:0,fill:'rgba(45,212,191,.04)',stroke:C.uwb,'stroke-width':1.2,'stroke-opacity':.7},gC));
+  const lines=ANCH.map(()=>el('line',{stroke:C.uwb,'stroke-width':1,'stroke-dasharray':'3 4','stroke-opacity':.8},gC));
+  ANCH.forEach((a,i)=>{const p=P(a[0],a[1]);el('circle',{cx:p[0],cy:p[1],r:9,fill:C.uwb,opacity:.25},svg);el('circle',{cx:p[0],cy:p[1],r:5,fill:C.uwb},svg);txt(svg,p[0]+(i===2?-10:10),p[1]+(i===0?16:-8),ANAME[i],{fill:C.uwb,'font-size':11,'font-weight':800,'text-anchor':i===2?'end':'start'});});
+  const est=el('g',null,svg);el('circle',{r:7,fill:'none',stroke:'#fff','stroke-width':2},est);el('line',{x1:-11,x2:11,y1:0,y2:0,stroke:'#fff','stroke-width':1.5},est);el('line',{y1:-11,y2:11,x1:0,x2:0,stroke:'#fff','stroke-width':1.5},est);
+  const phone=el('g',null,svg);el('circle',{r:14,fill:C.ble,opacity:.18},phone);el('rect',{x:-6,y:-10,width:12,height:20,rx:3,fill:C.ble,stroke:'#fff','stroke-width':1.2},phone);
+  return {P:P,s:s,svg:svg,gT:gT,gR:gR,
+    setPhone(x,y){const p=P(x,y);phone.setAttribute('transform','translate('+p[0]+','+p[1]+')');},
+    setEst(x,y){const p=P(x,y);est.setAttribute('transform','translate('+p[0]+','+p[1]+')');},
+    setRanges(d,px,py){ANCH.forEach((a,i)=>{const p=P(a[0],a[1]),q=P(px,py);circles[i].setAttribute('cx',p[0]);circles[i].setAttribute('cy',p[1]);circles[i].setAttribute('r',Math.max(0,d[i]*s));lines[i].setAttribute('x1',p[0]);lines[i].setAttribute('y1',p[1]);lines[i].setAttribute('x2',q[0]);lines[i].setAttribute('y2',q[1]);});},
+    toWorld(ev){const pt=svg.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;const m=pt.matrixTransform(svg.getScreenCTM().inverse());return [(m.x-cx)/s,(cy-m.y)/s];}
+  };
+}
+
+/* trilateration demo */
+(function(){const M=makeMap(document.getElementById('map-tri'),{zones:false});
+  function place(x,y){const d=ANCH.map(a=>Math.hypot(x-a[0],y-a[1])+(Math.random()-.5)*0.06);const r=trilat(d);
+    M.setPhone(x,y);M.setRanges(d,x,y);M.setEst(r[0],r[1]);
+    ['t-d0','t-d1','t-d2'].forEach((id,i)=>document.getElementById(id).textContent=d[i].toFixed(2)+' m');
+    document.getElementById('t-x').textContent=r[0].toFixed(2)+' m';document.getElementById('t-y').textContent=r[1].toFixed(2)+' m';document.getElementById('t-r').textContent=(r[2]*100).toFixed(1)+' cm';}
+  M.svg.addEventListener('click',ev=>{const w=M.toWorld(ev);place(w[0],w[1]);});
+  place(-1.8,1.2);
+})();
+
+/* access state machine */
+(function(){const s=document.getElementById('sm');
+  const defs=el('defs',null,s);const mk=el('marker',{id:'ah',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:8,markerHeight:8,orient:'auto-start-reverse'},defs);el('path',{d:'M0 0 L10 5 L0 10 z',fill:'#8b98a9'},mk);
+  function node(id,x,y,w,label){const g=el('g',{class:'node',id:'sm-'+id,'data-s':id},s);el('rect',{x:x,y:y,width:w,height:56,rx:14},g);txt(g,x+w/2,y+34,label,{'text-anchor':'middle'});}
+  function edge(d,lab,lx,ly,anchor){el('path',{d:d,class:'edge','marker-end':'url(#ah)'},s);lab.split('|').forEach((l,i)=>txt(s,lx,ly+i*14,l,{class:'elab','text-anchor':anchor||'middle'}));}
+  edge('M150 150 C170 70 250 55 338 62','near door \u00b7 slow \u00b7 approach|AI ok \u00b7 3 hits \u2192 relay pulse',180,40,'start');
+  edge('M455 92 L455 272','in seat \u00b7 still \u00b7 seated \u2265 0.80|held 3 s \u2192 lock + ignition',445,205,'end');
+  edge('M340 84 C270 110 220 140 175 170','outside +|moving away',262,140,'start');
+  edge('M340 300 C240 310 150 280 105 213','outside \u00b7 moving away|leave \u2265 0.80 \u00b7 3 hits',165,332,'start');
+  el('circle',{cx:30,cy:185,r:7,fill:'#8b98a9'},s);el('path',{d:'M38 185 L48 185',class:'edge','marker-end':'url(#ah)'},s);
+  node('LOCKED',50,157,130,'LOCKED');node('DOOR_UNLOCKED',340,36,220,'DOOR_UNLOCKED');node('OCCUPIED',340,272,220,'OCCUPIED');
+})();
+
+/* live simulation */
+(function(){
+  const M=makeMap(document.getElementById('map-sim'),{zones:true});
+  const path=[[0,-3.6,-3.2],[4,-1.6,-0.5],[6,-1.35,-0.1],[7.5,-1.35,-0.1],[10,-0.4,0],[15,-0.4,0]],END=17;
+  function at(t){if(t<=0)return {x:path[0][1],y:path[0][2],v:0};
+    for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];if(t<=b[0]){const f=(t-a[0])/(b[0]-a[0]),dx=b[1]-a[1],dy=b[2]-a[2];return {x:a[1]+dx*f,y:a[2]+dy*f,v:Math.hypot(dx,dy)/(b[0]-a[0])};}}
+    const l=path[path.length-1];return {x:l[1],y:l[2],v:0};}
+  const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+  const $=id=>document.getElementById(id);
+  const pills=[...document.querySelectorAll('#pills .pill')],smNodes=[...document.querySelectorAll('#sm .node')];
+  const hitDots=[...document.querySelectorAll('#s-hits i')];
+  let S,playing=true,rate=1,visible=false;
+  function log(m){S.log.unshift('t='+S.t.toFixed(1)+'s  '+m);S.log=S.log.slice(0,8);$('s-log').innerHTML='';S.log.forEach(l=>{const d=document.createElement('div');d.textContent=l;$('s-log').appendChild(d);});}
+  function reset(){S={t:0,next:0,est:null,prevR:null,cand:null,candN:0,zone:'OUTSIDE',state:'LOCKED',hits:0,seatSince:null,relayUntil:-1,trail:[],raw:[],frames:0,log:[],d:[0,0,0],speed:0};
+    while(M.gT.firstChild)M.gT.firstChild.remove();while(M.gR.firstChild)M.gR.firstChild.remove();$('s-log').innerHTML='';log('Session ready \u00b7 ranging started');}
+  function tick(t){
+    const p=at(t);const d=ANCH.map(a=>Math.max(0.1,Math.hypot(p.x-a[0],p.y-a[1])+gauss()*0.04));
+    const f=trilat(d);S.est=S.est?[S.est[0]+0.4*(f[0]-S.est[0]),S.est[1]+0.4*(f[1]-S.est[1])]:[f[0],f[1]];
+    S.raw.push([f[0],f[1]]);if(S.raw.length>40)S.raw.shift();
+    S.trail.push(S.est.slice());if(S.trail.length>25)S.trail.shift();S.frames=Math.min(25,S.frames+1);
+    const r=Math.hypot(p.x,p.y),radial=S.prevR==null?0:(r-S.prevR)/0.1;S.prevR=r;
+    const c=classify(S.est[0],S.est[1]);if(c===S.cand)S.candN++;else{S.cand=c;S.candN=1;}
+    if(S.candN>=3&&S.zone!==c){S.zone=c;log('Zone \u2192 '+c);}
+    const speed=p.v;S.speed=speed;S.d=d;S.p=p;
+    if(S.state==='LOCKED'){const ok=(S.zone==='DRIVER_DOOR'||S.zone==='DRIVER_SEAT')&&speed<0.4&&radial<=0.10;
+      if(ok){S.hits++;log('Unlock gates pass ('+S.hits+'/3)');}else S.hits=0;
+      if(S.hits>=3){S.state='DOOR_UNLOCKED';S.relayUntil=t+0.5;S.hits=0;log('DOOR_UNLOCKED \u00b7 relay HIGH 500 ms');}}
+    else if(S.state==='DOOR_UNLOCKED'){
+      if(S.zone==='DRIVER_SEAT'&&speed<0.4){if(S.seatSince==null){S.seatSince=t;log('Seat settle timer started');}
+        if(t-S.seatSince>=3){S.state='OCCUPIED';log('OCCUPIED \u00b7 door locked, ignition authorised');}}
+      else S.seatSince=null;
+      if(S.zone==='OUTSIDE'&&radial>0.10){S.state='LOCKED';S.seatSince=null;log('Moved away \u00b7 LOCKED');}}
+  }
+  function render(){
+    const p=at(S.t);M.setPhone(p.x,p.y);M.setRanges(S.d,p.x,p.y);if(S.est)M.setEst(S.est[0],S.est[1]);
+    while(M.gR.firstChild)M.gR.firstChild.remove();S.raw.forEach(q=>{const a=M.P(q[0],q[1]);el('circle',{cx:a[0],cy:a[1],r:1.8,fill:'#8b98a9',opacity:.45},M.gR);});
+    while(M.gT.firstChild)M.gT.firstChild.remove();S.trail.forEach((q,i)=>{const a=M.P(q[0],q[1]);el('circle',{cx:a[0],cy:a[1],r:2.8,fill:C.ai,opacity:.25+.75*i/25},M.gT);});
+    $('s-zone').textContent=S.zone.replace('DRIVER_','');$('s-speed').textContent=S.speed.toFixed(2)+' m/s';$('s-win').textContent=S.frames+' / 25';
+    hitDots.forEach((h,i)=>h.classList.toggle('on',i<S.hits));
+    $('s-settle').style.width=(S.state==='OCCUPIED'?100:S.seatSince==null?0:Math.min(100,(S.t-S.seatSince)/3*100))+'%';
+    $('led-relay').classList.toggle('on',S.t<S.relayUntil);$('led-ign').classList.toggle('on',S.state==='OCCUPIED');
+    pills.forEach(x=>x.classList.toggle('on',x.dataset.s===S.state));smNodes.forEach(x=>x.classList.toggle('active',x.dataset.s===S.state));
+  }
+  let last=performance.now();
+  function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;
+    if(playing&&visible){S.t+=dt*rate;while(S.next<=S.t){tick(S.next);S.next+=0.1;}if(S.t>END){reset();}render();}
+    requestAnimationFrame(frame);}
+  new IntersectionObserver(es=>{visible=es[0].isIntersecting;},{threshold:.2}).observe(document.getElementById('map-sim'));
+  $('s-play').onclick=()=>{playing=!playing;$('s-play').textContent=playing?'Pause':'Play';};
+  $('s-restart').onclick=()=>{reset();render();};
+  $('s-rate').onclick=()=>{rate=rate===1?2:1;$('s-rate').textContent='Speed '+rate+'\u00d7';};
+  reset();tick(0);S.next=0.1;render();requestAnimationFrame(frame);
+})();
+
+/* ---------- AI heatmap ---------- */
+(function(){const h=document.getElementById('heat');const rows=['x','y','vx','vy'],cells=[];
+  rows.forEach(r=>{const l=document.createElement('div');l.className='lbl';l.textContent=r;h.appendChild(l);const row=[];for(let i=0;i<25;i++){const c=document.createElement('div');c.className='cell';h.appendChild(c);row.push(c);}cells.push(row);});
+  const buf=[];let t=0;
+  function sample(){t+=0.1;const x=-2.2+1.4*Math.sin(t*0.35),y=-1.5+1.6*Math.sin(t*0.22+1),vx=0.49*Math.cos(t*0.35),vy=0.35*Math.cos(t*0.22+1);
+    const m=[-1.176990,-0.693135,-0.019802,0.006809],sc=[1.118417,1.425282,0.187332,0.270498];return [x,y,vx,vy].map((v,i)=>(v-m[i])/sc[i]);}
+  for(let i=0;i<25;i++)buf.push(sample());
+  function paint(){for(let r=0;r<4;r++)for(let i=0;i<25;i++){const v=Math.max(-2,Math.min(2,buf[i][r]));const L=18+(v+2)/4*50;cells[r][i].style.background='hsl('+(v>=0?24:210)+','+(40+Math.abs(v)*25)+'%,'+L+'%)';}}
+  paint();setInterval(()=>{buf.shift();buf.push(sample());paint();},150);
+})();
+
+/* ---------- AI decision toy ---------- */
+(function(){const sc=[
+  {k:'Walking to the door',p:[0.91,0.03,0.02,0.04],v:'approach \u2265 0.80 and passing < 0.70, so the AI gates for UNLOCK pass. Geometry, speed and the 3-hit debounce still apply.'},
+  {k:'Sitting down',p:[0.05,0.88,0.03,0.04],v:'seated \u2265 0.80, so after 3 s in the seat and nearly still, the car moves to OCCUPIED and ignition is authorised.'},
+  {k:'Walking away',p:[0.03,0.04,0.90,0.03],v:'leave \u2265 0.80, so if the car is OCCUPIED and the driver is outside and moving away (3 hits), it revokes ignition and locks.'},
+  {k:'Passing by',p:[0.15,0.02,0.05,0.78],v:'passing \u2265 0.70, so an unlock is HARD-BLOCKED even if the person is right next to the door.'}];
+  const names=['approach','seated','leave','passing'],bars=document.getElementById('bars'),scen=document.getElementById('scen'),verdict=document.getElementById('verdict');
+  const fills=names.map((n,i)=>{const b=document.createElement('div');b.className='bar';b.innerHTML='<span>'+n+'</span><div class="track"><div class="fill"></div><i class="th" style="left:80%"></i>'+(i===3?'<i class="th block" style="left:70%"></i>':'')+'</div><b>0.00</b>';bars.appendChild(b);return b;});
+  const btns=sc.map((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=s.k;b.onclick=()=>pick(i);scen.appendChild(b);return b;});
+  function pick(i){btns.forEach((b,j)=>b.classList.toggle('on',i===j));sc[i].p.forEach((v,j)=>{fills[j].querySelector('.fill').style.width=(v*100)+'%';fills[j].querySelector('.fill').style.background=j===3?C.bad:C.ai;fills[j].querySelector('b').textContent=v.toFixed(2);});verdict.textContent=sc[i].v;}
+  pick(0);
+})();
+
+/* ---------- GPS bytes ---------- */
+(function(){const p=document.getElementById('gps-plain'),k=document.getElementById('gps-packet');
+  const f=[['#79c0ff',8],['#2dd4bf',8],['#a371f7',4],['#d29922',4],['#f778ba',8]];
+  f.forEach(x=>{for(let i=0;i<x[1];i++){const c=document.createElement('i');c.style.background=x[0];p.appendChild(c);}});
+  for(let i=0;i<64;i++){const c=document.createElement('i');c.style.background=i<32?'#4b5a74':'#3fb950';k.appendChild(c);}
+})();
+
+/* ---------- reference table ---------- */
+(function(){const R=[
+  ['Geometry','Anchor positions A0 / A1 / A2','(0,-2) / (0.95,0) / (-0.95,0) m','uwb_geometry.h'],
+  ['Geometry','Driver door centre / radius','(-0.95, 0.0) / 1.0 m','geofence.h'],
+  ['Geometry','Driver seat centre / radius','(-0.35, 0.0) / 0.45 m','geofence.h'],
+  ['Geometry','Welcome radius','2.5 m','geofence.h'],
+  ['Access','RELAY_PIN / IGNITION_PIN','5 / 7','access_controller.h'],
+  ['Access','STILL_SPEED_MPS','0.4','access_controller.h'],
+  ['Access','REQUIRED_CONSECUTIVE_HITS','3','access_controller.h'],
+  ['Access','SEAT_SETTLE_MS','3000','access_controller.h'],
+  ['Access','LEAVE_CONSECUTIVE_HITS','3','access_controller.h'],
+  ['Access','APPROACH_SPEED_MIN_MPS','0.10','access_controller.h'],
+  ['Access','RELAY_PULSE_MS','500','access_controller.h'],
+  ['Access','INTENT_APPROACH / SEATED / LEAVE_THRESHOLD','0.80','access_controller.h'],
+  ['Access','INTENT_PASSING_BLOCK','0.70','access_controller.h'],
+  ['EKF','kAccelStd','1.2 m/s\u00b2','ekf_stub.cpp'],
+  ['EKF','Measurement-noise clamp','0.05\u20131.0 m','ekf_stub.cpp'],
+  ['EKF','kDefaultMeasStd / kInitVelVar / kNominalDtS','0.15 m / 4.0 (m/s)\u00b2 / 0.10 s','ekf_stub.cpp'],
+  ['EKF','kMaxGapS / kMaxInnovationM / kMaxSpeedMps','2.0 s / 2.5 m / 2.0 m/s','ekf_stub.cpp'],
+  ['UWB','kDrivePeriodMs / kMaxCoastMs','100 / 500 ms','uwb_bridge.cpp'],
+  ['UWB','Frame queue depth','8','uwb_bridge.cpp'],
+  ['UWB','Bridge destination / session / channel / preamble','0x06C1 / 42 / 9 / 9','run_fira_bridge.py'],
+  ['UWB','Bridge rate / freshness / distance bounds','10 Hz / 500 ms / 0.1\u201330.0 m','run_fira_bridge.py'],
+  ['AI','TIME_STEPS / NUM_FEATURES / NUM_CLASSES','25 / 4 / 4','traj_inference.h'],
+  ['AI','TFLM tensor arena','44 \u00d7 1024 bytes','traj_inference.cpp'],
+  ['AI','Scaler mean','[-1.176990, -0.693135, -0.019802, 0.006809]','traj_inference.h'],
+  ['AI','Scaler scale','[1.118417, 1.425282, 0.187332, 0.270498]','traj_inference.h'],
+  ['BLE','Auth service / RX / TX UUID','0000aaaa\u20265678 / 0000aac1\u20265678 / 0000aac2\u20265678','ble_auth.cpp'],
+  ['BLE','AUTH0 standard / fast P1','0x11 / 0x01','ble_auth.cpp'],
+  ['BLE','AUTH0 / AUTH1 / EXCHANGE / CONTROL / RANGING_START / RANGING_STOP','0x80 / 0x81 / 0x82 / 0x83 / 0x84 / 0x85','ble_auth.cpp'],
+  ['NFC','HCE AID','A000000809434343444B467631','ProvisioningHostApduService.kt'],
+  ['NFC','SPAKE2_CHALLENGE_TTL_MS','45000 ms','ProvisioningHostApduService.kt'],
+  ['NFC','Key slots','8','ccc_mailbox.cpp'],
+  ['NFC','Pairing challenge','8-byte vehicle ID + 16-byte nonce = 24 bytes','nfc_session.cpp'],
+  ['NFC','PN532 UART RX / TX / baud','44 / 43 / 115200','main.cpp'],
+  ['Runtime','FSM event queue','16','fsm.cpp']];
+  const tb=document.getElementById('refBody');
+  R.forEach(r=>{const tr=document.createElement('tr');const a=document.createElement('td');a.innerHTML='<div class="grp"></div><code></code>';a.querySelector('.grp').textContent=r[0];a.querySelector('code').textContent=r[1];
+    const b=document.createElement('td');const bc=document.createElement('code');bc.textContent=r[2];b.appendChild(bc);const c=document.createElement('td');c.className='src';c.textContent=r[3];tr.append(a,b,c);tr.dataset.q=r.join(' ').toLowerCase();tb.appendChild(tr);});
+  document.getElementById('refFilter').addEventListener('input',e=>{const q=e.target.value.toLowerCase().trim();[...tb.rows].forEach(tr=>tr.style.display=!q||tr.dataset.q.includes(q)?'':'none');});
+})();
+})();
 </script>
 </body>
 </html>
